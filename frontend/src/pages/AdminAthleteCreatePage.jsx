@@ -1,0 +1,415 @@
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Container,
+  Divider,
+  FormControl,
+  Grid,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  Snackbar,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
+import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
+import api from '../services/api';
+
+const emptyForm = {
+  entityId: '',
+  cpf: '',
+  fullName: '',
+  birthDate: '',
+  photoUrl: '',
+  phone: '',
+  email: '',
+  proofUrl: '',
+  modality: '',
+  naipe: 'masculino',
+  ageCategory: 'Automática',
+  matricula: 'Gerada automaticamente',
+};
+
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Erro ao ler arquivo'));
+    reader.readAsDataURL(file);
+  });
+
+const isValidCPF = (value = '') => {
+  const digits = String(value).replace(/\D/g, '');
+  if (digits.length !== 11) return false;
+
+  if (/^(\d)\1{10}$/.test(digits)) return false;
+
+  let sum = 0;
+  for (let i = 0; i < 9; i += 1) {
+    sum += Number(digits.charAt(i)) * (10 - i);
+  }
+  let remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== Number(digits.charAt(9))) return false;
+
+  sum = 0;
+  for (let i = 0; i < 10; i += 1) {
+    sum += Number(digits.charAt(i)) * (11 - i);
+  }
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  return remainder === Number(digits.charAt(10));
+};
+
+const isValidEmail = (value = '') => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim());
+const isValidPhone = (value = '') => [10, 11].includes(String(value).replace(/\D/g, '').length);
+
+export default function AdminAthleteCreatePage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get('id');
+  const [form, setForm] = useState(emptyForm);
+  const [entities, setEntities] = useState([]);
+  const [modalities, setModalities] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [successOpen, setSuccessOpen] = useState(false);
+  const [uploadInfo, setUploadInfo] = useState({ photo: '', proof: '' });
+  const approvedEntities = entities.filter((entity) => entity.status === 'approved');
+  const selectedModality = modalities.find((modality) =>
+    (modality.name || modality.slug) === form.modality
+  );
+  const ageCategories = selectedModality?.categories || [];
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [entitiesResponse, modalitiesResponse, athleteResponse] = await Promise.all([
+          api.get('/entities'),
+          api.get('/modalities'),
+          editId ? api.get(`/athletes/${editId}`) : Promise.resolve(null),
+        ]);
+
+        const loadedEntities = entitiesResponse.data.entities || [];
+        const loadedModalities = modalitiesResponse.data.modalities || [];
+        setEntities(loadedEntities);
+        setModalities(loadedModalities);
+
+        if (editId && athleteResponse?.data?.athlete) {
+          const athlete = athleteResponse.data.athlete;
+          const athleteEntityId = typeof athlete.entityId === 'object' ? athlete.entityId?._id : athlete.entityId;
+          const athleteModality = loadedModalities.find((modality) =>
+            (modality.name || modality.slug) === athlete.modality
+          );
+          const availableCategories = athleteModality?.categories || [];
+          setForm({
+            entityId: loadedEntities.some((entity) => entity._id === athleteEntityId && entity.status === 'approved')
+              ? athleteEntityId
+              : '',
+            cpf: athlete.cpf,
+            fullName: athlete.fullName,
+            birthDate: athlete.birthDate ? new Date(athlete.birthDate).toISOString().slice(0, 10) : '',
+            photoUrl: athlete.photoUrl || '',
+            phone: athlete.phone,
+            email: athlete.email,
+            proofUrl: athlete.proofUrl || '',
+            modality: athlete.modality || '',
+            naipe: athlete.naipe || athlete.gender || 'masculino',
+            ageCategory: availableCategories.includes(athlete.ageCategory)
+              ? athlete.ageCategory
+              : availableCategories[0] || '',
+            matricula: athlete.matricula || 'Gerada automaticamente',
+          });
+          setUploadInfo({
+            photo: athlete.photoUrl ? 'Foto já carregada' : '',
+            proof: athlete.proofUrl ? 'Documento já carregado' : '',
+          });
+        }
+      } catch (error) {
+        setError(error.response?.data?.message || 'Erro ao carregar os dados do atleta.');
+      }
+    };
+
+    load();
+  }, [editId, navigate]);
+
+  const handleFileField = async (event, fieldName) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const result = await readFileAsDataUrl(file);
+    setForm((current) => ({ ...current, [fieldName]: result }));
+    setUploadInfo((current) => ({
+      ...current,
+      [fieldName === 'photoUrl' ? 'photo' : 'proof']: file.name,
+    }));
+    event.target.value = '';
+  };
+
+  const validateForm = () => {
+    if (!form.entityId) return 'Selecione a entidade do atleta.';
+    if (!form.cpf || !isValidCPF(form.cpf)) return 'CPF do atleta inválido.';
+    if (!form.fullName.trim()) return 'Informe o nome completo do atleta.';
+    if (!form.birthDate) return 'Informe a data de nascimento.';
+    const birthYear = new Date(form.birthDate).getFullYear();
+    const currentYear = new Date().getFullYear();
+    if (Number.isNaN(birthYear) || currentYear - birthYear < 18) return 'O atleta deve ter pelo menos 18 anos.';
+    if (!isValidPhone(form.phone)) return 'Informe um telefone válido com DDD (10 ou 11 dígitos).';
+    if (!form.email || !isValidEmail(form.email)) return 'Informe um e-mail válido.';
+    if (!form.modality) return 'Selecione a modalidade.';
+    if (!form.ageCategory) return 'Selecione a categoria etária.';
+    if (!form.naipe) return 'Selecione o naipe.';
+    if (!form.photoUrl) return 'Selecione a foto do atleta.';
+    if (!form.proofUrl) return 'Selecione o comprovante do atleta.';
+    return '';
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError('');
+    setSuccess('');
+
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const payload = {
+        entityId: form.entityId,
+        cpf: form.cpf,
+        fullName: form.fullName,
+        birthDate: form.birthDate,
+        photoUrl: form.photoUrl,
+        phone: form.phone,
+        email: form.email,
+        proofUrl: form.proofUrl,
+        modality: form.modality,
+        naipe: form.naipe,
+        gender: form.naipe,
+        ageCategory: form.ageCategory,
+      };
+
+      if (editId) {
+        await api.put(`/athletes/${editId}`, payload);
+        const successMessage = 'Atleta salvo com sucesso.';
+        setSuccess(successMessage);
+        setSuccessOpen(true);
+      } else {
+        await api.post('/athletes', payload);
+        const successMessage = 'Atleta cadastrado com sucesso.';
+        setSuccess(successMessage);
+        setSuccessOpen(true);
+      }
+    } catch (error) {
+      const message = error.response?.data?.message || 'Erro ao salvar atleta';
+      setError(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Box sx={{ minHeight: '100vh', backgroundColor: '#f8fafc', py: { xs: 3, md: 5 }, px: 2 }}>
+      <Container maxWidth="lg">
+        <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3 }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={2}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 }, minWidth: 0 }}>
+              <Box component="img" src="/logo.png" alt="JISPE 2026" sx={{ display: 'block', width: { xs: 72, sm: 104 }, maxWidth: '35vw', height: 'auto', flexShrink: 0 }} />
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="overline" color="primary.main" sx={{ letterSpacing: 3, fontWeight: 800 }}>
+                  Admin
+                </Typography>
+                <Typography variant="h4" fontWeight={800} sx={{ fontSize: { xs: 22, sm: 34 }, lineHeight: 1.15 }}>
+                  {editId ? 'Editar atleta' : 'Novo cadastro de atleta'}
+                </Typography>
+              </Box>
+            </Box>
+
+            <Stack direction="row" spacing={1}>
+              <Button component={Link} to="/admin" variant="outlined">
+                Dashboard
+              </Button>
+            </Stack>
+          </Stack>
+        </Paper>
+
+        <Card>
+          <CardContent sx={{ p: { xs: 2, md: 4 } }}>
+            <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
+              Dados do atleta
+            </Typography>
+
+            <Box component="form" onSubmit={handleSubmit} noValidate>
+              {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+              )}
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={4}>
+                  <TextField fullWidth label="Nome completo" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <FormControl fullWidth>
+                    <InputLabel>Entidade</InputLabel>
+                    <Select label="Entidade" value={form.entityId} onChange={(e) => setForm({ ...form, entityId: e.target.value })}>
+                      <MenuItem value="">Selecione uma entidade aprovada</MenuItem>
+                      {approvedEntities.map((entity) => (
+                        <MenuItem key={entity._id} value={entity._id}>{entity.name}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField fullWidth label="CPF" value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value })} error={Boolean(error && !isValidCPF(form.cpf))} />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField fullWidth type="date" label="Data de nascimento" InputLabelProps={{ shrink: true }} value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField fullWidth type="tel" label="Telefone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} error={Boolean(error && !isValidPhone(form.phone))} helperText={error && !isValidPhone(form.phone) ? 'Informe DDD e número: 10 ou 11 dígitos.' : 'Com DDD. Ex.: (11) 99999-9999'} />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField fullWidth type="email" label="E-mail" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} error={Boolean(error && !isValidEmail(form.email))} helperText={error && !isValidEmail(form.email) ? 'Informe um endereço de e-mail válido.' : ''} />
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <FormControl fullWidth>
+                    <InputLabel>Modalidade</InputLabel>
+                    <Select label="Modalidade" value={form.modality} onChange={(e) => {
+                      const modalityName = e.target.value;
+                      const nextModality = modalities.find((item) => (item.name || item.slug) === modalityName);
+                      setForm((current) => ({
+                        ...current,
+                        modality: modalityName,
+                        ageCategory: nextModality?.categories?.includes(current.ageCategory)
+                          ? current.ageCategory
+                          : nextModality?.categories?.[0] || '',
+                      }));
+                    }}>
+                      <MenuItem value="">Selecione a modalidade</MenuItem>
+                      {modalities.map((modality) => (
+                        <MenuItem key={modality._id || modality.slug} value={modality.name || modality.slug}>
+                          {modality.name || modality.slug}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <FormControl fullWidth>
+                    <InputLabel>Naipe</InputLabel>
+                    <Select label="Naipe" value={form.naipe} onChange={(e) => setForm({ ...form, naipe: e.target.value })}>
+                      <MenuItem value="masculino">Masculino</MenuItem>
+                      <MenuItem value="feminino">Feminino</MenuItem>
+                      <MenuItem value="misto">Misto</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <FormControl fullWidth disabled={!ageCategories.length}>
+                    <InputLabel>Categoria etária</InputLabel>
+                    <Select label="Categoria etária" value={form.ageCategory} onChange={(e) => setForm({ ...form, ageCategory: e.target.value })}>
+                      <MenuItem value="">Selecione a categoria</MenuItem>
+                      {ageCategories.map((category) => <MenuItem key={category} value={category}>{category}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField fullWidth label="Matrícula" value={form.matricula} disabled helperText="A matrícula é gerada automaticamente e não pode ser alterada." />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Divider sx={{ my: 1 }} />
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
+                    Arquivos do atleta
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ minHeight: 150, display: 'flex', alignItems: 'center', gap: 2, p: 2, border: '1px dashed #94a3b8', borderRadius: 1, backgroundColor: '#f8fafc' }}>
+                    {form.photoUrl ? (
+                      <Box component="img" src={form.photoUrl} alt="Prévia da foto do atleta" sx={{ width: 76, height: 100, flexShrink: 0, objectFit: 'cover', borderRadius: 1, border: '1px solid #cbd5e1' }} />
+                    ) : (
+                      <Box sx={{ width: 76, height: 100, flexShrink: 0, display: 'grid', placeItems: 'center', borderRadius: 1, backgroundColor: '#e2e8f0', color: '#64748b' }}>
+                        <ImageOutlinedIcon />
+                      </Box>
+                    )}
+                    <Stack spacing={1} sx={{ minWidth: 0, alignItems: 'flex-start' }}>
+                      <Box>
+                        <Typography variant="subtitle2" fontWeight={700}>Foto do atleta</Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+                          {uploadInfo.photo || (form.photoUrl ? 'Foto já carregada' : 'Nenhuma foto selecionada')}
+                        </Typography>
+                      </Box>
+                      <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />}>
+                        {form.photoUrl ? 'Trocar foto' : 'Selecionar foto'}
+                        <input hidden type="file" accept="image/*" onChange={(event) => handleFileField(event, 'photoUrl')} />
+                      </Button>
+                    </Stack>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ minHeight: 150, display: 'flex', alignItems: 'center', gap: 2, p: 2, border: '1px dashed #94a3b8', borderRadius: 1, backgroundColor: '#f8fafc' }}>
+                    <Box sx={{ width: 76, height: 100, flexShrink: 0, display: 'grid', placeItems: 'center', borderRadius: 1, backgroundColor: '#e2e8f0', color: '#64748b' }}>
+                      <DescriptionOutlinedIcon />
+                    </Box>
+                    <Stack spacing={1} sx={{ minWidth: 0, alignItems: 'flex-start' }}>
+                      <Box>
+                        <Typography variant="subtitle2" fontWeight={700}>Documento do atleta</Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+                          {uploadInfo.proof || (form.proofUrl ? 'Documento já carregado' : 'Nenhum documento selecionado')}
+                        </Typography>
+                      </Box>
+                      <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />}>
+                        {form.proofUrl ? 'Trocar documento' : 'Selecionar documento'}
+                        <input hidden type="file" accept="image/*,.pdf" onChange={(event) => handleFileField(event, 'proofUrl')} />
+                      </Button>
+                    </Stack>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Divider sx={{ my: 1 }} />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="flex-end">
+                    <Button component={Link} to="/admin" variant="text">
+                      Cancelar
+                    </Button>
+                    <Button type="submit" variant="contained" disabled={saving}>
+                      {saving ? (editId ? 'Salvando...' : 'Cadastrando...') : (editId ? 'Salvar atleta' : 'Cadastrar atleta')}
+                    </Button>
+                  </Stack>
+                </Grid>
+              </Grid>
+            </Box>
+          </CardContent>
+        </Card>
+        <Snackbar
+          open={successOpen}
+          autoHideDuration={1600}
+          onClose={(_, reason) => {
+            if (reason === 'clickaway') return;
+            setSuccessOpen(false);
+            navigate('/admin');
+          }}
+        >
+          <Alert severity="success">{success}</Alert>
+        </Snackbar>
+      </Container>
+    </Box>
+  );
+}

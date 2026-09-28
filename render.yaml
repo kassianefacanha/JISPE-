@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: jispe-2026-api
+    env: node
+    buildCommand: npm install --prefix backend
+    startCommand: npm --prefix backend run start
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
