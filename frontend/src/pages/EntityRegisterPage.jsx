@@ -15,7 +15,7 @@ import {
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
-import api from '../services/api';
+import api, { getApiErrorMessage } from '../services/api';
 
 const emptyForm = {
   name: '',
@@ -97,7 +97,7 @@ export default function EntityRegisterPage() {
       setUploadInfo({ photo: '', proof: '' });
       setTimeout(() => navigate('/login'), 1400);
     } catch (err) {
-      setError(err.response?.data?.message || 'Não foi possível cadastrar a entidade.');
+      setError(getApiErrorMessage(err, 'Não foi possível cadastrar a entidade.'));
     } finally {
       setSubmitting(false);
     }

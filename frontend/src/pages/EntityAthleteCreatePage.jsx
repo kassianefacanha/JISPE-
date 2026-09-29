@@ -19,7 +19,7 @@ import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { getAutomaticAgeCategory, hasCompletedMinimumAge } from '../utils/athleteAge';
-import api from '../services/api';
+import api, { getApiErrorMessage } from '../services/api';
 import { useFeedback } from '../contexts/FeedbackContext';
 
 const emptyForm = {
@@ -85,7 +85,7 @@ export default function EntityAthleteCreatePage() {
   useEffect(() => {
     api.get('/modalities')
       .then((response) => setModalities(response.data.modalities || []))
-      .catch((loadError) => setError(loadError.response?.data?.message || 'Não foi possível carregar as modalidades.'));
+      .catch((loadError) => setError(getApiErrorMessage(loadError, 'Não foi possível carregar as modalidades.')));
   }, []);
 
   useEffect(() => {
@@ -120,7 +120,7 @@ export default function EntityAthleteCreatePage() {
         });
       })
       .catch((loadError) => {
-        if (active) setError(loadError.response?.data?.message || 'Não foi possível carregar os dados do atleta.');
+        if (active) setError(getApiErrorMessage(loadError, 'Não foi possível carregar os dados do atleta.'));
       });
 
     return () => {
@@ -176,7 +176,7 @@ export default function EntityAthleteCreatePage() {
         setUploadInfo({ photo: '', proof: '' });
       }
     } catch (saveError) {
-      const message = saveError.response?.data?.message || 'Erro ao cadastrar atleta.';
+      const message = getApiErrorMessage(saveError, 'Erro ao cadastrar atleta.');
       setError(message);
       notify(message);
     } finally {

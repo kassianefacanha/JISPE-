@@ -15,21 +15,21 @@ const {
 const router = express.Router();
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Muitas tentativas de acesso. Tente novamente em 15 minutos.' },
 });
 const forgotPasswordLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 5,
+  max: 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Muitas solicitações. Tente novamente mais tarde.' },
 });
 const resetPasswordLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Muitas tentativas. Tente novamente mais tarde.' },
@@ -155,7 +155,7 @@ router.post('/login', loginLimiter, async (req, res, next) => {
       return res.json({ success: true, token, user: { id: entity._id, name: entity.name, email: entity.email, role: 'entity', status: entity.status } });
     }
 
-    return res.status(401).json({ success: false, message: 'Credenciais inválidas' });
+    return res.status(401).json({ success: false, message: 'E-mail ou senha incorretos. Confira os dados e tente novamente.' });
   } catch (error) {
     next(error);
   }

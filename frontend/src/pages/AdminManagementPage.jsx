@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../services/api';
+import api, { getApiErrorMessage } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useFeedback } from '../contexts/FeedbackContext';
 
@@ -48,7 +48,7 @@ export default function AdminManagementPage() {
       setEntities(entitiesResponse.data.entities || []);
       setAthletes(athletesResponse.data.athletes || []);
     } catch (error) {
-      console.error(error);
+      notify(getApiErrorMessage(error, 'Não foi possível carregar os dados de gerenciamento.'));
     }
   };
 
@@ -87,7 +87,7 @@ export default function AdminManagementPage() {
       await loadData();
       notify(wasEditing ? 'Entidade atualizada com sucesso.' : 'Entidade cadastrada com sucesso.', 'success');
     } catch (error) {
-      notify(error.response?.data?.message || 'Erro ao salvar entidade');
+      notify(getApiErrorMessage(error, 'Erro ao salvar entidade.'));
     }
   };
 
@@ -121,7 +121,7 @@ export default function AdminManagementPage() {
       await loadData();
       notify(wasEditing ? 'Atleta atualizado com sucesso.' : 'Atleta cadastrado com sucesso.', 'success');
     } catch (error) {
-      notify(error.response?.data?.message || 'Erro ao salvar atleta');
+      notify(getApiErrorMessage(error, 'Erro ao salvar atleta.'));
     }
   };
 
@@ -132,7 +132,7 @@ export default function AdminManagementPage() {
       await loadData();
       notify('Status da entidade atualizado com sucesso.', 'success');
     } catch (error) {
-      notify(error.response?.data?.message || 'Erro ao alterar status');
+      notify(getApiErrorMessage(error, 'Erro ao alterar status.'));
     }
   };
 
@@ -162,7 +162,7 @@ export default function AdminManagementPage() {
         notify(`Não é possível excluir a entidade porque há atletas associados: ${serverNames.join(', ')}.`, 'warning');
         return;
       }
-      notify(error.response?.data?.message || 'Erro ao excluir entidade');
+      notify(getApiErrorMessage(error, 'Erro ao excluir entidade.'));
     }
   };
 
@@ -180,7 +180,7 @@ export default function AdminManagementPage() {
       await loadData();
       notify('Atleta excluído com sucesso.', 'success');
     } catch (error) {
-      notify(error.response?.data?.message || 'Erro ao excluir atleta');
+      notify(getApiErrorMessage(error, 'Erro ao excluir atleta.'));
     }
   };
 

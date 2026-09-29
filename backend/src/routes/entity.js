@@ -13,7 +13,7 @@ const { sendEntityDecisionEmail, sendEntityRegistrationEmail } = require('../ser
 const router = express.Router();
 const registrationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Muitas tentativas de cadastro. Tente novamente em 15 minutos.' },

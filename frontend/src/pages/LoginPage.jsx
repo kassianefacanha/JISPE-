@@ -11,6 +11,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
+import { getApiErrorMessage } from '../services/api';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ export default function LoginPage() {
       if (user.role === 'admin') navigate('/admin');
       else navigate('/entity');
     } catch (err) {
-      setError(err.response?.data?.message || 'Não foi possível entrar no sistema.');
+      setError(getApiErrorMessage(err, 'Não foi possível entrar no sistema.'));
     } finally {
       setLoading(false);
     }

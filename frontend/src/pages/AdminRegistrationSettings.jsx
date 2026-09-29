@@ -23,7 +23,7 @@ import {
 } from '@mui/material';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
 import { useFeedback } from '../contexts/FeedbackContext';
-import api from '../services/api';
+import api, { getApiErrorMessage } from '../services/api';
 
 const defaultControls = {
   entityRegistrationOpen: true,
@@ -52,7 +52,7 @@ export default function AdminRegistrationSettings({ entities }) {
         if (mounted) setControls(response.data.controls || defaultControls);
       })
       .catch((loadError) => {
-        if (mounted) setError(loadError.response?.data?.message || 'Não foi possível carregar as travas de inscrição.');
+        if (mounted) setError(getApiErrorMessage(loadError, 'Não foi possível carregar as travas de inscrição.'));
       })
       .finally(() => {
         if (mounted) setLoadingControls(false);
@@ -80,7 +80,7 @@ export default function AdminRegistrationSettings({ entities }) {
         if (mounted) setRules(response.data.rules || []);
       })
       .catch((loadError) => {
-        if (mounted) setError(loadError.response?.data?.message || 'Não foi possível carregar as modalidades da entidade.');
+        if (mounted) setError(getApiErrorMessage(loadError, 'Não foi possível carregar as modalidades da entidade.'));
       })
       .finally(() => {
         if (mounted) setLoadingRules(false);
@@ -98,7 +98,7 @@ export default function AdminRegistrationSettings({ entities }) {
       notify('Trava geral atualizada.', 'success');
     } catch (saveError) {
       setControls((current) => ({ ...current, [field]: previous }));
-      notify(saveError.response?.data?.message || 'Não foi possível atualizar a trava geral.');
+      notify(getApiErrorMessage(saveError, 'Não foi possível atualizar a trava geral.'));
     }
   };
 
@@ -120,7 +120,7 @@ export default function AdminRegistrationSettings({ entities }) {
       });
       notify('Regras por modalidade salvas.', 'success');
     } catch (saveError) {
-      notify(saveError.response?.data?.message || 'Não foi possível salvar as regras por modalidade.');
+      notify(getApiErrorMessage(saveError, 'Não foi possível salvar as regras por modalidade.'));
     } finally {
       setSavingRules(false);
     }

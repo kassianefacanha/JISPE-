@@ -16,7 +16,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
-import api from '../services/api';
+import api, { getApiErrorMessage } from '../services/api';
 
 export default function PublicBadgeValidationPage() {
   const [matricula, setMatricula] = useState('');
@@ -39,7 +39,7 @@ export default function PublicBadgeValidationPage() {
       const response = await api.get(`/public/validate/${encodeURIComponent(matriculaValue)}`);
       setAthlete(response.data.athlete);
     } catch (err) {
-      setError(err.response?.data?.message || 'Carteirinha não localizada.');
+      setError(getApiErrorMessage(err, 'Carteirinha não localizada.'));
     } finally {
       setLoading(false);
     }

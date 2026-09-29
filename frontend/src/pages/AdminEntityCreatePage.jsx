@@ -18,7 +18,7 @@ import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { useFeedback } from '../contexts/FeedbackContext';
-import api from '../services/api';
+import api, { getApiErrorMessage } from '../services/api';
 
 const emptyForm = {
   name: '',
@@ -95,7 +95,7 @@ export default function AdminEntityCreatePage() {
           responsibleProof: entity.responsible?.proofUrl || '',
         });
       } catch (error) {
-        notify(error.response?.data?.message || 'Erro ao carregar entidade');
+        notify(getApiErrorMessage(error, 'Erro ao carregar entidade.'));
         navigate('/admin');
       }
     };
@@ -175,7 +175,7 @@ export default function AdminEntityCreatePage() {
       setForm(emptyForm);
       navigate('/admin');
     } catch (error) {
-      const message = error.response?.data?.message || 'Erro ao salvar entidade';
+      const message = getApiErrorMessage(error, 'Erro ao salvar entidade.');
       setError(message);
     } finally {
       setCreating(false);

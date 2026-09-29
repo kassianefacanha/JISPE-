@@ -23,7 +23,7 @@ import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { getAutomaticAgeCategory, hasCompletedMinimumAge } from '../utils/athleteAge';
-import api from '../services/api';
+import api, { getApiErrorMessage } from '../services/api';
 
 const emptyForm = {
   entityId: '',
@@ -135,7 +135,7 @@ export default function AdminAthleteCreatePage() {
           });
         }
       } catch (error) {
-        setError(error.response?.data?.message || 'Erro ao carregar os dados do atleta.');
+        setError(getApiErrorMessage(error, 'Erro ao carregar os dados do atleta.'));
       }
     };
 
@@ -209,7 +209,7 @@ export default function AdminAthleteCreatePage() {
         setSuccessOpen(true);
       }
     } catch (error) {
-      const message = error.response?.data?.message || 'Erro ao salvar atleta';
+      const message = getApiErrorMessage(error, 'Erro ao salvar atleta.');
       setError(message);
     } finally {
       setSaving(false);

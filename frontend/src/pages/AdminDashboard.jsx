@@ -42,7 +42,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useAuth } from '../contexts/AuthContext';
 import { useFeedback } from '../contexts/FeedbackContext';
 import AdminRegistrationSettings from './AdminRegistrationSettings';
-import api from '../services/api';
+import api, { getApiErrorMessage } from '../services/api';
 
 const downloadFile = (filename, content, type) => {
   const blob = new Blob([content], { type });
@@ -297,7 +297,7 @@ export default function AdminDashboard() {
       setEntities(entitiesResponse.data.entities || []);
       setAthletes(athletesResponse.data.athletes || []);
     } catch (error) {
-      console.error(error);
+      notify(getApiErrorMessage(error, 'Não foi possível carregar os dados do painel.'));
     }
   };
 
@@ -312,7 +312,7 @@ export default function AdminDashboard() {
       await loadData();
       notify('Status da entidade atualizado com sucesso.', 'success');
     } catch (error) {
-      notify(error.response?.data?.message || 'Erro ao alterar status');
+      notify(getApiErrorMessage(error, 'Erro ao alterar status.'));
     }
   };
 
@@ -342,7 +342,7 @@ export default function AdminDashboard() {
         notify(`Não é possível excluir a entidade porque há atletas associados: ${serverNames.join(', ')}.`, 'warning');
         return;
       }
-      notify(error.response?.data?.message || 'Erro ao excluir entidade');
+      notify(getApiErrorMessage(error, 'Erro ao excluir entidade.'));
     }
   };
 
@@ -360,7 +360,7 @@ export default function AdminDashboard() {
       await loadData();
       notify('Atleta excluído com sucesso.', 'success');
     } catch (error) {
-      notify(error.response?.data?.message || 'Erro ao excluir atleta');
+      notify(getApiErrorMessage(error, 'Erro ao excluir atleta.'));
     }
   };
 
@@ -439,13 +439,13 @@ export default function AdminDashboard() {
       window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
       notify('Carteirinha gerada. O download foi iniciado.', 'success');
     } catch (error) {
-      let message = error.response?.data?.message || error.message || 'Erro ao gerar carteirinha';
+      let message = getApiErrorMessage(error, 'Erro ao gerar carteirinha.');
       if (error.response?.data instanceof Blob) {
         try {
           const payload = JSON.parse(await error.response.data.text());
           message = payload.message || message;
         } catch {
-          message = 'Erro ao gerar carteirinha';
+          message = getApiErrorMessage(error, 'Erro ao gerar carteirinha.');
         }
       }
       notify(message);

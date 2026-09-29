@@ -16,7 +16,9 @@ const reportRoutes = require('./routes/report');
 const { errorHandler } = require('./middlewares/errorHandler');
 
 const app = express();
-if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
+if (process.env.NODE_ENV === 'production' || process.env.RENDER === 'true') {
+  app.set('trust proxy', 1);
+}
 
 const developmentOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173'];
 const allowedOrigins = process.env.FRONTEND_URL
@@ -34,7 +36,7 @@ app.use(
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 1000,
   standardHeaders: true,
   legacyHeaders: false,
   message: 'Muitas requisições. Tente novamente em 15 minutos.',
@@ -61,6 +63,10 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/modalities', modalityRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/reports', reportRoutes);
+
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: 'A rota solicitada não foi encontrada.' });
+});
 
 app.use(errorHandler);
 

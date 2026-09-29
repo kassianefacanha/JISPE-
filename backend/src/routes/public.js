@@ -7,7 +7,7 @@ const { getAssetUrl } = require('../services/r2Storage');
 const router = express.Router();
 const badgeLookupLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 120,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Muitas tentativas de validação. Tente novamente em 15 minutos.' },

@@ -27,7 +27,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import { DataGrid, ptBR } from '@mui/x-data-grid';
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
-import api from '../services/api';
+import api, { getApiErrorMessage } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useFeedback } from '../contexts/FeedbackContext';
 
@@ -82,7 +82,7 @@ export default function EntityDashboard() {
       const athletesResponse = await api.get('/athletes');
       setAthletes(athletesResponse.data.athletes || []);
     } catch (error) {
-      console.error(error);
+      notify(getApiErrorMessage(error, 'Não foi possível carregar os atletas.'));
     }
   };
 
@@ -122,7 +122,7 @@ export default function EntityDashboard() {
       await loadAthletes();
       notify('Atleta excluído com sucesso.', 'success');
     } catch (error) {
-      notify(error.response?.data?.message || 'Erro ao excluir atleta.');
+      notify(getApiErrorMessage(error, 'Erro ao excluir atleta.'));
     }
   };
 
@@ -132,13 +132,13 @@ export default function EntityDashboard() {
       downloadFile(`carteirinha-${athlete.matricula || athlete._id}.pdf`, response.data, 'application/pdf');
       notify('Carteirinha gerada. O download foi iniciado.', 'success');
     } catch (error) {
-      let message = error.response?.data?.message || error.message || 'Erro ao gerar carteirinha.';
+      let message = getApiErrorMessage(error, 'Erro ao gerar carteirinha.');
       if (error.response?.data instanceof Blob) {
         try {
           const payload = JSON.parse(await error.response.data.text());
           message = payload.message || message;
         } catch {
-          message = 'Erro ao gerar carteirinha.';
+          message = getApiErrorMessage(error, 'Erro ao gerar carteirinha.');
         }
       }
       notify(message);

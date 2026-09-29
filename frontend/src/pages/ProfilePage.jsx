@@ -13,7 +13,7 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useAuth } from '../contexts/AuthContext';
 import { useFeedback } from '../contexts/FeedbackContext';
-import api from '../services/api';
+import api, { getApiErrorMessage } from '../services/api';
 
 export default function ProfilePage() {
   const { user, logout } = useAuth();
@@ -41,7 +41,7 @@ export default function ProfilePage() {
       logout();
       navigate('/login', { replace: true });
     } catch (saveError) {
-      setError(saveError.response?.data?.message || 'Não foi possível alterar a senha.');
+      setError(getApiErrorMessage(saveError, 'Não foi possível alterar a senha.'));
     } finally {
       setSaving(false);
     }

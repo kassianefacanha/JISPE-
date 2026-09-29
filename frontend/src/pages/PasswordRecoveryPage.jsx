@@ -10,7 +10,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import api from '../services/api';
+import api, { getApiErrorMessage } from '../services/api';
 
 export default function PasswordRecoveryPage() {
   const [searchParams] = useSearchParams();
@@ -46,7 +46,7 @@ export default function PasswordRecoveryPage() {
         setSuccess(response.data.message || 'Se o e-mail estiver cadastrado, enviaremos instruções para redefinir a senha.');
       }
     } catch (requestError) {
-      setError(requestError.response?.data?.message || 'Não foi possível concluir a solicitação. Tente novamente.');
+      setError(getApiErrorMessage(requestError, 'Não foi possível concluir a solicitação. Tente novamente.'));
     } finally {
       setLoading(false);
     }
