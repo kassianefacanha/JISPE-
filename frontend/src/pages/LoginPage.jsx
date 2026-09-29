@@ -15,7 +15,7 @@ import { useAuth } from '../contexts/AuthContext';
 export default function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [form, setForm] = useState({ email: 'admin@jispe.com', password: 'jispe@2026' });
+  const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -63,15 +63,17 @@ export default function LoginPage() {
                   label="E-mail"
                   type="email"
                   fullWidth
+                  autoComplete="username"
                   value={form.email}
                   onChange={(event) => setForm({ ...form, email: event.target.value })}
-                  placeholder="admin@jispe.com"
+                  placeholder="seu@email.com"
                 />
 
                 <TextField
                   label="Senha"
                   type="password"
                   fullWidth
+                  autoComplete="current-password"
                   value={form.password}
                   onChange={(event) => setForm({ ...form, password: event.target.value })}
                   placeholder="••••••••"
@@ -81,6 +83,9 @@ export default function LoginPage() {
 
                 <Button type="submit" variant="contained" size="large" disabled={loading}>
                   {loading ? 'Entrando...' : 'Entrar'}
+                </Button>
+                <Button component={Link} to="/recuperar-senha" variant="text" sx={{ alignSelf: 'center' }}>
+                  Esqueceu a senha da entidade?
                 </Button>
               </Stack>
             </Box>

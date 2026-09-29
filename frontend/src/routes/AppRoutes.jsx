@@ -8,6 +8,8 @@ import EntityDashboard from '../pages/EntityDashboard';
 import EntityAthleteCreatePage from '../pages/EntityAthleteCreatePage';
 import EntityRegisterPage from '../pages/EntityRegisterPage';
 import LoginPage from '../pages/LoginPage';
+import PasswordRecoveryPage from '../pages/PasswordRecoveryPage';
+import ProfilePage from '../pages/ProfilePage';
 import PublicBadgeValidationPage from '../pages/PublicBadgeValidationPage';
 
 function ProtectedRoute({ children, role }) {
@@ -25,8 +27,11 @@ export default function AppRoutes() {
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/recuperar-senha" element={<PasswordRecoveryPage />} />
+      <Route path="/redefinir-senha" element={<PasswordRecoveryPage />} />
       <Route path="/cadastro-entidade" element={<EntityRegisterPage />} />
       <Route path="/validar-carteirinha" element={<PublicBadgeValidationPage />} />
+      <Route path="/perfil" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
       <Route
         path="/admin"

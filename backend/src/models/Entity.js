@@ -5,6 +5,9 @@ const entitySchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true, select: false },
+    passwordResetTokenHash: { type: String, select: false },
+    passwordResetExpiresAt: { type: Date, select: false },
+    sessionVersion: { type: Number, default: 0, select: false },
     phone: { type: String, required: true },
     responsible: {
       fullName: { type: String, required: true },

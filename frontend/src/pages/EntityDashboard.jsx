@@ -22,6 +22,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
 import EditIcon from '@mui/icons-material/Edit';
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { DataGrid, ptBR } from '@mui/x-data-grid';
 import { jsPDF } from 'jspdf';
@@ -266,6 +267,9 @@ export default function EntityDashboard() {
             </Box>
           </Box>
           <Stack direction="row" spacing={1}>
+            <Button component={Link} to="/perfil" variant="outlined" startIcon={<ManageAccountsIcon />}>
+              Perfil
+            </Button>
             <Button variant="outlined" color="inherit" onClick={logout}>Sair</Button>
           </Stack>
         </Stack>

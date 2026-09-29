@@ -67,6 +67,8 @@ npm --prefix backend run check:r2
 
 O teste cria um objeto temporário, lê e compara o conteúdo, e o apaga ao terminar. Ele precisa de permissão de leitura e gravação no bucket.
 
+Para recuperação de senha por e-mail, configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` e `SMTP_FROM` localmente e no Render. Use credenciais SMTP de um provedor de e-mail; não reutilize a senha da conta de e-mail. A redefinição está disponível para entidades, usa token de uso único válido por 30 minutos e revoga sessões antigas.
+
 O script de migração roda primeiro em simulação:
 
 ```bash

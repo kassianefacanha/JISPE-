@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('./app');
 const { assertConfigured } = require('./services/r2Storage');
+const { assertEmailConfigured } = require('./services/passwordResetEmail');
 require('dotenv').config();
 
 const PORT = process.env.PORT || 5000;
@@ -11,6 +12,8 @@ const startServer = async () => {
   if (process.env.NODE_ENV === 'production') {
     try {
       assertConfigured();
+      assertEmailConfigured();
+      if (!process.env.FRONTEND_URL) throw new Error('FRONTEND_URL é obrigatório em produção.');
     } catch (error) {
       console.error(error.message);
       process.exit(1);

@@ -37,6 +37,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import EditIcon from '@mui/icons-material/Edit';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useAuth } from '../contexts/AuthContext';
 import { useFeedback } from '../contexts/FeedbackContext';
@@ -637,9 +638,14 @@ export default function AdminDashboard() {
             </Box>
           </Box>
 
-          <Button variant="contained" color="inherit" onClick={logout}>
-            Sair
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button component={Link} to="/perfil" variant="outlined" startIcon={<ManageAccountsIcon />}>
+              Perfil
+            </Button>
+            <Button variant="contained" color="inherit" onClick={logout}>
+              Sair
+            </Button>
+          </Stack>
         </Stack>
 
         {stats.length > 0 && (
