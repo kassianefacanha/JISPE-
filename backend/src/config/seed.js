@@ -7,6 +7,11 @@ const Admin = require('../models/Admin');
 const Entity = require('../models/Entity');
 const Athlete = require('../models/Athlete');
 const Modality = require('../models/Modality');
+const RegistrationControls = require('../models/RegistrationControls');
+const EntityModalityRule = require('../models/EntityModalityRule');
+const Counter = require('../models/Counter');
+const { defaultModalities } = require('./defaultModalities');
+const { getAgeCategory, hasCompletedMinimumAge } = require('../services/ageCategory');
 
 const runSeed = async () => {
   try {
@@ -42,19 +47,18 @@ const runSeed = async () => {
       console.log('Admin seed criado');
     }
 
-    const modalidades = [
-      { name: 'Corrida 5km', slug: 'corrida-5km', genders: ['masculino', 'feminino'], categories: ['18-29', '30-39', '40-49', '50+'], maxTeamsPerEntity: 1, maxAthletesPerTeam: 10, isCollective: false, active: true },
-      { name: 'Futsal', slug: 'futsal', genders: ['masculino', 'feminino'], categories: ['adulto', 'master'], maxTeamsPerEntity: 2, maxAthletesPerTeam: 12, isCollective: true, active: true },
-      { name: 'Vôlei', slug: 'volei', genders: ['masculino', 'feminino'], categories: ['adulto', 'master'], maxTeamsPerEntity: 2, maxAthletesPerTeam: 12, isCollective: true, active: true },
-      { name: 'Beach Tennis', slug: 'beach-tennis', genders: ['masculino', 'feminino'], categories: ['adulto', 'master'], maxTeamsPerEntity: 2, maxAthletesPerTeam: 4, isCollective: true, active: true }
-    ];
-
-    for (const modality of modalidades) {
+    for (const modality of defaultModalities) {
       const exists = await Modality.findOne({ slug: modality.slug });
       if (!exists) {
         await Modality.create(modality);
       }
     }
+
+    await RegistrationControls.create({
+      _id: 'global',
+      entityRegistrationOpen: true,
+      athleteRegistrationOpen: true,
+    });
 
     const entitySeeds = [
       {
@@ -158,6 +162,16 @@ const runSeed = async () => {
       }
     }
 
+    const modalityRules = createdEntities.flatMap((entity) => defaultModalities.map((modality) => ({
+      entityId: entity._id,
+      modalitySlug: modality.slug,
+      enabled: true,
+      maxAthletes: modality.maxTeamsPerEntity && modality.maxAthletesPerTeam
+        ? modality.maxTeamsPerEntity * modality.maxAthletesPerTeam
+        : null,
+    })));
+    if (modalityRules.length) await EntityModalityRule.insertMany(modalityRules);
+
     const athleteSeeds = [
       { entityEmail: 'esportes@teste.com', cpf: '34567890123', fullName: 'Ana Paula Souza', birthDate: '2008-04-12', phone: '(11) 99111-2222', email: 'ana@teste.com', modality: 'Corrida 5km', naipe: 'feminino', photoUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2', proofUrl: 'https://example.com/ana.pdf' },
       { entityEmail: 'esportes@teste.com', cpf: '45678901234', fullName: 'Pedro Henrique Lima', birthDate: '2010-07-20', phone: '(11) 99222-3333', email: 'pedro@teste.com', modality: 'Futsal', naipe: 'masculino', photoUrl: 'https://images.unsplash.com/photo-1504593811423-6dd665756598', proofUrl: 'https://example.com/pedro.pdf' },
@@ -174,12 +188,23 @@ const runSeed = async () => {
       { entityEmail: 'juvenil@teste.com', cpf: '56789098764', fullName: 'Marina Azevedo', birthDate: '2012-05-12', phone: '(12) 99456-7890', email: 'marina@teste.com', modality: 'Vôlei', naipe: 'feminino', photoUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1', proofUrl: 'https://example.com/marina.pdf' },
     ];
 
-    for (const [index, seed] of athleteSeeds.entries()) {
+    let athleteSequence = 0;
+    for (const seed of athleteSeeds) {
+      if (!hasCompletedMinimumAge(seed.birthDate)) continue;
+
       const entity = await Entity.findOne({ email: seed.entityEmail });
       if (!entity) continue;
 
+      const modality = defaultModalities.find((item) =>
+        item.name === seed.modality
+        || item.slug === seed.modality
+        || item.legacyNames?.includes(seed.modality)
+      );
+      if (!modality || !modality.genders.includes(seed.naipe)) continue;
+
       const existing = await Athlete.findOne({ entityId: entity._id, cpf: seed.cpf });
       if (!existing) {
+        athleteSequence += 1;
         await Athlete.create({
           entityId: entity._id,
           cpf: seed.cpf,
@@ -189,14 +214,16 @@ const runSeed = async () => {
           phone: seed.phone,
           email: seed.email,
           proofUrl: seed.proofUrl,
-          modality: seed.modality,
+          modality: modality.name,
           naipe: seed.naipe,
           gender: seed.naipe,
-          ageCategory: 'adulto',
-          matricula: `JISPE-${String(index + 1).padStart(4, '0')}`,
+          ageCategory: getAgeCategory(seed.birthDate, modality.name, modality.categories),
+          matricula: `2026 ${String(athleteSequence).padStart(4, '0')}`,
         });
       }
     }
+
+    await Counter.create({ _id: 'athlete_matricula', sequence: athleteSequence });
 
     console.log('Dados iniciais de administração, entidades, modalidades e atletas criados');
     process.exit(0);

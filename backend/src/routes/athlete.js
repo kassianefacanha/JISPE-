@@ -5,11 +5,15 @@ const sharp = require('sharp');
 const PDFDocument = require('pdfkit');
 const Athlete = require('../models/Athlete');
 const Entity = require('../models/Entity');
+const Modality = require('../models/Modality');
 const Registration = require('../models/Registration');
+const RegistrationControls = require('../models/RegistrationControls');
+const EntityModalityRule = require('../models/EntityModalityRule');
 const { auth } = require('../middlewares/auth');
 const { isValidCPF } = require('../utils/cpfValidator');
 const { generateMatricula } = require('../utils/matriculaGenerator');
-const { getAgeCategory } = require('../services/ageCategory');
+const { getAgeCategory, hasCompletedMinimumAge } = require('../services/ageCategory');
+const { defaultModalities } = require('../config/defaultModalities');
 
 const fetchImageBuffer = async (url) => {
   if (!url) return null;
@@ -21,6 +25,18 @@ const fetchImageBuffer = async (url) => {
   } catch (error) {
     return null;
   }
+};
+
+const getModalityDefinition = async (modalityName) => {
+  if (!modalityName) return null;
+  const normalizedName = String(modalityName).trim().toLowerCase();
+  const officialModality = defaultModalities.find((modality) =>
+    [modality.name, modality.slug, ...(modality.legacySlugs || []), ...(modality.legacyNames || [])]
+      .some((value) => String(value).trim().toLowerCase() === normalizedName)
+  );
+  if (officialModality) return officialModality;
+
+  return Modality.findOne({ $or: [{ name: modalityName }, { slug: modalityName }] }).select('name slug genders categories');
 };
 
 const router = express.Router();
@@ -61,7 +77,7 @@ router.post('/', auth, async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Acesso restrito à entidade ou ao administrador' });
     }
 
-    const { entityId, cpf, fullName, birthDate, phone, email, gender, naipe, modality, photoUrl, proofUrl, ageCategory } = req.body;
+    const { entityId, cpf, fullName, birthDate, phone, email, gender, naipe, modality, photoUrl, proofUrl } = req.body;
     const resolvedEntityId = req.user.type === 'entity' ? req.user.id : entityId;
     const resolvedNaipe = naipe || gender || 'masculino';
 
@@ -73,10 +89,47 @@ router.post('/', auth, async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'CPF do atleta inválido' });
     }
 
-    const birth = new Date(birthDate);
-    const age = 2026 - birth.getFullYear();
-    if (Number.isNaN(birth.getTime()) || age < 18) {
-      return res.status(400).json({ success: false, message: 'O atleta deve ter no mínimo 18 anos completos em 2026.' });
+    if (!hasCompletedMinimumAge(birthDate)) {
+      return res.status(400).json({ success: false, message: 'O atleta precisa já ter completado 18 anos para se cadastrar.' });
+    }
+
+    const modalityDefinition = await getModalityDefinition(modality);
+    if (!modalityDefinition) {
+      return res.status(400).json({ success: false, message: 'Selecione uma modalidade válida.' });
+    }
+    if (!modalityDefinition.genders?.includes(resolvedNaipe)) {
+      return res.status(400).json({ success: false, message: 'O naipe selecionado não é permitido nesta modalidade.' });
+    }
+
+    if (req.user.type === 'entity') {
+      const controls = await RegistrationControls.findById('global').lean();
+      if (controls?.athleteRegistrationOpen === false) {
+        return res.status(403).json({ success: false, message: 'O cadastro de atletas está temporariamente fechado.' });
+      }
+
+      const modalityRule = await EntityModalityRule.findOne({
+        entityId: resolvedEntityId,
+        modalitySlug: modalityDefinition.slug,
+      }).lean();
+      if (modalityRule?.enabled === false) {
+        return res.status(403).json({ success: false, message: 'O cadastro de atletas nesta modalidade está bloqueado para sua entidade.' });
+      }
+
+      const officialLimit = modalityDefinition.maxTeamsPerEntity && modalityDefinition.maxAthletesPerTeam
+        ? modalityDefinition.maxTeamsPerEntity * modalityDefinition.maxAthletesPerTeam
+        : null;
+      const modalityLimit = modalityRule ? modalityRule.maxAthletes : officialLimit;
+      const modalityAliases = [modalityDefinition.name, modalityDefinition.slug, ...(modalityDefinition.legacyNames || []), ...(modalityDefinition.legacySlugs || [])];
+      const registeredCount = await Athlete.countDocuments({
+        entityId: resolvedEntityId,
+        modality: { $in: modalityAliases },
+      });
+      if (modalityLimit != null && registeredCount >= modalityLimit) {
+        return res.status(403).json({
+          success: false,
+          message: `Sua entidade atingiu o limite de ${modalityLimit} atletas para ${modalityDefinition.name}.`,
+        });
+      }
     }
 
     const existing = await Athlete.findOne({ entityId: resolvedEntityId, cpf });
@@ -85,7 +138,7 @@ router.post('/', auth, async (req, res, next) => {
     }
 
     const matricula = await generateMatricula();
-    const category = ageCategory || getAgeCategory(birthDate, modality || 'adulto');
+    const category = getAgeCategory(birthDate, modality, modalityDefinition.categories || []);
 
     const athlete = await Athlete.create({
       entityId: resolvedEntityId,
@@ -124,9 +177,21 @@ router.put('/:id', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Atleta não encontrado' });
     }
 
-    const { entityId, cpf, fullName, birthDate, photoUrl, phone, email, gender, naipe, modality, proofUrl, ageCategory } = req.body;
+    const { entityId, cpf, fullName, birthDate, photoUrl, phone, email, gender, naipe, modality, proofUrl } = req.body;
     const resolvedNaipe = naipe || gender || athlete.naipe || athlete.gender;
     const resolvedModality = modality || athlete.modality;
+    const resolvedBirthDate = birthDate || athlete.birthDate;
+    if (!hasCompletedMinimumAge(resolvedBirthDate)) {
+      return res.status(400).json({ success: false, message: 'O atleta precisa já ter completado 18 anos.' });
+    }
+
+    const modalityDefinition = await getModalityDefinition(resolvedModality);
+    if (!modalityDefinition) {
+      return res.status(400).json({ success: false, message: 'Selecione uma modalidade válida.' });
+    }
+    if (!modalityDefinition.genders?.includes(resolvedNaipe)) {
+      return res.status(400).json({ success: false, message: 'O naipe selecionado não é permitido nesta modalidade.' });
+    }
     const payload = {
       ...(cpf ? { cpf } : {}),
       ...(fullName ? { fullName } : {}),
@@ -137,7 +202,7 @@ router.put('/:id', auth, async (req, res, next) => {
       ...(proofUrl ? { proofUrl } : {}),
       ...(resolvedNaipe ? { gender: resolvedNaipe, naipe: resolvedNaipe } : {}),
       ...(resolvedModality ? { modality: resolvedModality } : {}),
-      ...(ageCategory ? { ageCategory } : {}),
+      ageCategory: getAgeCategory(resolvedBirthDate, resolvedModality, modalityDefinition.categories || []),
     };
 
     if (req.user.type === 'admin' && entityId && String(entityId) !== String(athlete.entityId)) {
@@ -211,27 +276,15 @@ router.get('/:id/badge', auth, async (req, res, next) => {
     const normalizedMatricula = athlete.matricula.replace(/\s+/g, '');
     const photoBuffer = await fetchImageBuffer(athlete.photoUrl);
 
-    const [barcodeBuffer, qrBuffer] = await Promise.all([
-      bwipjs.toBuffer({
-        bcid: 'code128',
-        text: normalizedMatricula,
-        scale: 2.3,
-        height: 18,
-        includetext: true,
-        textxalign: 'center',
-        backgroundcolor: 'ffffff',
-        foregroundcolor: '000000',
-      }),
-      bwipjs.toBuffer({
-        bcid: 'qrcode',
-        text: normalizedMatricula,
-        scale: 4,
-        version: 5,
-        eclevel: 'M',
-        backgroundcolor: 'ffffff',
-        foregroundcolor: '000000',
-      }),
-    ]);
+    const qrBuffer = await bwipjs.toBuffer({
+      bcid: 'qrcode',
+      text: normalizedMatricula,
+      scale: 4,
+      version: 5,
+      eclevel: 'M',
+      backgroundcolor: 'ffffff',
+      foregroundcolor: '000000',
+    });
 
     const doc = new PDFDocument({ size: [300, 400], margin: 0 });
     res.setHeader('Content-Type', 'application/pdf');
@@ -294,14 +347,11 @@ router.get('/:id/badge', auth, async (req, res, next) => {
     drawField('Modalidade', athlete.modality, infoX, photoY + 107, infoWidth);
     drawField('Naipe', naipeLabel, infoX, photoY + 135, infoWidth);
 
-    doc.fillColor('#1f2937')
-      .fontSize(9.5)
-      .font('Helvetica-Bold')
-      .text('Código de barras', 20, 288);
-    doc.image(barcodeBuffer, 20, 300, { fit: [108, 48] });
-
-    doc.image(qrBuffer, 214, 300, { fit: [48, 48] });
-    doc.fillColor('#1f2937').fontSize(8.5).font('Helvetica').text('Valide por matrícula ou QR Code', 0, 362, { align: 'center', width: pageWidth });
+    doc.fillColor('#1f2937').fontSize(9.5).font('Helvetica-Bold')
+      .text('QR Code para validação', 0, 282, { align: 'center', width: pageWidth });
+    doc.image(qrBuffer, 115, 291, { fit: [70, 70] });
+    doc.fillColor('#1f2937').fontSize(8.5).font('Helvetica')
+      .text('Use a matrícula para validar a carteirinha', 0, 371, { align: 'center', width: pageWidth });
 
     doc.end();
   } catch (error) {
@@ -321,12 +371,18 @@ router.post('/:id/registrations', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Atleta não encontrado para esta entidade' });
     }
 
+    if (!hasCompletedMinimumAge(athlete.birthDate)) {
+      return res.status(400).json({ success: false, message: 'O atleta precisa já ter completado 18 anos para realizar inscrições.' });
+    }
+
+    const categories = await getModalityCategories(modality);
+
     const registration = await Registration.create({
       athleteId: athlete._id,
       entityId: req.user.id,
       modality,
       gender,
-      category: athlete.ageCategory,
+      category: getAgeCategory(athlete.birthDate, modality, categories),
       status: 'pending',
     });
 

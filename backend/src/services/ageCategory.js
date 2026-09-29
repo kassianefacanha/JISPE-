@@ -1,38 +1,52 @@
 const EVENT_YEAR = 2026;
 
-const getAgeFromBirthDate = (birthDate, year = EVENT_YEAR) => {
+const getBirthDate = (birthDate) => {
   const birth = new Date(birthDate);
-  if (Number.isNaN(birth.getTime())) {
-    return null;
-  }
-
-  let age = year - birth.getFullYear();
-  const birthdayThisYear = new Date(year, birth.getMonth(), birth.getDate());
-  const comparisonDate = new Date(year, new Date().getMonth(), new Date().getDate());
-
-  if (birthdayThisYear > comparisonDate) {
-    age -= 1;
-  }
-
-  return age;
+  return Number.isNaN(birth.getTime()) ? null : birth;
 };
 
-const getAgeCategory = (birthDate, modality) => {
-  const age = getAgeFromBirthDate(birthDate, EVENT_YEAR);
-  const normalizedModality = String(modality || '').toLowerCase();
+const hasCompletedMinimumAge = (birthDate, referenceDate = new Date()) => {
+  const birth = getBirthDate(birthDate);
+  if (!birth || Number.isNaN(referenceDate.getTime())) return false;
 
-  if (age === null || age < 18) {
-    return 'adulto';
-  }
+  let age = referenceDate.getFullYear() - birth.getUTCFullYear();
+  const birthdayNotReached = referenceDate.getMonth() < birth.getUTCMonth()
+    || (referenceDate.getMonth() === birth.getUTCMonth() && referenceDate.getDate() < birth.getUTCDate());
+  if (birthdayNotReached) age -= 1;
+
+  return age >= 18;
+};
+
+const getAgeCategory = (birthDate, modality, categories = []) => {
+  const birth = getBirthDate(birthDate);
+  if (!birth) return '';
+
+  const age = EVENT_YEAR - birth.getUTCFullYear();
+  if (age < 18) return '';
+
+  const normalizedModality = String(modality || '').toLowerCase();
+  const normalizedCategories = categories.map((category) => String(category).trim().toLowerCase());
 
   if (normalizedModality.includes('corrida')) {
-    if (age >= 18 && age <= 29) return '18-29';
+    if (age <= 29) return '18-29';
     if (age >= 30 && age <= 39) return '30-39';
     if (age >= 40 && age <= 49) return '40-49';
     if (age >= 50) return '50+';
   }
 
-  return age < 36 ? 'adulto' : 'master';
+  const masterCategory = categories.find((category) => String(category).trim().toLowerCase().startsWith('master'));
+  if (masterCategory && age >= 36) return masterCategory;
+
+  const adultCategory = categories.find((category) => {
+    const normalized = String(category).trim().toLowerCase();
+    return normalized.startsWith('adulto') || normalized.includes('18-35');
+  });
+  if (adultCategory) return adultCategory;
+
+  const openCategory = categories.find((category) => String(category).trim().toLowerCase().startsWith('aberto'));
+  if (openCategory) return openCategory;
+
+  return categories[0] || 'adulto';
 };
 
-module.exports = { getAgeCategory };
+module.exports = { EVENT_YEAR, getAgeCategory, hasCompletedMinimumAge };

@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const Entity = require('../models/Entity');
 const Athlete = require('../models/Athlete');
+const RegistrationControls = require('../models/RegistrationControls');
 const { auth } = require('../middlewares/auth');
 const { isValidCPF } = require('../utils/cpfValidator');
 
@@ -27,10 +28,15 @@ const normalizeEntityPayload = (payload = {}) => {
 
 router.post('/register', async (req, res, next) => {
   try {
+    const controls = await RegistrationControls.findById('global').lean();
+    if (controls?.entityRegistrationOpen === false) {
+      return res.status(403).json({ success: false, message: 'O cadastro de novas entidades está temporariamente fechado.' });
+    }
+
     const payload = normalizeEntityPayload(req.body);
 
-    if (!payload.name || !payload.email || !payload.password || !payload.phone || !payload.responsible.fullName || !payload.responsible.cpf || !payload.responsible.email) {
-      return res.status(400).json({ success: false, message: 'Dados obrigatórios não informados' });
+    if (!payload.name || !payload.email || !payload.password || !payload.phone || !payload.responsible.fullName || !payload.responsible.cpf || !payload.responsible.email || !payload.responsible.photoUrl || !payload.responsible.proofUrl) {
+      return res.status(400).json({ success: false, message: 'Informe todos os dados e envie a foto e o comprovante do responsável.' });
     }
 
     if (!isValidCPF(payload.responsible.cpf)) {

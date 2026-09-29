@@ -12,5 +12,8 @@
     "start:backend": "npm --prefix backend start",
     "build:frontend": "npm --prefix frontend run build",
     "seed:backend": "npm --prefix backend run seed"
+  },
+  "dependencies": {
+    "@zxing/browser": "^0.2.1"
   }
 }

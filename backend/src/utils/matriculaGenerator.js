@@ -9,9 +9,14 @@ const generateMatricula = async () => {
       { new: true, upsert: true }
     );
 
+    if (counter.sequence > 9999) {
+      throw new Error('Todas as matrículas disponíveis para 2026 foram utilizadas.');
+    }
+
     const sequence = String(counter.sequence).padStart(4, '0');
-    const matricula = `JISPE-${sequence}`;
-    if (!(await Athlete.exists({ matricula }))) return matricula;
+    const matricula = `2026 ${sequence}`;
+    const occupiedFormats = [matricula, `2026${sequence}`, `JISPE-${sequence}`];
+    if (!(await Athlete.exists({ matricula: { $in: occupiedFormats } }))) return matricula;
   }
 };
 

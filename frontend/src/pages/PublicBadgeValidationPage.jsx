@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { BrowserQRCodeReader } from '@zxing/browser';
+import { Link as RouterLink } from 'react-router-dom';
 import {
   Alert,
   Box,
@@ -11,6 +13,9 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import api from '../services/api';
 
 export default function PublicBadgeValidationPage() {
@@ -18,30 +23,74 @@ export default function PublicBadgeValidationPage() {
   const [athlete, setAthlete] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scannerError, setScannerError] = useState('');
+  const videoRef = useRef(null);
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const validateMatricula = useCallback(async (value) => {
+    const matriculaValue = String(value || '').trim();
+    if (!matriculaValue) return;
+
     setLoading(true);
     setError('');
     setAthlete(null);
 
     try {
-      const response = await api.get(`/public/validate/${encodeURIComponent(matricula.trim())}`);
+      const response = await api.get(`/public/validate/${encodeURIComponent(matriculaValue)}`);
       setAthlete(response.data.athlete);
     } catch (err) {
       setError(err.response?.data?.message || 'Carteirinha não localizada.');
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    if (!scannerOpen) return undefined;
+
+    let active = true;
+    let controls;
+    const reader = new BrowserQRCodeReader();
+    setScannerError('');
+
+    reader.decodeFromVideoDevice(undefined, videoRef.current, (result) => {
+      if (!active || !result) return;
+
+      const scannedMatricula = result.getText().trim();
+      setMatricula(scannedMatricula);
+      setScannerOpen(false);
+      void validateMatricula(scannedMatricula);
+    }).then((cameraControls) => {
+      controls = cameraControls;
+      if (!active) controls.stop();
+    }).catch(() => {
+      if (!active) return;
+      setScannerError('Não foi possível acessar a câmera. Verifique a permissão do navegador.');
+      setScannerOpen(false);
+    });
+
+    return () => {
+      active = false;
+      controls?.stop();
+    };
+  }, [scannerOpen, validateMatricula]);
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    void validateMatricula(matricula);
   };
 
   return (
     <Container maxWidth="md" sx={{ py: { xs: 4, md: 6 } }}>
       <Paper elevation={3} sx={{ p: { xs: 3, md: 5 }, borderRadius: 4 }}>
         <Stack spacing={3}>
+          <Button component={RouterLink} to="/login" startIcon={<ArrowBackIcon />} sx={{ alignSelf: 'flex-start', textTransform: 'none' }}>
+            Voltar para o login
+          </Button>
+
           <Box>
-            <Box component="img" src="/logo.png" alt="JISPE 2026" sx={{ width: 260, maxWidth: '100%', height: 'auto', mb: 1 }} />
-            <Typography variant="h4" fontWeight={800}>
+            <Box component="img" src="/logo.png" alt="JISPE 2026" sx={{ display: 'block', width: 260, maxWidth: '100%', height: 'auto', objectFit: 'contain', mx: 'auto', mb: 2 }} />
+            <Typography variant="h4" fontWeight={800} align="center">
               Validar carteirinha
             </Typography>
           </Box>
@@ -55,12 +104,42 @@ export default function PublicBadgeValidationPage() {
                 onChange={(event) => setMatricula(event.target.value)}
                 placeholder="2026 0001"
               />
-              <Button type="submit" variant="contained" size="large" disabled={loading || !matricula.trim()}>
-                {loading ? 'Validando...' : 'Validar'}
-              </Button>
+              <Stack direction="row" spacing={1}>
+                <Button type="submit" variant="contained" size="large" disabled={loading || !matricula.trim()}>
+                  {loading ? 'Validando...' : 'Validar'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outlined"
+                  size="large"
+                  startIcon={scannerOpen ? <CloseIcon /> : <QrCodeScannerIcon />}
+                  onClick={() => setScannerOpen((open) => !open)}
+                >
+                  {scannerOpen ? 'Fechar câmera' : 'Ler QR Code'}
+                </Button>
+              </Stack>
             </Stack>
           </Box>
 
+          {scannerOpen && (
+            <Paper variant="outlined" sx={{ p: 1.5 }}>
+              <Stack spacing={1.5}>
+                <Typography variant="body2" fontWeight={700}>
+                  Aponte a câmera para o QR Code da carteirinha
+                </Typography>
+                <Box
+                  component="video"
+                  ref={videoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  sx={{ width: '100%', maxHeight: 360, aspectRatio: '4 / 3', objectFit: 'cover', backgroundColor: '#0f172a', borderRadius: 1 }}
+                />
+              </Stack>
+            </Paper>
+          )}
+
+          {scannerError && <Alert severity="warning">{scannerError}</Alert>}
           {error && <Alert severity="error">{error}</Alert>}
 
           {athlete && (

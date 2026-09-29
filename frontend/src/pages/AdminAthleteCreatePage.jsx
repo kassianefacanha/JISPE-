@@ -22,6 +22,7 @@ import {
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
+import { getAutomaticAgeCategory, hasCompletedMinimumAge } from '../utils/athleteAge';
 import api from '../services/api';
 
 const emptyForm = {
@@ -34,8 +35,7 @@ const emptyForm = {
   email: '',
   proofUrl: '',
   modality: '',
-  naipe: 'masculino',
-  ageCategory: 'Automática',
+  naipe: '',
   matricula: 'Gerada automaticamente',
 };
 
@@ -87,9 +87,11 @@ export default function AdminAthleteCreatePage() {
   const [uploadInfo, setUploadInfo] = useState({ photo: '', proof: '' });
   const approvedEntities = entities.filter((entity) => entity.status === 'approved');
   const selectedModality = modalities.find((modality) =>
-    (modality.name || modality.slug) === form.modality
+    (modality.name || modality.slug) === form.modality || modality.legacyNames?.includes(form.modality)
   );
   const ageCategories = selectedModality?.categories || [];
+  const allowedGenders = selectedModality?.genders || [];
+  const calculatedAgeCategory = getAutomaticAgeCategory(form.birthDate, form.modality, ageCategories);
 
   useEffect(() => {
     const load = async () => {
@@ -109,9 +111,9 @@ export default function AdminAthleteCreatePage() {
           const athlete = athleteResponse.data.athlete;
           const athleteEntityId = typeof athlete.entityId === 'object' ? athlete.entityId?._id : athlete.entityId;
           const athleteModality = loadedModalities.find((modality) =>
-            (modality.name || modality.slug) === athlete.modality
+            (modality.name || modality.slug) === athlete.modality || modality.legacyNames?.includes(athlete.modality)
           );
-          const availableCategories = athleteModality?.categories || [];
+          const athleteNaipe = athlete.naipe || athlete.gender || '';
           setForm({
             entityId: loadedEntities.some((entity) => entity._id === athleteEntityId && entity.status === 'approved')
               ? athleteEntityId
@@ -123,11 +125,8 @@ export default function AdminAthleteCreatePage() {
             phone: athlete.phone,
             email: athlete.email,
             proofUrl: athlete.proofUrl || '',
-            modality: athlete.modality || '',
-            naipe: athlete.naipe || athlete.gender || 'masculino',
-            ageCategory: availableCategories.includes(athlete.ageCategory)
-              ? athlete.ageCategory
-              : availableCategories[0] || '',
+            modality: athleteModality?.name || athlete.modality || '',
+            naipe: athleteModality?.genders?.includes(athleteNaipe) ? athleteNaipe : athleteModality?.genders?.[0] || '',
             matricula: athlete.matricula || 'Gerada automaticamente',
           });
           setUploadInfo({
@@ -161,13 +160,10 @@ export default function AdminAthleteCreatePage() {
     if (!form.cpf || !isValidCPF(form.cpf)) return 'CPF do atleta inválido.';
     if (!form.fullName.trim()) return 'Informe o nome completo do atleta.';
     if (!form.birthDate) return 'Informe a data de nascimento.';
-    const birthYear = new Date(form.birthDate).getFullYear();
-    const currentYear = new Date().getFullYear();
-    if (Number.isNaN(birthYear) || currentYear - birthYear < 18) return 'O atleta deve ter pelo menos 18 anos.';
+    if (!hasCompletedMinimumAge(form.birthDate)) return 'O atleta precisa já ter completado 18 anos para se cadastrar.';
     if (!isValidPhone(form.phone)) return 'Informe um telefone válido com DDD (10 ou 11 dígitos).';
     if (!form.email || !isValidEmail(form.email)) return 'Informe um e-mail válido.';
     if (!form.modality) return 'Selecione a modalidade.';
-    if (!form.ageCategory) return 'Selecione a categoria etária.';
     if (!form.naipe) return 'Selecione o naipe.';
     if (!form.photoUrl) return 'Selecione a foto do atleta.';
     if (!form.proofUrl) return 'Selecione o comprovante do atleta.';
@@ -199,7 +195,6 @@ export default function AdminAthleteCreatePage() {
         modality: form.modality,
         naipe: form.naipe,
         gender: form.naipe,
-        ageCategory: form.ageCategory,
       };
 
       if (editId) {
@@ -289,13 +284,12 @@ export default function AdminAthleteCreatePage() {
                     <InputLabel>Modalidade</InputLabel>
                     <Select label="Modalidade" value={form.modality} onChange={(e) => {
                       const modalityName = e.target.value;
-                      const nextModality = modalities.find((item) => (item.name || item.slug) === modalityName);
+                      const nextModality = modalities.find((modality) => (modality.name || modality.slug) === modalityName);
+                      const nextGenders = nextModality?.genders || [];
                       setForm((current) => ({
                         ...current,
                         modality: modalityName,
-                        ageCategory: nextModality?.categories?.includes(current.ageCategory)
-                          ? current.ageCategory
-                          : nextModality?.categories?.[0] || '',
+                        naipe: nextGenders.includes(current.naipe) ? current.naipe : nextGenders[0] || '',
                       }));
                     }}>
                       <MenuItem value="">Selecione a modalidade</MenuItem>
@@ -311,21 +305,16 @@ export default function AdminAthleteCreatePage() {
                   <FormControl fullWidth>
                     <InputLabel>Naipe</InputLabel>
                     <Select label="Naipe" value={form.naipe} onChange={(e) => setForm({ ...form, naipe: e.target.value })}>
-                      <MenuItem value="masculino">Masculino</MenuItem>
-                      <MenuItem value="feminino">Feminino</MenuItem>
-                      <MenuItem value="misto">Misto</MenuItem>
+                      <MenuItem value="">Selecione o naipe</MenuItem>
+                      {allowedGenders.map((gender) => (
+                        <MenuItem key={gender} value={gender}>{gender === 'masculino' ? 'Masculino' : gender === 'feminino' ? 'Feminino' : 'Misto'}</MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </Grid>
 
                 <Grid item xs={12} md={4}>
-                  <FormControl fullWidth disabled={!ageCategories.length}>
-                    <InputLabel>Categoria etária</InputLabel>
-                    <Select label="Categoria etária" value={form.ageCategory} onChange={(e) => setForm({ ...form, ageCategory: e.target.value })}>
-                      <MenuItem value="">Selecione a categoria</MenuItem>
-                      {ageCategories.map((category) => <MenuItem key={category} value={category}>{category}</MenuItem>)}
-                    </Select>
-                  </FormControl>
+                  <TextField fullWidth disabled label="Categoria etária (automática)" value={calculatedAgeCategory || 'Informe nascimento e modalidade'} helperText="Calculada pelo ano de nascimento e pelas regras do evento 2026." />
                 </Grid>
                 <Grid item xs={12} md={4}>
                   <TextField fullWidth label="Matrícula" value={form.matricula} disabled helperText="A matrícula é gerada automaticamente e não pode ser alterada." />

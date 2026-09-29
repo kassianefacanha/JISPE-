@@ -1,8 +1,22 @@
 const express = require('express');
 const Athlete = require('../models/Athlete');
 const Entity = require('../models/Entity');
+const RegistrationControls = require('../models/RegistrationControls');
 
 const router = express.Router();
+
+router.get('/registration-status', async (req, res, next) => {
+  try {
+    const controls = await RegistrationControls.findById('global').lean();
+    res.json({
+      success: true,
+      entityRegistrationOpen: controls?.entityRegistrationOpen !== false,
+      athleteRegistrationOpen: controls?.athleteRegistrationOpen !== false,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.get('/validate/:matricula', async (req, res, next) => {
   try {
@@ -10,16 +24,9 @@ router.get('/validate/:matricula', async (req, res, next) => {
     const normalized = rawMatricula.replace(/\s+/g, '').trim();
 
     const candidates = await Athlete.find({ matricula: { $ne: null } }).populate('entityId', 'name').lean();
-    const athlete = candidates.find((candidate) => {
-      const storedNormalized = String(candidate.matricula || '').replace(/\s+/g, '');
-      const storedWithSpace = candidate.matricula && /^\d{4}\s\d{4}$/.test(candidate.matricula)
-        ? candidate.matricula
-        : storedNormalized.replace(/^(\d{4})(\d{4})$/, '$1 $2');
-
-      return [candidate.matricula, storedNormalized, storedWithSpace, normalized, rawMatricula].some((value) => value && value === normalized)
-        || [candidate.matricula, storedNormalized, storedWithSpace, normalized, rawMatricula].some((value) => value && value === rawMatricula)
-        || [candidate.matricula, storedNormalized, storedWithSpace, normalized, rawMatricula].some((value) => value && value === storedWithSpace);
-    });
+    const athlete = candidates.find((candidate) => (
+      String(candidate.matricula || '').replace(/\s+/g, '') === normalized
+    ));
 
     if (!athlete) {
       return res.status(404).json({ success: false, message: 'Carteirinha não localizada' });

@@ -108,14 +108,6 @@ export default function LoginPage() {
               </Button>
             </Stack>
 
-            <Box sx={{ borderRadius: 3, backgroundColor: '#f8fafc', p: 2 }}>
-              <Typography variant="subtitle2" fontWeight={700} color="text.primary">
-                Acesso padrão
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Admin: admin@jispe.com / jispe@2026
-              </Typography>
-            </Box>
           </Stack>
         </Paper>
       </Container>

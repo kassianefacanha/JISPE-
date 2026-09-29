@@ -5,6 +5,7 @@ import AdminDashboard from '../pages/AdminDashboard';
 import AdminEntityCreatePage from '../pages/AdminEntityCreatePage';
 import AdminManagementPage from '../pages/AdminManagementPage';
 import EntityDashboard from '../pages/EntityDashboard';
+import EntityAthleteCreatePage from '../pages/EntityAthleteCreatePage';
 import EntityRegisterPage from '../pages/EntityRegisterPage';
 import LoginPage from '../pages/LoginPage';
 import PublicBadgeValidationPage from '../pages/PublicBadgeValidationPage';
@@ -68,6 +69,15 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute role="entity">
             <EntityDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/entity/atletas/novo"
+        element={
+          <ProtectedRoute role="entity">
+            <EntityAthleteCreatePage />
           </ProtectedRoute>
         }
       />

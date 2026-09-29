@@ -40,6 +40,7 @@ import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useAuth } from '../contexts/AuthContext';
 import { useFeedback } from '../contexts/FeedbackContext';
+import AdminRegistrationSettings from './AdminRegistrationSettings';
 import api from '../services/api';
 
 const downloadFile = (filename, content, type) => {
@@ -240,9 +241,17 @@ export default function AdminDashboard() {
     const representedEntities = new Set(
       athletes.map((athlete) => String(athlete.entityId?._id || athlete.entityId || '')).filter(Boolean)
     );
-    const representedModalities = new Set(
-      athletes.map((athlete) => String(athlete.modality || '').trim()).filter(Boolean)
-    );
+    const modalityCounts = athletes.reduce((counts, athlete) => {
+      const modality = String(athlete.modality || '').trim();
+      if (modality) counts.set(modality, (counts.get(modality) || 0) + 1);
+      return counts;
+    }, new Map());
+    const representedModalities = modalityCounts.size;
+    const modalityStats = Array.from(modalityCounts, ([modality, count]) => ({
+      title: `Modalidade: ${modality}`,
+      value: count,
+      color: 'green',
+    })).sort((first, second) => second.value - first.value || first.title.localeCompare(second.title, 'pt-BR'));
 
     if (activeTab === 'entidades') {
       return [
@@ -255,15 +264,26 @@ export default function AdminDashboard() {
       ];
     }
 
+    if (activeTab === 'modalidades') {
+      return [
+        { title: 'Atletas cadastrados', value: athletes.length, color: 'slate' },
+        { title: 'Modalidades representadas', value: representedModalities, color: 'orange' },
+        ...modalityStats,
+      ];
+    }
+
+    if (activeTab !== 'atletas') return [];
+
     return [
       { title: 'Atletas cadastrados', value: athletes.length, color: 'slate' },
       { title: 'Masculino', value: athletes.filter((athlete) => (athlete.naipe || athlete.gender) === 'masculino').length, color: 'blue' },
       { title: 'Feminino', value: athletes.filter((athlete) => (athlete.naipe || athlete.gender) === 'feminino').length, color: 'pink' },
       { title: 'Misto', value: athletes.filter((athlete) => (athlete.naipe || athlete.gender) === 'misto').length, color: 'purple' },
       { title: 'Entidades participantes', value: representedEntities.size, color: 'green' },
-      { title: 'Modalidades representadas', value: representedModalities.size, color: 'orange' },
+      { title: 'Modalidades representadas', value: representedModalities, color: 'orange' },
       { title: 'Fotos pendentes', value: athletes.filter((athlete) => !athlete.photoUrl).length, color: 'red' },
       { title: 'Comprovantes pendentes', value: athletes.filter((athlete) => !athlete.proofUrl).length, color: 'orange' },
+      ...modalityStats,
     ];
   }, [activeTab, athletes, entities]);
 
@@ -622,23 +642,31 @@ export default function AdminDashboard() {
           </Button>
         </Stack>
 
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          {stats.map((card) => (
-            <Grid item xs={12} sm={6} md={3} key={card.title}>
-              <StatCard title={card.title} value={card.value} color={card.color} />
-            </Grid>
-          ))}
-        </Grid>
+        {stats.length > 0 && (
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            {stats.map((card) => (
+              <Grid item xs={12} sm={6} md={3} key={card.title}>
+                <StatCard title={card.title} value={card.value} color={card.color} />
+              </Grid>
+            ))}
+          </Grid>
+        )}
 
         <Paper sx={{ border: '1px solid #e2e8f0', overflow: 'hidden' }}>
           <Tabs
             value={activeTab}
             onChange={(_, value) => setActiveTab(value)}
-            variant="fullWidth"
-            sx={{ borderBottom: '1px solid #e2e8f0' }}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
+            sx={{
+              borderBottom: '1px solid #e2e8f0',
+              '& .MuiTab-root': { minWidth: { xs: 118, sm: 160 }, whiteSpace: 'nowrap' },
+            }}
           >
             <Tab value="entidades" label="Entidades" />
             <Tab value="atletas" label="Atletas" />
+            <Tab value="modalidades" label="Modalidades" />
           </Tabs>
 
           <Box sx={{ p: { xs: 2, md: 3 } }}>
@@ -757,7 +785,7 @@ export default function AdminDashboard() {
                   />
                 </Paper>
               </Box>
-            ) : (
+            ) : activeTab === 'atletas' ? (
               <Box>
                 <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
                   <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ flex: 1 }}>
@@ -872,6 +900,8 @@ export default function AdminDashboard() {
                   />
                 </Paper>
               </Box>
+            ) : (
+              <AdminRegistrationSettings entities={entities} />
             )}
           </Box>
         </Paper>

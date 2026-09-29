@@ -4,7 +4,7 @@ const modalitySchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     slug: { type: String, required: true, unique: true },
-    genders: [{ type: String, enum: ['masculino', 'feminino'] }],
+    genders: [{ type: String, enum: ['masculino', 'feminino', 'misto'] }],
     categories: [{ type: String }],
     maxTeamsPerEntity: { type: Number, default: 1 },
     maxAthletesPerTeam: { type: Number, default: 10 },
