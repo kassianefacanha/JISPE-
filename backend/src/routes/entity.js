@@ -273,7 +273,7 @@ router.patch('/:id/approve', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
     }
 
-    await sendEntityDecisionEmail(entity, 'rejected');
+    await sendEntityDecisionEmail(entity, 'approved');
     res.json({ success: true, entity: await serializeEntity(entity) });
   } catch (error) {
     next(error);
@@ -291,6 +291,7 @@ router.patch('/:id/reject', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
     }
 
+    await sendEntityDecisionEmail(entity, 'rejected');
     res.json({ success: true, entity: await serializeEntity(entity) });
   } catch (error) {
     next(error);
