@@ -67,7 +67,7 @@ npm --prefix backend run check:r2
 
 O teste cria um objeto temporário, lê e compara o conteúdo, e o apaga ao terminar. Ele precisa de permissão de leitura e gravação no bucket.
 
-Para recuperação de senha por e-mail, configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` e `SMTP_FROM` localmente e no Render. Use credenciais SMTP de um provedor de e-mail; não reutilize a senha da conta de e-mail. A redefinição está disponível para entidades, usa token de uso único válido por 30 minutos e revoga sessões antigas.
+Para e-mails transacionais, configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` e `SMTP_FROM` localmente e no Render. Use credenciais SMTP de um provedor de e-mail; não reutilize a senha da conta de e-mail. O sistema envia confirmações de cadastro da entidade e do atleta, avisos de aprovação/rejeição e alertas de alteração de senha. A redefinição está disponível para entidades, usa token de uso único válido por 30 minutos e revoga sessões antigas. Falhas no envio são registradas sem desfazer o cadastro, alteração ou decisão já concluída.
 
 O script de migração roda primeiro em simulação:
 
@@ -83,12 +83,11 @@ npm --prefix backend run migrate:r2
 
 Verifique os arquivos no bucket e teste cadastro, visualização e download antes de remover qualquer backup. Comprovantes continuam privados e são servidos por links assinados de curta duração.
 
-## Credenciais iniciais
+## Administrador inicial
 
-Admin padrão criado no seed:
+No primeiro início, se não houver nenhum administrador, o backend cria um usando `ADMIN_NAME`, `ADMIN_EMAIL` e `ADMIN_PASSWORD`. Configure esses valores em `backend/.env` localmente ou nos secrets do Render antes de iniciar uma base vazia. A senha precisa ter pelo menos 16 caracteres; ela é armazenada somente como hash bcrypt. Depois que existir um administrador, essas variáveis não alteram a conta.
 
-- E-mail: admin@jispe.com
-- Senha: jispe@2026
+O seed de desenvolvimento continua destrutivo e só deve ser usado em banco descartável. Ele exige `SEED_ENTITY_PASSWORD` para as entidades de teste e usa as mesmas variáveis `ADMIN_*` para criar o administrador após limpar o banco.
 
 ## Observações
 

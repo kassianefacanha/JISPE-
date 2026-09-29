@@ -3,6 +3,7 @@ const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('./app');
 const { assertConfigured } = require('./services/r2Storage');
 const { assertEmailConfigured } = require('./services/passwordResetEmail');
+const { ensureInitialAdmin } = require('./config/bootstrapAdmin');
 require('dotenv').config();
 
 const PORT = process.env.PORT || 5000;
@@ -36,10 +37,6 @@ const startServer = async () => {
       await mongoose.connect(process.env.MONGODB_URI);
       console.log('MongoDB conectado com sucesso');
     }
-
-    app.listen(PORT, () => {
-      console.log(`Servidor rodando na porta ${PORT}`);
-    });
   } catch (error) {
     if (process.env.NODE_ENV === 'production') {
       console.error('Não foi possível conectar ao MongoDB de produção:', error.message);
@@ -53,9 +50,6 @@ const startServer = async () => {
       mongoUri = memoryServer.getUri('jispe-2026');
       await mongoose.connect(mongoUri);
       console.log('MongoDB em memória inicializado com sucesso');
-      app.listen(PORT, () => {
-        console.log(`Servidor rodando na porta ${PORT}`);
-      });
     } catch (memoryError) {
       console.error('Erro ao conectar ao MongoDB:', memoryError.message);
       if (memoryServer) {
@@ -64,6 +58,19 @@ const startServer = async () => {
       process.exit(1);
     }
   }
+
+  try {
+    const adminCreated = await ensureInitialAdmin();
+    if (adminCreated) console.log('Administrador inicial criado com credenciais do ambiente.');
+  } catch (error) {
+    console.error('Não foi possível inicializar o administrador:', error.message);
+    await mongoose.disconnect();
+    process.exit(1);
+  }
+
+  app.listen(PORT, () => {
+    console.log(`Servidor rodando na porta ${PORT}`);
+  });
 };
 
 startServer();

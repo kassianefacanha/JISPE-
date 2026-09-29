@@ -7,7 +7,10 @@ const Admin = require('../models/Admin');
 const Entity = require('../models/Entity');
 const jwtSecret = require('../config/jwtSecret');
 const { auth } = require('../middlewares/auth');
-const { sendPasswordResetEmail } = require('../services/passwordResetEmail');
+const {
+  sendPasswordChangedEmail,
+  sendPasswordResetEmail,
+} = require('../services/passwordResetEmail');
 
 const router = express.Router();
 const loginLimiter = rateLimit({
@@ -92,6 +95,7 @@ router.post('/reset-password', resetPasswordLimiter, async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Link inválido ou expirado. Solicite uma nova redefinição.' });
     }
 
+    await sendPasswordChangedEmail(entity);
     return res.json({ success: true, message: 'Senha alterada. Entre novamente com a nova senha.' });
   } catch (error) {
     return next(error);
@@ -120,6 +124,7 @@ router.put('/password', auth, resetPasswordLimiter, async (req, res, next) => {
     account.sessionVersion = (account.sessionVersion || 0) + 1;
     await account.save();
 
+    await sendPasswordChangedEmail(account);
     return res.json({ success: true, message: 'Senha alterada. Entre novamente com a nova senha.' });
   } catch (error) {
     return next(error);

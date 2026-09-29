@@ -3,7 +3,6 @@ const bcrypt = require('bcryptjs');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 require('dotenv').config();
 
-const Admin = require('../models/Admin');
 const Entity = require('../models/Entity');
 const Athlete = require('../models/Athlete');
 const Modality = require('../models/Modality');
@@ -12,6 +11,7 @@ const EntityModalityRule = require('../models/EntityModalityRule');
 const Counter = require('../models/Counter');
 const { defaultModalities } = require('./defaultModalities');
 const { getAgeCategory, hasCompletedMinimumAge } = require('../services/ageCategory');
+const { ensureInitialAdmin, getAdminCredentials } = require('./bootstrapAdmin');
 
 const runSeed = async () => {
   try {
@@ -20,6 +20,11 @@ const runSeed = async () => {
     }
     if (process.env.MONGODB_URI && process.env.ALLOW_DESTRUCTIVE_SEED !== 'true') {
       throw new Error('O seed apaga o banco inteiro. Defina ALLOW_DESTRUCTIVE_SEED=true somente para um banco descartável.');
+    }
+    getAdminCredentials();
+    const seedEntityPassword = process.env.SEED_ENTITY_PASSWORD || '';
+    if (seedEntityPassword.length < 12) {
+      throw new Error('Defina SEED_ENTITY_PASSWORD com pelo menos 12 caracteres antes de executar o seed.');
     }
 
     let mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/jispe-2026';
@@ -41,18 +46,7 @@ const runSeed = async () => {
 
     await mongoose.connection.db.dropDatabase();
     console.log('Banco resetado com sucesso');
-
-    const existingAdmin = await Admin.findOne({ email: 'admin@jispe.com' });
-    if (!existingAdmin) {
-      const passwordHash = await bcrypt.hash('jispe@2026', 12);
-      await Admin.create({
-        name: 'Administrador JISPE',
-        email: 'admin@jispe.com',
-        password: passwordHash,
-        role: 'admin',
-      });
-      console.log('Admin seed criado');
-    }
+    await ensureInitialAdmin();
 
     for (const modality of defaultModalities) {
       const exists = await Modality.findOne({ slug: modality.slug });
@@ -71,7 +65,6 @@ const runSeed = async () => {
       {
         name: 'Secretaria Municipal de Esportes',
         email: 'esportes@teste.com',
-        password: '123456',
         phone: '(11) 98888-1010',
         responsible: {
           fullName: 'Carla Mendes',
@@ -85,7 +78,6 @@ const runSeed = async () => {
       {
         name: 'Clube de Atletismo São José',
         email: 'atletismo@teste.com',
-        password: '123456',
         phone: '(11) 97777-2020',
         responsible: {
           fullName: 'Rafael Costa',
@@ -99,7 +91,6 @@ const runSeed = async () => {
       {
         name: 'Associação de Futsal Central',
         email: 'futsal@teste.com',
-        password: '123456',
         phone: '(11) 96666-3030',
         responsible: {
           fullName: 'Bruno Silva',
@@ -113,7 +104,6 @@ const runSeed = async () => {
       {
         name: 'Academia Nova Era',
         email: 'novaera@teste.com',
-        password: '123456',
         phone: '(11) 95555-4040',
         responsible: {
           fullName: 'Patrícia Nogueira',
@@ -127,7 +117,6 @@ const runSeed = async () => {
       {
         name: 'Grupo Olímpico Bauru',
         email: 'olimpico@teste.com',
-        password: '123456',
         phone: '(14) 98888-5050',
         responsible: {
           fullName: 'Henrique Prado',
@@ -141,7 +130,6 @@ const runSeed = async () => {
       {
         name: 'União do Esporte Juvenil',
         email: 'juvenil@teste.com',
-        password: '123456',
         phone: '(12) 97777-6060',
         responsible: {
           fullName: 'Fernanda Rocha',
@@ -161,7 +149,7 @@ const runSeed = async () => {
       if (!exists) {
         const entity = await Entity.create({
           ...seed,
-          password: await bcrypt.hash(seed.password, 12),
+          password: await bcrypt.hash(seedEntityPassword, 12),
         });
         createdEntities.push(entity);
       } else {

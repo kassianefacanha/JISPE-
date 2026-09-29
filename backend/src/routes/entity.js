@@ -8,6 +8,7 @@ const { auth } = require('../middlewares/auth');
 const { isValidCPF } = require('../utils/cpfValidator');
 const { validateUploadedAsset } = require('../utils/uploadValidation');
 const { deleteAsset, deleteReplacedAsset, getAssetUrl, isSameStoredAsset, storeAsset } = require('../services/r2Storage');
+const { sendEntityDecisionEmail, sendEntityRegistrationEmail } = require('../services/passwordResetEmail');
 
 const router = express.Router();
 const registrationLimiter = rateLimit({
@@ -83,6 +84,7 @@ router.post('/register', registrationLimiter, async (req, res, next) => {
     entity.responsible.proofUrl = await storeAsset(payload.responsible.proofUrl, `entities/${entity._id}/responsible/proof`);
     await entity.save();
 
+    await sendEntityRegistrationEmail(entity);
     res.status(201).json({ success: true, entity: { id: entity._id, name: entity.name, status: entity.status } });
   } catch (error) {
     next(error);
@@ -161,6 +163,7 @@ router.get('/:id', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
     }
 
+    await sendEntityDecisionEmail(entity, 'approved');
     res.json({ success: true, entity: await serializeEntity(entity) });
   } catch (error) {
     next(error);
@@ -270,6 +273,7 @@ router.patch('/:id/approve', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
     }
 
+    await sendEntityDecisionEmail(entity, 'rejected');
     res.json({ success: true, entity: await serializeEntity(entity) });
   } catch (error) {
     next(error);

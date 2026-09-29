@@ -16,6 +16,7 @@ const { getAgeCategory, hasCompletedMinimumAge } = require('../services/ageCateg
 const { defaultModalities } = require('../config/defaultModalities');
 const { validateUploadedAsset } = require('../utils/uploadValidation');
 const { deleteAsset, deleteReplacedAsset, getAssetBuffer, getAssetUrl, isR2Value, isSameStoredAsset, storeAsset } = require('../services/r2Storage');
+const { sendAthleteRegistrationEmail } = require('../services/passwordResetEmail');
 
 const maxBadgePhotoBytes = 5 * 1024 * 1024;
 const dataImagePattern = /^data:image\/(?:png|jpe?g|webp);base64,([A-Za-z0-9+/]+={0,2})$/i;
@@ -206,6 +207,8 @@ router.post('/', auth, async (req, res, next) => {
     athlete.proofUrl = await storeAsset(proofUrl, `athletes/${athlete._id}/proof`);
     await athlete.save();
 
+    const entity = await Entity.findById(resolvedEntityId).select('name email');
+    if (entity) await sendAthleteRegistrationEmail(entity, athlete);
     res.status(201).json({ success: true, athlete: await serializeAthlete(athlete) });
   } catch (error) {
     next(error);
