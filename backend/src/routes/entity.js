@@ -1,12 +1,30 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const rateLimit = require('express-rate-limit');
 const Entity = require('../models/Entity');
 const Athlete = require('../models/Athlete');
 const RegistrationControls = require('../models/RegistrationControls');
 const { auth } = require('../middlewares/auth');
 const { isValidCPF } = require('../utils/cpfValidator');
+const { validateUploadedAsset } = require('../utils/uploadValidation');
+const { deleteAsset, deleteReplacedAsset, getAssetUrl, isSameStoredAsset, storeAsset } = require('../services/r2Storage');
 
 const router = express.Router();
+const registrationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Muitas tentativas de cadastro. Tente novamente em 15 minutos.' },
+});
+
+const serializeEntity = async (entity) => {
+  const payload = entity.toObject();
+  delete payload.password;
+  payload.responsible.photoUrl = await getAssetUrl(payload.responsible.photoUrl);
+  payload.responsible.proofUrl = await getAssetUrl(payload.responsible.proofUrl, { download: true });
+  return payload;
+};
 
 const normalizeEntityPayload = (payload = {}) => {
   const { name, email, password, phone, responsible } = payload;
@@ -26,7 +44,7 @@ const normalizeEntityPayload = (payload = {}) => {
   };
 };
 
-router.post('/register', async (req, res, next) => {
+router.post('/register', registrationLimiter, async (req, res, next) => {
   try {
     const controls = await RegistrationControls.findById('global').lean();
     if (controls?.entityRegistrationOpen === false) {
@@ -39,6 +57,10 @@ router.post('/register', async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Informe todos os dados e envie a foto e o comprovante do responsável.' });
     }
 
+    const assetError = validateUploadedAsset(payload.responsible.photoUrl, 'photo')
+      || validateUploadedAsset(payload.responsible.proofUrl, 'proof');
+    if (assetError) return res.status(400).json({ success: false, message: assetError });
+
     if (!isValidCPF(payload.responsible.cpf)) {
       return res.status(400).json({ success: false, message: 'CPF do responsável é inválido' });
     }
@@ -49,7 +71,7 @@ router.post('/register', async (req, res, next) => {
     }
 
     const hashedPassword = await bcrypt.hash(payload.password, 12);
-    const entity = await Entity.create({
+    const entity = new Entity({
       name: payload.name,
       email: payload.email,
       password: hashedPassword,
@@ -57,6 +79,9 @@ router.post('/register', async (req, res, next) => {
       responsible: payload.responsible,
       status: 'pending',
     });
+    entity.responsible.photoUrl = await storeAsset(payload.responsible.photoUrl, `entities/${entity._id}/responsible/photo`);
+    entity.responsible.proofUrl = await storeAsset(payload.responsible.proofUrl, `entities/${entity._id}/responsible/proof`);
+    await entity.save();
 
     res.status(201).json({ success: true, entity: { id: entity._id, name: entity.name, status: entity.status } });
   } catch (error) {
@@ -76,6 +101,10 @@ router.post('/', auth, async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Dados obrigatórios não informados' });
     }
 
+    const assetError = (payload.responsible.photoUrl && validateUploadedAsset(payload.responsible.photoUrl, 'photo'))
+      || (payload.responsible.proofUrl && validateUploadedAsset(payload.responsible.proofUrl, 'proof'));
+    if (assetError) return res.status(400).json({ success: false, message: assetError });
+
     if (!isValidCPF(payload.responsible.cpf)) {
       return res.status(400).json({ success: false, message: 'CPF do responsável é inválido' });
     }
@@ -86,7 +115,7 @@ router.post('/', auth, async (req, res, next) => {
     }
 
     const hashedPassword = await bcrypt.hash(payload.password, 12);
-    const entity = await Entity.create({
+    const entity = new Entity({
       name: payload.name,
       email: payload.email,
       password: hashedPassword,
@@ -94,8 +123,15 @@ router.post('/', auth, async (req, res, next) => {
       responsible: payload.responsible,
       status: req.body.status === 'pending' ? 'pending' : 'approved',
     });
+    if (payload.responsible.photoUrl) {
+      entity.responsible.photoUrl = await storeAsset(payload.responsible.photoUrl, `entities/${entity._id}/responsible/photo`);
+    }
+    if (payload.responsible.proofUrl) {
+      entity.responsible.proofUrl = await storeAsset(payload.responsible.proofUrl, `entities/${entity._id}/responsible/proof`);
+    }
+    await entity.save();
 
-    res.status(201).json({ success: true, entity: { id: entity._id, name: entity.name, email: entity.email, status: entity.status } });
+    res.status(201).json({ success: true, entity: await serializeEntity(entity) });
   } catch (error) {
     next(error);
   }
@@ -108,7 +144,7 @@ router.get('/', auth, async (req, res, next) => {
     }
 
     const entities = await Entity.find().sort({ createdAt: -1 });
-    res.json({ success: true, entities });
+    res.json({ success: true, entities: await Promise.all(entities.map(serializeEntity)) });
   } catch (error) {
     next(error);
   }
@@ -125,7 +161,7 @@ router.get('/:id', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
     }
 
-    res.json({ success: true, entity });
+    res.json({ success: true, entity: await serializeEntity(entity) });
   } catch (error) {
     next(error);
   }
@@ -137,11 +173,22 @@ router.put('/:id', auth, async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Acesso restrito ao administrador' });
     }
 
+    const currentEntity = await Entity.findById(req.params.id);
+    if (!currentEntity) {
+      return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
+    }
+
     const payload = normalizeEntityPayload(req.body);
 
     if (!payload.name || !payload.email || !payload.phone || !payload.responsible.fullName || !payload.responsible.cpf || !payload.responsible.email || !payload.responsible.photoUrl || !payload.responsible.proofUrl) {
       return res.status(400).json({ success: false, message: 'Dados obrigatórios não informados' });
     }
+
+    const assetError = (!isSameStoredAsset(payload.responsible.photoUrl, currentEntity.responsible.photoUrl)
+      && validateUploadedAsset(payload.responsible.photoUrl, 'photo'))
+      || (!isSameStoredAsset(payload.responsible.proofUrl, currentEntity.responsible.proofUrl)
+        && validateUploadedAsset(payload.responsible.proofUrl, 'proof'));
+    if (assetError) return res.status(400).json({ success: false, message: assetError });
 
     if (!isValidCPF(payload.responsible.cpf)) {
       return res.status(400).json({ success: false, message: 'CPF do responsável é inválido' });
@@ -156,7 +203,11 @@ router.put('/:id', auth, async (req, res, next) => {
       name: payload.name,
       email: payload.email,
       phone: payload.phone,
-      responsible: payload.responsible,
+      responsible: {
+        ...payload.responsible,
+        photoUrl: await storeAsset(payload.responsible.photoUrl, `entities/${currentEntity._id}/responsible/photo`, currentEntity.responsible.photoUrl),
+        proofUrl: await storeAsset(payload.responsible.proofUrl, `entities/${currentEntity._id}/responsible/proof`, currentEntity.responsible.proofUrl),
+      },
     };
 
     if (payload.password) {
@@ -168,7 +219,11 @@ router.put('/:id', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
     }
 
-    res.json({ success: true, entity });
+    await Promise.all([
+      deleteReplacedAsset(currentEntity.responsible.photoUrl, entity.responsible.photoUrl),
+      deleteReplacedAsset(currentEntity.responsible.proofUrl, entity.responsible.proofUrl),
+    ]);
+    res.json({ success: true, entity: await serializeEntity(entity) });
   } catch (error) {
     next(error);
   }
@@ -194,6 +249,10 @@ router.delete('/:id', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
     }
 
+    await Promise.all([
+      deleteAsset(entity.responsible.photoUrl),
+      deleteAsset(entity.responsible.proofUrl),
+    ]);
     res.json({ success: true, message: 'Entidade excluída com sucesso' });
   } catch (error) {
     next(error);
@@ -211,7 +270,7 @@ router.patch('/:id/approve', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
     }
 
-    res.json({ success: true, entity });
+    res.json({ success: true, entity: await serializeEntity(entity) });
   } catch (error) {
     next(error);
   }
@@ -228,7 +287,7 @@ router.patch('/:id/reject', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
     }
 
-    res.json({ success: true, entity });
+    res.json({ success: true, entity: await serializeEntity(entity) });
   } catch (error) {
     next(error);
   }

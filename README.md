@@ -55,6 +55,32 @@ npm run dev:backend
 npm run dev:frontend
 ```
 
+## Uploads no Cloudflare R2
+
+O bucket deve permanecer privado. Configure no Render `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` e `R2_BUCKET_NAME`; as chaves devem ser secrets do serviço, nunca variáveis `VITE_*` ou arquivos commitados. Em produção, o backend não inicia sem R2 e MongoDB configurados.
+
+Para testar as credenciais locais sem mostrá-las, preencha `backend/.env` e execute:
+
+```bash
+npm --prefix backend run check:r2
+```
+
+O teste cria um objeto temporário, lê e compara o conteúdo, e o apaga ao terminar. Ele precisa de permissão de leitura e gravação no bucket.
+
+O script de migração roda primeiro em simulação:
+
+```bash
+npm --prefix backend run migrate:r2
+```
+
+Para aplicar, faça um backup do MongoDB, configure as mesmas variáveis R2 e `MONGODB_URI` no ambiente que executará o script, e defina `R2_MIGRATION_APPLY=true` e `R2_MIGRATION_CONFIRM=I_UNDERSTAND`. Essa confirmação é exigida em qualquer ambiente. Execute novamente:
+
+```bash
+npm --prefix backend run migrate:r2
+```
+
+Verifique os arquivos no bucket e teste cadastro, visualização e download antes de remover qualquer backup. Comprovantes continuam privados e são servidos por links assinados de curta duração.
+
 ## Credenciais iniciais
 
 Admin padrão criado no seed:

@@ -15,5 +15,15 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        value: jispe-arquivos-prod
       - key: FRONTEND_URL
         sync: false
+      - key: NODE_ENV
+        value: production

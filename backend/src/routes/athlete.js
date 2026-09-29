@@ -14,17 +14,61 @@ const { isValidCPF } = require('../utils/cpfValidator');
 const { generateMatricula } = require('../utils/matriculaGenerator');
 const { getAgeCategory, hasCompletedMinimumAge } = require('../services/ageCategory');
 const { defaultModalities } = require('../config/defaultModalities');
+const { validateUploadedAsset } = require('../utils/uploadValidation');
+const { deleteAsset, deleteReplacedAsset, getAssetBuffer, getAssetUrl, isR2Value, isSameStoredAsset, storeAsset } = require('../services/r2Storage');
 
-const fetchImageBuffer = async (url) => {
-  if (!url) return null;
+const maxBadgePhotoBytes = 5 * 1024 * 1024;
+const dataImagePattern = /^data:image\/(?:png|jpe?g|webp);base64,([A-Za-z0-9+/]+={0,2})$/i;
+const allowedImageHosts = new Set(['images.unsplash.com', 'res.cloudinary.com']);
 
+const fetchImageBuffer = async (value) => {
+  if (!value || typeof value !== 'string') return null;
+  if (isR2Value(value)) {
+    try {
+      return await getAssetBuffer(value);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  const dataImage = value.match(dataImagePattern);
+  if (dataImage) {
+    const imageBuffer = Buffer.from(dataImage[1], 'base64');
+    return imageBuffer.length <= maxBadgePhotoBytes ? imageBuffer : null;
+  }
+
+  let imageUrl;
   try {
-    const response = await fetch(url);
-    if (!response.ok) return null;
-    return Buffer.from(await response.arrayBuffer());
+    imageUrl = new URL(value);
   } catch (error) {
     return null;
   }
+  if (imageUrl.protocol !== 'https:' || !allowedImageHosts.has(imageUrl.hostname) || imageUrl.username || imageUrl.password) {
+    return null;
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const response = await fetch(imageUrl, { redirect: 'error', signal: controller.signal });
+    if (!response.ok) return null;
+    if (!response.headers.get('content-type')?.startsWith('image/')) return null;
+    const contentLength = Number(response.headers.get('content-length') || 0);
+    if (contentLength > maxBadgePhotoBytes) return null;
+    const imageBuffer = Buffer.from(await response.arrayBuffer());
+    return imageBuffer.length <= maxBadgePhotoBytes ? imageBuffer : null;
+  } catch (error) {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+const serializeAthlete = async (athlete) => {
+  const payload = athlete.toObject();
+  payload.photoUrl = await getAssetUrl(payload.photoUrl);
+  payload.proofUrl = await getAssetUrl(payload.proofUrl, { download: true });
+  return payload;
 };
 
 const getModalityDefinition = async (modalityName) => {
@@ -47,7 +91,7 @@ router.get('/', auth, async (req, res, next) => {
     const query = isAdmin ? {} : { entityId: req.user.id };
 
     const athletes = await Athlete.find(query).sort({ createdAt: -1 });
-    res.json({ success: true, athletes });
+    res.json({ success: true, athletes: await Promise.all(athletes.map(serializeAthlete)) });
   } catch (error) {
     next(error);
   }
@@ -65,7 +109,7 @@ router.get('/:id', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Atleta não encontrado' });
     }
 
-    res.json({ success: true, athlete });
+    res.json({ success: true, athlete: await serializeAthlete(athlete) });
   } catch (error) {
     next(error);
   }
@@ -84,6 +128,9 @@ router.post('/', auth, async (req, res, next) => {
     if (!resolvedEntityId || !cpf || !fullName || !birthDate || !phone || !email || !modality || !resolvedNaipe || !photoUrl || !proofUrl) {
       return res.status(400).json({ success: false, message: 'Todos os campos do atleta são obrigatórios' });
     }
+
+    const assetError = validateUploadedAsset(photoUrl, 'photo') || validateUploadedAsset(proofUrl, 'proof');
+    if (assetError) return res.status(400).json({ success: false, message: assetError });
 
     if (!isValidCPF(cpf)) {
       return res.status(400).json({ success: false, message: 'CPF do atleta inválido' });
@@ -140,7 +187,7 @@ router.post('/', auth, async (req, res, next) => {
     const matricula = await generateMatricula();
     const category = getAgeCategory(birthDate, modality, modalityDefinition.categories || []);
 
-    const athlete = await Athlete.create({
+    const athlete = new Athlete({
       entityId: resolvedEntityId,
       cpf,
       fullName,
@@ -155,8 +202,11 @@ router.post('/', auth, async (req, res, next) => {
       ageCategory: category,
       matricula,
     });
+    athlete.photoUrl = await storeAsset(photoUrl, `athletes/${athlete._id}/photo`);
+    athlete.proofUrl = await storeAsset(proofUrl, `athletes/${athlete._id}/proof`);
+    await athlete.save();
 
-    res.status(201).json({ success: true, athlete });
+    res.status(201).json({ success: true, athlete: await serializeAthlete(athlete) });
   } catch (error) {
     next(error);
   }
@@ -178,6 +228,9 @@ router.put('/:id', auth, async (req, res, next) => {
     }
 
     const { entityId, cpf, fullName, birthDate, photoUrl, phone, email, gender, naipe, modality, proofUrl } = req.body;
+    const assetError = (photoUrl !== undefined && !isSameStoredAsset(photoUrl, athlete.photoUrl) && validateUploadedAsset(photoUrl, 'photo'))
+      || (proofUrl !== undefined && !isSameStoredAsset(proofUrl, athlete.proofUrl) && validateUploadedAsset(proofUrl, 'proof'));
+    if (assetError) return res.status(400).json({ success: false, message: assetError });
     const resolvedNaipe = naipe || gender || athlete.naipe || athlete.gender;
     const resolvedModality = modality || athlete.modality;
     const resolvedBirthDate = birthDate || athlete.birthDate;
@@ -196,10 +249,10 @@ router.put('/:id', auth, async (req, res, next) => {
       ...(cpf ? { cpf } : {}),
       ...(fullName ? { fullName } : {}),
       ...(birthDate ? { birthDate } : {}),
-      ...(photoUrl ? { photoUrl } : {}),
+      ...(photoUrl ? { photoUrl: await storeAsset(photoUrl, `athletes/${athlete._id}/photo`, athlete.photoUrl) } : {}),
       ...(phone ? { phone } : {}),
       ...(email ? { email } : {}),
-      ...(proofUrl ? { proofUrl } : {}),
+      ...(proofUrl ? { proofUrl: await storeAsset(proofUrl, `athletes/${athlete._id}/proof`, athlete.proofUrl) } : {}),
       ...(resolvedNaipe ? { gender: resolvedNaipe, naipe: resolvedNaipe } : {}),
       ...(resolvedModality ? { modality: resolvedModality } : {}),
       ageCategory: getAgeCategory(resolvedBirthDate, resolvedModality, modalityDefinition.categories || []),
@@ -229,7 +282,11 @@ router.put('/:id', auth, async (req, res, next) => {
     }
 
     const updated = await Athlete.findByIdAndUpdate(req.params.id, payload, { new: true });
-    res.json({ success: true, athlete: updated });
+    await Promise.all([
+      deleteReplacedAsset(athlete.photoUrl, updated.photoUrl),
+      deleteReplacedAsset(athlete.proofUrl, updated.proofUrl),
+    ]);
+    res.json({ success: true, athlete: await serializeAthlete(updated) });
   } catch (error) {
     next(error);
   }
@@ -248,6 +305,7 @@ router.delete('/:id', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Atleta não encontrado' });
     }
 
+    await Promise.all([deleteAsset(athlete.photoUrl), deleteAsset(athlete.proofUrl)]);
     res.json({ success: true, message: 'Atleta excluído com sucesso' });
   } catch (error) {
     next(error);

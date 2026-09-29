@@ -275,7 +275,7 @@ export default function AdminEntityCreatePage() {
                       </Box>
                       <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />}>
                         {form.responsiblePhoto ? 'Trocar foto' : 'Selecionar foto'}
-                        <input hidden type="file" accept="image/*" onChange={(event) => handleFileField(event, 'responsiblePhoto')} />
+                        <input hidden type="file" accept=".jpg,.jpeg,.png,.webp" onChange={(event) => handleFileField(event, 'responsiblePhoto')} />
                       </Button>
                     </Stack>
                   </Box>
@@ -294,7 +294,7 @@ export default function AdminEntityCreatePage() {
                       </Box>
                       <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />}>
                         {form.responsibleProof ? 'Trocar documento' : 'Selecionar documento'}
-                        <input hidden type="file" accept="image/*,.pdf" onChange={(event) => handleFileField(event, 'responsibleProof')} />
+                        <input hidden type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(event) => handleFileField(event, 'responsibleProof')} />
                       </Button>
                     </Stack>
                   </Box>

@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
+const Entity = require('../models/Entity');
+const jwtSecret = require('../config/jwtSecret');
 
-const auth = (req, res, next) => {
+const auth = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -9,13 +11,26 @@ const auth = (req, res, next) => {
 
   const token = authHeader.split(' ')[1];
 
+  let decoded;
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret');
-    req.user = decoded;
-    next();
+    decoded = jwt.verify(token, jwtSecret);
   } catch (error) {
     return res.status(401).json({ success: false, message: 'Token inválido ou expirado' });
   }
+
+  if (decoded.type === 'entity') {
+    try {
+      const entity = await Entity.findById(decoded.id).select('status').lean();
+      if (!entity || entity.status !== 'approved') {
+        return res.status(403).json({ success: false, message: 'Acesso da entidade não está aprovado.' });
+      }
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  req.user = decoded;
+  return next();
 };
 
 module.exports = { auth };

@@ -15,6 +15,13 @@ const { getAgeCategory, hasCompletedMinimumAge } = require('../services/ageCateg
 
 const runSeed = async () => {
   try {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('O seed destrutivo não pode ser executado em produção.');
+    }
+    if (process.env.MONGODB_URI && process.env.ALLOW_DESTRUCTIVE_SEED !== 'true') {
+      throw new Error('O seed apaga o banco inteiro. Defina ALLOW_DESTRUCTIVE_SEED=true somente para um banco descartável.');
+    }
+
     let mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/jispe-2026';
 
     if (!process.env.MONGODB_URI) {

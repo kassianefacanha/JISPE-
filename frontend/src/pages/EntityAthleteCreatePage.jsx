@@ -271,7 +271,7 @@ export default function EntityAthleteCreatePage() {
                       </Box>
                       <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />}>
                         {form.photoUrl ? 'Trocar foto' : 'Selecionar foto'}
-                        <input hidden type="file" accept="image/*" onChange={(event) => handleFileField(event, 'photoUrl')} />
+                        <input hidden type="file" accept=".jpg,.jpeg,.png,.webp" onChange={(event) => handleFileField(event, 'photoUrl')} />
                       </Button>
                     </Stack>
                   </Box>
@@ -286,7 +286,7 @@ export default function EntityAthleteCreatePage() {
                       </Box>
                       <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />}>
                         {form.proofUrl ? 'Trocar documento' : 'Selecionar documento'}
-                        <input hidden type="file" accept="image/*,.pdf" onChange={(event) => handleFileField(event, 'proofUrl')} />
+                        <input hidden type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(event) => handleFileField(event, 'proofUrl')} />
                       </Button>
                     </Stack>
                   </Box>
