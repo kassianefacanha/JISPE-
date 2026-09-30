@@ -84,7 +84,7 @@ router.post('/register', registrationLimiter, async (req, res, next) => {
     entity.responsible.proofUrl = await storeAsset(payload.responsible.proofUrl, `entities/${entity._id}/responsible/proof`);
     await entity.save();
 
-    await sendEntityRegistrationEmail(entity);
+    void sendEntityRegistrationEmail(entity);
     res.status(201).json({ success: true, entity: { id: entity._id, name: entity.name, status: entity.status } });
   } catch (error) {
     next(error);
@@ -163,8 +163,7 @@ router.get('/:id', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
     }
 
-    const emailSent = await sendEntityDecisionEmail(entity, 'approved');
-    res.json({ success: true, emailSent, entity: await serializeEntity(entity) });
+    res.json({ success: true, entity: await serializeEntity(entity) });
   } catch (error) {
     next(error);
   }
@@ -273,8 +272,8 @@ router.patch('/:id/approve', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
     }
 
-    await sendEntityDecisionEmail(entity, 'approved');
-    res.json({ success: true, entity: await serializeEntity(entity) });
+    void sendEntityDecisionEmail(entity, 'approved');
+    res.json({ success: true, emailStatus: 'pending', entity: await serializeEntity(entity) });
   } catch (error) {
     next(error);
   }
@@ -291,8 +290,8 @@ router.patch('/:id/reject', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
     }
 
-    const emailSent = await sendEntityDecisionEmail(entity, 'rejected');
-    res.json({ success: true, emailSent, entity: await serializeEntity(entity) });
+    void sendEntityDecisionEmail(entity, 'rejected');
+    res.json({ success: true, emailStatus: 'pending', entity: await serializeEntity(entity) });
   } catch (error) {
     next(error);
   }

@@ -311,10 +311,12 @@ export default function AdminDashboard() {
       const response = await api.patch(`/entities/${id}/${action}`);
       await loadData();
       notify(
-        response.data.emailSent === false
-          ? 'Status atualizado, mas o e-mail não foi enviado. Verifique a configuração SMTP.'
+        response.data.emailStatus === 'pending'
+          ? 'Status atualizado. O envio do e-mail foi iniciado em segundo plano.'
+          : response.data.emailSent === false
+            ? 'Status atualizado, mas o e-mail não foi enviado. Verifique a configuração SMTP.'
           : 'Status da entidade atualizado com sucesso.',
-        response.data.emailSent === false ? 'warning' : 'success'
+        response.data.emailStatus === 'pending' ? 'info' : response.data.emailSent === false ? 'warning' : 'success'
       );
     } catch (error) {
       notify(getApiErrorMessage(error, 'Erro ao alterar status.'));

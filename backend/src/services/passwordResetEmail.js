@@ -61,14 +61,12 @@ const sendNotification = async (eventName, message) => {
   }
 };
 
-const sendPasswordResetEmail = async (email, resetUrl) => {
-  await sendEmail({
-    to: email,
-    subject: 'Solicitação de redefinição de senha | JISPE 2026',
-    text: `Prezada entidade,\n\nRecebemos uma solicitação para redefinir a senha de acesso ao sistema JISPE 2026. Para cadastrar uma nova senha, acesse o link abaixo em até 30 minutos:\n\n${resetUrl}\n\nSe não reconhece esta solicitação, desconsidere esta mensagem. Por segurança, nunca informe sua senha por e-mail.\n\nAtenciosamente,\nEquipe JISPE 2026`,
-    html: `<p>Prezada entidade,</p><p>Recebemos uma solicitação para redefinir a senha de acesso ao sistema JISPE 2026.</p><p>Para cadastrar uma nova senha, acesse o link abaixo em até 30 minutos:</p><p><a href="${escapeHtml(resetUrl)}">Redefinir senha</a></p><p>Se não reconhece esta solicitação, desconsidere esta mensagem. Por segurança, nunca informe sua senha por e-mail.</p><p>Atenciosamente,<br>Equipe JISPE 2026</p>`,
-  });
-};
+const sendPasswordResetEmail = (email, resetUrl) => sendNotification('password-reset', {
+  to: email,
+  subject: 'Solicitação de redefinição de senha | JISPE 2026',
+  text: `Prezada entidade,\n\nRecebemos uma solicitação para redefinir a senha de acesso ao sistema JISPE 2026. Para cadastrar uma nova senha, acesse o link abaixo em até 30 minutos:\n\n${resetUrl}\n\nSe não reconhece esta solicitação, desconsidere esta mensagem. Por segurança, nunca informe sua senha por e-mail.\n\nAtenciosamente,\nEquipe JISPE 2026`,
+  html: `<p>Prezada entidade,</p><p>Recebemos uma solicitação para redefinir a senha de acesso ao sistema JISPE 2026.</p><p>Para cadastrar uma nova senha, acesse o link abaixo em até 30 minutos:</p><p><a href="${escapeHtml(resetUrl)}">Redefinir senha</a></p><p>Se não reconhece esta solicitação, desconsidere esta mensagem. Por segurança, nunca informe sua senha por e-mail.</p><p>Atenciosamente,<br>Equipe JISPE 2026</p>`,
+});
 
 const sendEntityRegistrationEmail = (entity) => sendNotification('entity-registration', {
   to: entity.email,

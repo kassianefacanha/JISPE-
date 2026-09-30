@@ -52,14 +52,14 @@ router.post('/forgot-password', forgotPasswordLimiter, async (req, res, next) =>
         const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').split(',')[0].trim().replace(/\/+$/, '');
         const resetUrl = new URL('/reset-password', frontendUrl);
         resetUrl.searchParams.set('token', rawToken);
-        try {
-          await sendPasswordResetEmail(email, resetUrl.toString());
-        } catch (emailError) {
-          console.error(`Password reset email delivery failed: ${emailError.name || 'error'}`);
+        void sendPasswordResetEmail(email, resetUrl.toString()).then(async (sent) => {
+          if (sent) return;
           entity.passwordResetTokenHash = undefined;
           entity.passwordResetExpiresAt = undefined;
           await entity.save();
-        }
+        }).catch((error) => {
+          console.error('Could not clear the password reset token after email failure:', error.message);
+        });
       }
     }
 
@@ -95,7 +95,7 @@ router.post('/reset-password', resetPasswordLimiter, async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Link inválido ou expirado. Solicite uma nova redefinição.' });
     }
 
-    await sendPasswordChangedEmail(entity);
+    void sendPasswordChangedEmail(entity);
     return res.json({ success: true, message: 'Senha alterada. Entre novamente com a nova senha.' });
   } catch (error) {
     return next(error);
@@ -124,7 +124,7 @@ router.put('/password', auth, resetPasswordLimiter, async (req, res, next) => {
     account.sessionVersion = (account.sessionVersion || 0) + 1;
     await account.save();
 
-    await sendPasswordChangedEmail(account);
+    void sendPasswordChangedEmail(account);
     return res.json({ success: true, message: 'Senha alterada. Entre novamente com a nova senha.' });
   } catch (error) {
     return next(error);

@@ -208,7 +208,7 @@ router.post('/', auth, async (req, res, next) => {
     await athlete.save();
 
     const entity = await Entity.findById(resolvedEntityId).select('name email');
-    if (entity) await sendAthleteRegistrationEmail(entity, athlete);
+    if (entity) void sendAthleteRegistrationEmail(entity, athlete);
     res.status(201).json({ success: true, athlete: await serializeAthlete(athlete) });
   } catch (error) {
     next(error);
