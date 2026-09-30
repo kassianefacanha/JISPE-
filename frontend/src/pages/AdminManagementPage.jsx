@@ -128,9 +128,14 @@ export default function AdminManagementPage() {
   const updateEntityStatus = async (id, status) => {
     try {
       const action = status === 'approved' ? 'approve' : 'reject';
-      await api.patch(`/entities/${id}/${action}`);
+      const response = await api.patch(`/entities/${id}/${action}`);
       await loadData();
-      notify('Status da entidade atualizado com sucesso.', 'success');
+      notify(
+        response.data.emailSent === false
+          ? 'Status atualizado, mas o e-mail não foi enviado. Verifique a configuração SMTP.'
+          : 'Status da entidade atualizado com sucesso.',
+        response.data.emailSent === false ? 'warning' : 'success'
+      );
     } catch (error) {
       notify(getApiErrorMessage(error, 'Erro ao alterar status.'));
     }

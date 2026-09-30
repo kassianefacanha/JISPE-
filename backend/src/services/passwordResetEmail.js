@@ -18,6 +18,9 @@ const createTransport = () => nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT),
   secure: process.env.SMTP_SECURE === 'true',
+  connectionTimeout: 15_000,
+  greetingTimeout: 15_000,
+  socketTimeout: 20_000,
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
@@ -47,7 +50,13 @@ const sendNotification = async (eventName, message) => {
     await sendEmail(message);
     return true;
   } catch (error) {
-    console.error(`Transactional email failed (${eventName}): ${error.name || 'error'}`);
+    console.error(`Transactional email failed (${eventName}):`, {
+      name: error.name || 'Error',
+      code: error.code || 'UNKNOWN',
+      responseCode: error.responseCode,
+      command: error.command,
+      message: error.message,
+    });
     return false;
   }
 };
