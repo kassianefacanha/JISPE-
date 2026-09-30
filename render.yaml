@@ -29,17 +29,9 @@ services:
         sync: false
       - key: R2_BUCKET_NAME
         value: jispe-arquivos-prod
-      - key: SMTP_HOST
+      - key: RESEND_API_KEY
         sync: false
-      - key: SMTP_PORT
-        sync: false
-      - key: SMTP_SECURE
-        sync: false
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASS
-        sync: false
-      - key: SMTP_FROM
+      - key: RESEND_FROM
         sync: false
       - key: FRONTEND_URL
         sync: false

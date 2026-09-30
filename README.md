@@ -67,7 +67,7 @@ npm --prefix backend run check:r2
 
 O teste cria um objeto temporário, lê e compara o conteúdo, e o apaga ao terminar. Ele precisa de permissão de leitura e gravação no bucket.
 
-Para e-mails transacionais, configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` e `SMTP_FROM` localmente e no Render. Use credenciais SMTP de um provedor de e-mail; não reutilize a senha da conta de e-mail. O sistema envia confirmações de cadastro da entidade e do atleta, avisos de aprovação/rejeição e alertas de alteração de senha. A redefinição está disponível para entidades, usa token de uso único válido por 30 minutos e revoga sessões antigas. Falhas no envio são registradas sem desfazer o cadastro, alteração ou decisão já concluída.
+Para e-mails transacionais, configure `RESEND_API_KEY` e `RESEND_FROM` localmente e no Render. O remetente deve usar um domínio verificado no Resend. O sistema envia confirmações de cadastro da entidade e do atleta, avisos de aprovação/rejeição e alertas de alteração de senha. A redefinição está disponível para entidades, usa token de uso único válido por 30 minutos e revoga sessões antigas. Os envios usam a API HTTPS do Resend e ocorrem em segundo plano; falhas são registradas sem desfazer o cadastro, alteração ou decisão já concluída.
 
 O script de migração roda primeiro em simulação:
 

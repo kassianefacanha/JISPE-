@@ -1,38 +1,12 @@
-const dns = require('node:dns').promises;
-const { isIP } = require('node:net');
-const nodemailer = require('nodemailer');
-
 const isEmailConfigured = () => Boolean(
-  process.env.SMTP_HOST
-  && process.env.SMTP_PORT
-  && process.env.SMTP_USER
-  && process.env.SMTP_PASS
-  && process.env.SMTP_FROM
+  process.env.RESEND_API_KEY
+  && process.env.RESEND_FROM
 );
 
 const assertEmailConfigured = () => {
   if (!isEmailConfigured()) {
-    throw new Error('Configure SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS e SMTP_FROM para envio de e-mail.');
+    throw new Error('Configure RESEND_API_KEY e RESEND_FROM para envio de e-mail.');
   }
-};
-
-const createTransport = async () => {
-  const host = process.env.SMTP_HOST.trim();
-  const address = isIP(host) ? host : (await dns.lookup(host, { family: 4 })).address;
-
-  return nodemailer.createTransport({
-    host: address,
-    port: Number(process.env.SMTP_PORT),
-    secure: process.env.SMTP_SECURE === 'true',
-    tls: isIP(host) ? undefined : { servername: host },
-    connectionTimeout: 15_000,
-    greetingTimeout: 15_000,
-    socketTimeout: 20_000,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
 };
 
 const escapeHtml = (value = '') => String(value).replace(/[&<>"']/g, (character) => ({
@@ -45,12 +19,31 @@ const escapeHtml = (value = '') => String(value).replace(/[&<>"']/g, (character)
 
 const sendEmail = async ({ to, subject, text, html }) => {
   assertEmailConfigured();
-  const transport = await createTransport();
-  try {
-    await transport.sendMail({ from: process.env.SMTP_FROM, to, subject, text, html });
-  } finally {
-    transport.close();
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: process.env.RESEND_FROM,
+      to: [to],
+      subject,
+      text,
+      html,
+    }),
+    signal: AbortSignal.timeout(15_000),
+  });
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(result.message || `Resend API respondeu com HTTP ${response.status}.`);
+    error.code = result.name || `HTTP_${response.status}`;
+    error.responseCode = response.status;
+    throw error;
   }
+
+  return result;
 };
 
 const sendNotification = async (eventName, message) => {
@@ -62,7 +55,6 @@ const sendNotification = async (eventName, message) => {
       name: error.name || 'Error',
       code: error.code || 'UNKNOWN',
       responseCode: error.responseCode,
-      command: error.command,
       message: error.message,
     });
     return false;
