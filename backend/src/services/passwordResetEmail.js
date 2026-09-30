@@ -1,3 +1,5 @@
+const dns = require('node:dns').promises;
+const { isIP } = require('node:net');
 const nodemailer = require('nodemailer');
 
 const isEmailConfigured = () => Boolean(
@@ -14,19 +16,24 @@ const assertEmailConfigured = () => {
   }
 };
 
-const createTransport = () => nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT),
-  secure: process.env.SMTP_SECURE === 'true',
-  family: 4,
-  connectionTimeout: 15_000,
-  greetingTimeout: 15_000,
-  socketTimeout: 20_000,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+const createTransport = async () => {
+  const host = process.env.SMTP_HOST.trim();
+  const address = isIP(host) ? host : (await dns.lookup(host, { family: 4 })).address;
+
+  return nodemailer.createTransport({
+    host: address,
+    port: Number(process.env.SMTP_PORT),
+    secure: process.env.SMTP_SECURE === 'true',
+    tls: isIP(host) ? undefined : { servername: host },
+    connectionTimeout: 15_000,
+    greetingTimeout: 15_000,
+    socketTimeout: 20_000,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+};
 
 const escapeHtml = (value = '') => String(value).replace(/[&<>"']/g, (character) => ({
   '&': '&amp;',
@@ -38,7 +45,7 @@ const escapeHtml = (value = '') => String(value).replace(/[&<>"']/g, (character)
 
 const sendEmail = async ({ to, subject, text, html }) => {
   assertEmailConfigured();
-  const transport = createTransport();
+  const transport = await createTransport();
   try {
     await transport.sendMail({ from: process.env.SMTP_FROM, to, subject, text, html });
   } finally {
