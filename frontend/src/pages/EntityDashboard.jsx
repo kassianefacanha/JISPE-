@@ -92,7 +92,7 @@ export default function EntityDashboard() {
 
   const searchValue = searchTerm.trim().toLocaleLowerCase('pt-BR');
   const filteredAthletes = athletes.filter((athlete) => (
-    !searchValue || [athlete.fullName, athlete.matricula, athlete.cpf, athlete.email, athlete.phone, athlete.modality]
+    !searchValue || [athlete.fullName, athlete.matricula, athlete.cpf, athlete.email, athlete.phone, athlete.modality, ...(athlete.modalities || [])]
       .some((value) => String(value || '').toLocaleLowerCase('pt-BR').includes(searchValue))
   ));
 
@@ -103,7 +103,7 @@ export default function EntityDashboard() {
     cpf: athlete.cpf || '—',
     email: athlete.email || '—',
     phone: athlete.phone || '—',
-    modality: athlete.modality || '—',
+    modality: (athlete.modalities?.length ? athlete.modalities : [athlete.modality]).filter(Boolean).join(', ') || '—',
     naipe: athlete.naipe || athlete.gender || '—',
     birthDate: formatBirthDate(athlete.birthDate),
   }));
@@ -367,7 +367,7 @@ export default function EntityDashboard() {
               ['Matrícula', detailAthlete?.matricula],
               ['E-mail', detailAthlete?.email],
               ['Telefone', detailAthlete?.phone],
-              ['Modalidade', detailAthlete?.modality],
+              ['Modalidades', (detailAthlete?.modalities?.length ? detailAthlete.modalities : [detailAthlete?.modality]).filter(Boolean).join(', ')],
               ['Naipe', detailAthlete?.naipe || detailAthlete?.gender],
               ['Categoria', detailAthlete?.ageCategory],
               ['Data de nascimento', formatBirthDate(detailAthlete?.birthDate)],

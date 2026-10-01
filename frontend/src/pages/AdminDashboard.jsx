@@ -243,8 +243,8 @@ export default function AdminDashboard() {
       athletes.map((athlete) => String(athlete.entityId?._id || athlete.entityId || '')).filter(Boolean)
     );
     const modalityCounts = athletes.reduce((counts, athlete) => {
-      const modality = String(athlete.modality || '').trim();
-      if (modality) counts.set(modality, (counts.get(modality) || 0) + 1);
+      const modalities = [...new Set([athlete.modality, ...(athlete.modalities || [])].filter(Boolean))];
+      modalities.forEach((modality) => counts.set(modality, (counts.get(modality) || 0) + 1));
       return counts;
     }, new Map());
     const representedModalities = modalityCounts.size;
@@ -482,7 +482,7 @@ export default function AdminDashboard() {
     cpf: athlete.cpf || '—',
     email: athlete.email || '—',
     phone: athlete.phone || '—',
-    modality: athlete.modality || '—',
+    modality: (athlete.modalities?.length ? athlete.modalities : [athlete.modality]).filter(Boolean).join(', ') || '—',
     naipe: athlete.naipe || '—',
     birthDate: formatBirthDate(athlete.birthDate),
   }));

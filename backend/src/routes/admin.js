@@ -89,7 +89,8 @@ router.get('/entities/:entityId/modality-rules', auth, adminOnly, async (req, re
         categories: modality.categories || [],
         enabled: savedRule?.enabled ?? true,
         maxAthletes: savedRule ? savedRule.maxAthletes : officialLimit,
-        registeredCount: athletes.filter((athlete) => aliases.includes(String(athlete.modality || '').trim().toLowerCase())).length,
+        registeredCount: athletes.filter((athlete) => [athlete.modality, ...(athlete.modalities || [])]
+          .some((name) => aliases.includes(String(name || '').trim().toLowerCase()))).length,
       };
     });
 

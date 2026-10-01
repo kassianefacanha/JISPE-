@@ -17,6 +17,7 @@ const { defaultModalities } = require('../config/defaultModalities');
 const { validateUploadedAsset } = require('../utils/uploadValidation');
 const { deleteAsset, deleteReplacedAsset, getAssetBuffer, getAssetUrl, isR2Value, isSameStoredAsset, storeAsset } = require('../services/r2Storage');
 const { sendAthleteRegistrationEmail } = require('../services/passwordResetEmail');
+const { raceAliases, releaseRaceRegistration, reserveRaceRegistration } = require('../services/raceRegistration');
 
 const maxBadgePhotoBytes = 5 * 1024 * 1024;
 const dataImagePattern = /^data:image\/(?:png|jpe?g|webp);base64,([A-Za-z0-9+/]+={0,2})$/i;
@@ -67,6 +68,7 @@ const fetchImageBuffer = async (value) => {
 
 const serializeAthlete = async (athlete) => {
   const payload = athlete.toObject();
+  payload.modalities = payload.modalities?.length ? payload.modalities : [payload.modality].filter(Boolean);
   payload.photoUrl = await getAssetUrl(payload.photoUrl);
   payload.proofUrl = await getAssetUrl(payload.proofUrl, { download: true });
   return payload;
@@ -122,11 +124,16 @@ router.post('/', auth, async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Acesso restrito à entidade ou ao administrador' });
     }
 
-    const { entityId, cpf, fullName, birthDate, phone, email, gender, naipe, modality, photoUrl, proofUrl } = req.body;
+    const { entityId, cpf, fullName, birthDate, phone, email, gender, naipe, modality, modalities, photoUrl, proofUrl } = req.body;
     const resolvedEntityId = req.user.type === 'entity' ? req.user.id : entityId;
     const resolvedNaipe = naipe || gender || 'masculino';
+    const requestedModalities = Array.isArray(modalities) ? modalities : [modality].filter(Boolean);
+    const modalityDefinitions = await Promise.all([...new Set(requestedModalities
+      .filter((value) => typeof value === 'string')
+      .map((value) => value.trim())
+      .filter(Boolean))].map(getModalityDefinition));
 
-    if (!resolvedEntityId || !cpf || !fullName || !birthDate || !phone || !email || !modality || !resolvedNaipe || !photoUrl || !proofUrl) {
+    if (!resolvedEntityId || !cpf || !fullName || !birthDate || !phone || !email || !modalityDefinitions.length || !resolvedNaipe || !photoUrl || !proofUrl) {
       return res.status(400).json({ success: false, message: 'Todos os campos do atleta são obrigatórios' });
     }
 
@@ -141,11 +148,10 @@ router.post('/', auth, async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'O atleta precisa já ter completado 18 anos para se cadastrar.' });
     }
 
-    const modalityDefinition = await getModalityDefinition(modality);
-    if (!modalityDefinition) {
+    if (modalityDefinitions.some((definition) => !definition)) {
       return res.status(400).json({ success: false, message: 'Selecione uma modalidade válida.' });
     }
-    if (!modalityDefinition.genders?.includes(resolvedNaipe)) {
+    if (modalityDefinitions.some((definition) => !definition.genders?.includes(resolvedNaipe))) {
       return res.status(400).json({ success: false, message: 'O naipe selecionado não é permitido nesta modalidade.' });
     }
 
@@ -155,28 +161,30 @@ router.post('/', auth, async (req, res, next) => {
         return res.status(403).json({ success: false, message: 'O cadastro de atletas está temporariamente fechado.' });
       }
 
-      const modalityRule = await EntityModalityRule.findOne({
-        entityId: resolvedEntityId,
-        modalitySlug: modalityDefinition.slug,
-      }).lean();
-      if (modalityRule?.enabled === false) {
-        return res.status(403).json({ success: false, message: 'O cadastro de atletas nesta modalidade está bloqueado para sua entidade.' });
-      }
+      for (const modalityDefinition of modalityDefinitions) {
+        const modalityRule = await EntityModalityRule.findOne({
+          entityId: resolvedEntityId,
+          modalitySlug: modalityDefinition.slug,
+        }).lean();
+        if (modalityRule?.enabled === false) {
+          return res.status(403).json({ success: false, message: `O cadastro de atletas em ${modalityDefinition.name} está bloqueado para sua entidade.` });
+        }
 
-      const officialLimit = modalityDefinition.maxTeamsPerEntity && modalityDefinition.maxAthletesPerTeam
-        ? modalityDefinition.maxTeamsPerEntity * modalityDefinition.maxAthletesPerTeam
-        : null;
-      const modalityLimit = modalityRule ? modalityRule.maxAthletes : officialLimit;
-      const modalityAliases = [modalityDefinition.name, modalityDefinition.slug, ...(modalityDefinition.legacyNames || []), ...(modalityDefinition.legacySlugs || [])];
-      const registeredCount = await Athlete.countDocuments({
-        entityId: resolvedEntityId,
-        modality: { $in: modalityAliases },
-      });
-      if (modalityLimit != null && registeredCount >= modalityLimit) {
-        return res.status(403).json({
-          success: false,
-          message: `Sua entidade atingiu o limite de ${modalityLimit} atletas para ${modalityDefinition.name}.`,
+        const officialLimit = modalityDefinition.maxTeamsPerEntity && modalityDefinition.maxAthletesPerTeam
+          ? modalityDefinition.maxTeamsPerEntity * modalityDefinition.maxAthletesPerTeam
+          : null;
+        const modalityLimit = modalityRule ? modalityRule.maxAthletes : officialLimit;
+        const modalityAliases = [modalityDefinition.name, modalityDefinition.slug, ...(modalityDefinition.legacyNames || []), ...(modalityDefinition.legacySlugs || [])];
+        const registeredCount = await Athlete.countDocuments({
+          entityId: resolvedEntityId,
+          $or: [{ modality: { $in: modalityAliases } }, { modalities: { $in: modalityAliases } }],
         });
+        if (modalityLimit != null && registeredCount >= modalityLimit) {
+          return res.status(403).json({
+            success: false,
+            message: `Sua entidade atingiu o limite de ${modalityLimit} atletas para ${modalityDefinition.name}.`,
+          });
+        }
       }
     }
 
@@ -186,8 +194,9 @@ router.post('/', auth, async (req, res, next) => {
     }
 
     const matricula = await generateMatricula();
-    const category = getAgeCategory(birthDate, modality, modalityDefinition.categories || []);
-
+    const primaryModality = modalityDefinitions[0];
+    const modalityNames = modalityDefinitions.map((definition) => definition.name);
+    const category = getAgeCategory(birthDate, primaryModality.name, primaryModality.categories || []);
     const athlete = new Athlete({
       entityId: resolvedEntityId,
       cpf,
@@ -197,15 +206,31 @@ router.post('/', auth, async (req, res, next) => {
       phone,
       email,
       proofUrl,
-      modality,
+      modality: primaryModality.name,
+      modalities: modalityNames,
       naipe: resolvedNaipe,
       gender: resolvedNaipe,
       ageCategory: category,
       matricula,
     });
-    athlete.photoUrl = await storeAsset(photoUrl, `athletes/${athlete._id}/photo`);
-    athlete.proofUrl = await storeAsset(proofUrl, `athletes/${athlete._id}/proof`);
-    await athlete.save();
+    const hasRaceModality = modalityNames.some((name) => raceAliases.includes(name));
+    let raceReserved = false;
+    if (hasRaceModality) {
+      const reservation = await reserveRaceRegistration(athlete._id);
+      if (reservation.full) {
+        return res.status(409).json({ success: false, message: 'As inscrições para a corrida foram encerradas: limite de 3.000 corredores atingido.' });
+      }
+      raceReserved = reservation.reserved;
+    }
+
+    try {
+      athlete.photoUrl = await storeAsset(photoUrl, `athletes/${athlete._id}/photo`);
+      athlete.proofUrl = await storeAsset(proofUrl, `athletes/${athlete._id}/proof`);
+      await athlete.save();
+    } catch (error) {
+      if (raceReserved) await releaseRaceRegistration(athlete._id);
+      throw error;
+    }
 
     const entity = await Entity.findById(resolvedEntityId).select('name email');
     if (entity) void sendAthleteRegistrationEmail(entity, athlete);
@@ -230,22 +255,32 @@ router.put('/:id', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Atleta não encontrado' });
     }
 
-    const { entityId, cpf, fullName, birthDate, photoUrl, phone, email, gender, naipe, modality, proofUrl } = req.body;
+    const { entityId, cpf, fullName, birthDate, photoUrl, phone, email, gender, naipe, modality, modalities, proofUrl } = req.body;
     const assetError = (photoUrl !== undefined && !isSameStoredAsset(photoUrl, athlete.photoUrl) && validateUploadedAsset(photoUrl, 'photo'))
       || (proofUrl !== undefined && !isSameStoredAsset(proofUrl, athlete.proofUrl) && validateUploadedAsset(proofUrl, 'proof'));
     if (assetError) return res.status(400).json({ success: false, message: assetError });
     const resolvedNaipe = naipe || gender || athlete.naipe || athlete.gender;
-    const resolvedModality = modality || athlete.modality;
+    const requestedModalities = Array.isArray(modalities)
+      ? modalities
+      : modality ? [modality] : athlete.modalities?.length ? athlete.modalities : [athlete.modality];
+    const modalityDefinitions = await Promise.all([...new Set(requestedModalities
+      .filter((value) => typeof value === 'string')
+      .map((value) => value.trim())
+      .filter(Boolean))].map(getModalityDefinition));
+    const resolvedModalityDefinitions = modalityDefinitions.filter(Boolean);
+    const resolvedModalities = resolvedModalityDefinitions.map((definition) => definition.name);
+    const resolvedModality = resolvedModalities[0];
+    const hadRaceModality = [athlete.modality, ...(athlete.modalities || [])].some((name) => raceAliases.includes(name));
+    const hasRaceModality = resolvedModalities.some((name) => raceAliases.includes(name));
     const resolvedBirthDate = birthDate || athlete.birthDate;
     if (!hasCompletedMinimumAge(resolvedBirthDate)) {
       return res.status(400).json({ success: false, message: 'O atleta precisa já ter completado 18 anos.' });
     }
 
-    const modalityDefinition = await getModalityDefinition(resolvedModality);
-    if (!modalityDefinition) {
+    if (!resolvedModalities.length || resolvedModalityDefinitions.length !== modalityDefinitions.length) {
       return res.status(400).json({ success: false, message: 'Selecione uma modalidade válida.' });
     }
-    if (!modalityDefinition.genders?.includes(resolvedNaipe)) {
+    if (resolvedModalityDefinitions.some((definition) => !definition.genders?.includes(resolvedNaipe))) {
       return res.status(400).json({ success: false, message: 'O naipe selecionado não é permitido nesta modalidade.' });
     }
     const payload = {
@@ -257,8 +292,8 @@ router.put('/:id', auth, async (req, res, next) => {
       ...(email ? { email } : {}),
       ...(proofUrl ? { proofUrl: await storeAsset(proofUrl, `athletes/${athlete._id}/proof`, athlete.proofUrl) } : {}),
       ...(resolvedNaipe ? { gender: resolvedNaipe, naipe: resolvedNaipe } : {}),
-      ...(resolvedModality ? { modality: resolvedModality } : {}),
-      ageCategory: getAgeCategory(resolvedBirthDate, resolvedModality, modalityDefinition.categories || []),
+      ...(resolvedModality ? { modality: resolvedModality, modalities: resolvedModalities } : {}),
+      ageCategory: getAgeCategory(resolvedBirthDate, resolvedModality, resolvedModalityDefinitions[0].categories || []),
     };
 
     if (req.user.type === 'admin' && entityId && String(entityId) !== String(athlete.entityId)) {
@@ -284,7 +319,23 @@ router.put('/:id', auth, async (req, res, next) => {
       }
     }
 
-    const updated = await Athlete.findByIdAndUpdate(req.params.id, payload, { new: true });
+    let raceReserved = false;
+    if (hasRaceModality && !hadRaceModality) {
+      const reservation = await reserveRaceRegistration(athlete._id);
+      if (reservation.full) {
+        return res.status(409).json({ success: false, message: 'As inscrições para a corrida foram encerradas: limite de 3.000 corredores atingido.' });
+      }
+      raceReserved = reservation.reserved;
+    }
+
+    let updated;
+    try {
+      updated = await Athlete.findByIdAndUpdate(req.params.id, payload, { new: true });
+    } catch (error) {
+      if (raceReserved) await releaseRaceRegistration(athlete._id);
+      throw error;
+    }
+    if (hadRaceModality && !hasRaceModality) await releaseRaceRegistration(athlete._id);
     await Promise.all([
       deleteReplacedAsset(athlete.photoUrl, updated.photoUrl),
       deleteReplacedAsset(athlete.proofUrl, updated.proofUrl),
@@ -306,6 +357,10 @@ router.delete('/:id', auth, async (req, res, next) => {
 
     if (!athlete) {
       return res.status(404).json({ success: false, message: 'Atleta não encontrado' });
+    }
+
+    if (raceAliases.includes(athlete.modality) || athlete.modalities?.some((name) => raceAliases.includes(name))) {
+      await releaseRaceRegistration(athlete._id);
     }
 
     await Promise.all([deleteAsset(athlete.photoUrl), deleteAsset(athlete.proofUrl)]);
@@ -405,7 +460,7 @@ router.get('/:id/badge', auth, async (req, res, next) => {
 
     drawField('Matrícula', athlete.matricula, infoX, photoY + 51, infoWidth);
     drawField('Categoria', athlete.ageCategory || 'adulto', infoX, photoY + 79, infoWidth);
-    drawField('Modalidade', athlete.modality, infoX, photoY + 107, infoWidth);
+    drawField('Modalidade', (athlete.modalities?.length ? athlete.modalities : [athlete.modality]).join(', '), infoX, photoY + 107, infoWidth);
     drawField('Naipe', naipeLabel, infoX, photoY + 135, infoWidth);
 
     doc.fillColor('#1f2937').fontSize(9.5).font('Helvetica-Bold')
@@ -436,16 +491,33 @@ router.post('/:id/registrations', auth, async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'O atleta precisa já ter completado 18 anos para realizar inscrições.' });
     }
 
-    const categories = await getModalityCategories(modality);
+    const modalityDefinition = await getModalityDefinition(modality);
+    if (!modalityDefinition) return res.status(400).json({ success: false, message: 'Selecione uma modalidade válida.' });
 
-    const registration = await Registration.create({
-      athleteId: athlete._id,
-      entityId: req.user.id,
-      modality,
-      gender,
-      category: getAgeCategory(athlete.birthDate, modality, categories),
-      status: 'pending',
-    });
+    const isRaceRegistration = raceAliases.some((alias) => String(alias).toLowerCase() === String(modality).trim().toLowerCase());
+    let raceReserved = false;
+    if (isRaceRegistration) {
+      const reservation = await reserveRaceRegistration(athlete._id);
+      if (reservation.full) {
+        return res.status(409).json({ success: false, message: 'As inscrições para a corrida foram encerradas: limite de 3.000 corredores atingido.' });
+      }
+      raceReserved = reservation.reserved;
+    }
+
+    let registration;
+    try {
+      registration = await Registration.create({
+        athleteId: athlete._id,
+        entityId: req.user.id,
+        modality: modalityDefinition.name,
+        gender,
+        category: getAgeCategory(athlete.birthDate, modalityDefinition.name, modalityDefinition.categories || []),
+        status: 'pending',
+      });
+    } catch (error) {
+      if (raceReserved) await RegistrationControls.updateOne({ _id: 'global' }, { $inc: { raceRegistrationCount: -1 } });
+      throw error;
+    }
 
     res.status(201).json({ success: true, registration });
   } catch (error) {

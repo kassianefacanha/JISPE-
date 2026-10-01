@@ -78,8 +78,8 @@ const sendEntityRegistrationEmail = (entity) => sendNotification('entity-registr
 const sendAthleteRegistrationEmail = (entity, athlete) => sendNotification('athlete-registration', {
   to: entity.email,
   subject: 'Confirmação de cadastro de atleta | JISPE 2026',
-  text: `Prezada ${entity.name},\n\nConfirmamos o cadastro do(a) atleta ${athlete.fullName}, matrícula ${athlete.matricula}, na modalidade ${athlete.modality}.\n\nAtenciosamente,\nEquipe JISPE 2026`,
-  html: `<p>Prezada ${escapeHtml(entity.name)},</p><p>Confirmamos o cadastro do(a) atleta <strong>${escapeHtml(athlete.fullName)}</strong>, matrícula <strong>${escapeHtml(athlete.matricula)}</strong>, na modalidade ${escapeHtml(athlete.modality)}.</p><p>Atenciosamente,<br>Equipe JISPE 2026</p>`,
+  text: `Prezada ${entity.name},\n\nConfirmamos o cadastro do(a) atleta ${athlete.fullName}, matrícula ${athlete.matricula}, nas modalidades ${(athlete.modalities?.length ? athlete.modalities : [athlete.modality]).join(', ')}.\n\nAtenciosamente,\nEquipe JISPE 2026`,
+  html: `<p>Prezada ${escapeHtml(entity.name)},</p><p>Confirmamos o cadastro do(a) atleta <strong>${escapeHtml(athlete.fullName)}</strong>, matrícula <strong>${escapeHtml(athlete.matricula)}</strong>, nas modalidades ${escapeHtml((athlete.modalities?.length ? athlete.modalities : [athlete.modality]).join(', '))}.</p><p>Atenciosamente,<br>Equipe JISPE 2026</p>`,
 });
 
 const sendPasswordChangedEmail = (account) => sendNotification('password-changed', {

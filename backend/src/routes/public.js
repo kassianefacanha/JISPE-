@@ -2,6 +2,7 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 const Athlete = require('../models/Athlete');
 const RegistrationControls = require('../models/RegistrationControls');
+const { getRaceRegistrationCount, raceRegistrationLimit } = require('../services/raceRegistration');
 const { getAssetUrl } = require('../services/r2Storage');
 
 const router = express.Router();
@@ -16,10 +17,14 @@ const badgeLookupLimiter = rateLimit({
 router.get('/registration-status', async (req, res, next) => {
   try {
     const controls = await RegistrationControls.findById('global').lean();
+    const raceRegistrationCount = await getRaceRegistrationCount();
     res.json({
       success: true,
       entityRegistrationOpen: controls?.entityRegistrationOpen !== false,
       athleteRegistrationOpen: controls?.athleteRegistrationOpen !== false,
+      raceRegistrationOpen: raceRegistrationCount < raceRegistrationLimit,
+      raceRegistrationCount,
+      raceRegistrationLimit,
     });
   } catch (error) {
     next(error);
@@ -51,7 +56,7 @@ router.get('/validate/:matricula', badgeLookupLimiter, async (req, res, next) =>
         photoUrl: await getAssetUrl(athlete.photoUrl),
         matricula: athlete.matricula,
         ageCategory: athlete.ageCategory,
-        modality: athlete.modality,
+        modality: athlete.modalities?.length ? athlete.modalities.join(', ') : athlete.modality,
         naipe: athlete.naipe,
         entity: entityName,
         status: 'Ativo',

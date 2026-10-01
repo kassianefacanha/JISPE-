@@ -6,9 +6,11 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Container,
   Divider,
   Grid,
+  ListItemText,
   MenuItem,
   Paper,
   Stack,
@@ -30,7 +32,7 @@ const emptyForm = {
   phone: '',
   email: '',
   proofUrl: '',
-  modality: '',
+  modalities: [],
   naipe: '',
 };
 
@@ -73,14 +75,16 @@ export default function EntityAthleteCreatePage() {
   const [uploadInfo, setUploadInfo] = useState({ photo: '', proof: '' });
   const [saving, setSaving] = useState(false);
   const [athleteRegistrationOpen, setAthleteRegistrationOpen] = useState(true);
+  const [raceRegistrationOpen, setRaceRegistrationOpen] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const selectedModality = modalities.find((modality) =>
-    (modality.name || modality.slug) === form.modality || modality.legacyNames?.includes(form.modality)
+  const selectedModalities = modalities.filter((modality) =>
+    form.modalities.includes(modality.name || modality.slug) || modality.legacyNames?.some((name) => form.modalities.includes(name))
   );
-  const ageCategories = selectedModality?.categories || [];
-  const allowedGenders = selectedModality?.genders || [];
-  const calculatedAgeCategory = getAutomaticAgeCategory(form.birthDate, form.modality, ageCategories);
+  const ageCategories = selectedModalities[0]?.categories || [];
+  const allowedGenders = selectedModalities.reduce((genders, modality) =>
+    genders.filter((gender) => modality.genders?.includes(gender)), selectedModalities[0]?.genders || []);
+  const calculatedAgeCategory = getAutomaticAgeCategory(form.birthDate, form.modalities[0], ageCategories);
 
   useEffect(() => {
     api.get('/modalities')
@@ -90,7 +94,10 @@ export default function EntityAthleteCreatePage() {
 
   useEffect(() => {
     api.get('/public/registration-status')
-      .then((response) => setAthleteRegistrationOpen(response.data.athleteRegistrationOpen !== false))
+      .then((response) => {
+        setAthleteRegistrationOpen(response.data.athleteRegistrationOpen !== false);
+        setRaceRegistrationOpen(response.data.raceRegistrationOpen !== false);
+      })
       .catch(() => {});
   }, []);
 
@@ -111,7 +118,7 @@ export default function EntityAthleteCreatePage() {
           phone: athlete.phone || '',
           email: athlete.email || '',
           proofUrl: athlete.proofUrl || '',
-          modality: athlete.modality || '',
+          modalities: athlete.modalities?.length ? athlete.modalities : [athlete.modality].filter(Boolean),
           naipe: athlete.naipe || athlete.gender || '',
         });
         setUploadInfo({
@@ -155,7 +162,7 @@ export default function EntityAthleteCreatePage() {
     if (!hasCompletedMinimumAge(form.birthDate)) return setError('O atleta precisa já ter completado 18 anos para se cadastrar.');
     if (!isValidPhone(form.phone)) return setError('Informe um telefone válido com DDD (10 ou 11 dígitos).');
     if (!isValidEmail(form.email)) return setError('Informe um e-mail válido do atleta.');
-    if (!form.modality) return setError('Selecione a modalidade do atleta.');
+    if (!form.modalities.length) return setError('Selecione ao menos uma modalidade para o atleta.');
     if (!form.photoUrl) return setError('Selecione a foto do atleta.');
     if (!form.proofUrl) return setError('Selecione o comprovante do atleta.');
 
@@ -205,6 +212,7 @@ export default function EntityAthleteCreatePage() {
             <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>{isEditing ? 'Editar dados do atleta' : 'Dados do atleta'}</Typography>
             <Box component="form" onSubmit={handleSubmit} noValidate>
               {!athleteRegistrationOpen && !isEditing && <Alert severity="warning" sx={{ mb: 2 }}>O cadastro de atletas está temporariamente fechado pelo administrador.</Alert>}
+              {!raceRegistrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>As inscrições para a corrida foram encerradas: limite de 3.000 corredores atingido.</Alert>}
               {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
               {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
@@ -225,19 +233,22 @@ export default function EntityAthleteCreatePage() {
                   <TextField fullWidth required type="email" label="E-mail" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} error={Boolean(error && !isValidEmail(form.email))} helperText={error && !isValidEmail(form.email) ? 'Informe um endereço de e-mail válido.' : ''} />
                 </Grid>
                 <Grid item xs={12} md={4}>
-                  <TextField select fullWidth required label="Modalidade" value={form.modality} onChange={(event) => {
-                    const modalityName = event.target.value;
-                    const nextModality = modalities.find((modality) => (modality.name || modality.slug) === modalityName);
-                    const nextGenders = nextModality?.genders || [];
+                  <TextField select fullWidth required label="Modalidades" value={form.modalities} SelectProps={{ multiple: true, renderValue: (selected) => selected.join(', ') }} onChange={(event) => {
+                    const modalityNames = event.target.value;
+                    const nextModalities = modalities.filter((modality) => modalityNames.includes(modality.name || modality.slug));
+                    const nextGenders = nextModalities.reduce((genders, modality) =>
+                      genders.filter((gender) => modality.genders?.includes(gender)), nextModalities[0]?.genders || []);
                     setForm((current) => ({
                       ...current,
-                      modality: modalityName,
+                      modalities: modalityNames,
                       naipe: nextGenders.includes(current.naipe) ? current.naipe : nextGenders[0] || '',
                     }));
                   }}>
-                    <MenuItem value="">Selecione a modalidade</MenuItem>
                     {modalities.map((modality) => (
-                      <MenuItem key={modality._id || modality.slug} value={modality.name || modality.slug}>{modality.name || modality.slug}</MenuItem>
+                      <MenuItem key={modality._id || modality.slug} value={modality.name || modality.slug} disabled={!raceRegistrationOpen && modality.slug === 'corrida-5km' && !form.modalities.includes(modality.name || modality.slug)}>
+                        <Checkbox checked={form.modalities.includes(modality.name || modality.slug)} size="small" />
+                        <ListItemText primary={modality.name || modality.slug} />
+                      </MenuItem>
                     ))}
                   </TextField>
                 </Grid>

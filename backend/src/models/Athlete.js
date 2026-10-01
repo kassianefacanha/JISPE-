@@ -11,6 +11,7 @@ const athleteSchema = new mongoose.Schema(
     email: { type: String, required: true, lowercase: true, trim: true },
     proofUrl: { type: String, default: '' },
     modality: { type: String, required: true, trim: true },
+    modalities: { type: [{ type: String, trim: true }], default: undefined },
     naipe: { type: String, enum: ['masculino', 'feminino', 'misto'], required: true, default: 'masculino' },
     matricula: { type: String, unique: true, sparse: true },
     ageCategory: { type: String, default: 'adulto' },
