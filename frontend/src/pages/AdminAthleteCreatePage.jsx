@@ -181,7 +181,6 @@ export default function AdminAthleteCreatePage() {
     if (!form.email || !isValidEmail(form.email)) return 'Informe um e-mail válido.';
     if (!form.modalityRegistrations.length || form.modalityRegistrations.some((entry) => !entry.modality)) return 'Selecione uma modalidade para cada inscrição.';
     if (form.modalityRegistrations.some((entry) => !entry.naipe)) return 'Selecione o naipe de cada modalidade.';
-    if (new Set(form.modalityRegistrations.map((entry) => entry.modality)).size !== form.modalityRegistrations.length) return 'Cada modalidade só pode ser adicionada uma vez.';
     if (!form.photoUrl) return 'Selecione a foto do atleta.';
     if (!form.proofUrl) return 'Selecione o comprovante do atleta.';
     if (!form.affiliationProofUrl) return 'Selecione o comprovante de vínculo com o órgão.';

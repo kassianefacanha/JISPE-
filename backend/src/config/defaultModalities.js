@@ -7,9 +7,7 @@ const defaultModalities = [
   { name: 'Natação 50m livre', slug: 'natacao-50m-livre', genders: ['masculino', 'feminino'], categories: ['Adulto (18-35)', 'Master (36+)'], isCollective: false, active: true },
   { name: 'Voleibol de Quadra', slug: 'voleibol-de-quadra', legacySlugs: ['volei'], legacyNames: ['Vôlei'], genders: ['masculino', 'feminino'], categories: ['Aberto'], maxTeamsPerEntity: 3, maxAthletesPerTeam: 12, isCollective: true, active: true },
  
-  { name: 'Vôlei de praia 4x4 Misto', slug: 'volei-de-praia-4x4-misto', genders: ['misto'], categories: ['Aberto'], maxTeamsPerEntity: 3, maxAthletesPerTeam: 4, isCollective: true, active: true },
-  { name: 'Vôlei de praia 4x4 Masculino', slug: 'volei-de-praia-4x4-masculino', genders: ['masculino'], categories: ['Aberto'], maxTeamsPerEntity: 3, maxAthletesPerTeam: 4, isCollective: true, active: true },
-  { name: 'Vôlei de praia 4x4 Feminino', slug: 'volei-de-praia-4x4-feminino', genders: ['feminino'], categories: ['Aberto'], maxTeamsPerEntity: 3, maxAthletesPerTeam: 4, isCollective: true, active: true },
+  { name: 'Vôlei de praia 4x4', slug: 'volei-de-praia-4x4', legacySlugs: ['volei-de-praia-4x4-misto', 'volei-de-praia-4x4-masculino', 'volei-de-praia-4x4-feminino'], legacyNames: ['Vôlei de praia 4x4 Misto', 'Vôlei de praia 4x4 Masculino', 'Vôlei de praia 4x4 Feminino'], genders: ['masculino', 'feminino', 'misto'], categories: ['Aberto'], maxTeamsPerEntity: 3, maxAthletesPerTeam: 4, isCollective: true, active: true },
   { name: 'Tênis de Mesa', slug: 'tenis-de-mesa', genders: ['masculino', 'feminino'], categories: ['Aberto', 'Adulto', 'Master'], maxTeamsPerEntity: 3, isCollective: false, active: true },
   { name: 'Carimba', slug: 'carimba', genders: ['masculino', 'feminino'], categories: ['Aberto'], maxTeamsPerEntity: 3, maxAthletesPerTeam: 15, isCollective: true, active: true },
   { name: 'Handebol', slug: 'handebol', genders: ['masculino', 'feminino'], categories: ['Aberto'], maxTeamsPerEntity: 3, maxAthletesPerTeam: 15, isCollective: true, active: true },

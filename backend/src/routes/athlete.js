@@ -165,9 +165,6 @@ router.post('/', auth, async (req, res, next) => {
     if (requestedModalities.some(isExternalRegistrationModality) || modalityDefinitions.some(isExternalRegistrationModality)) {
       return res.status(400).json({ success: false, message: 'Beach Tennis deve ser inscrito exclusivamente em beachtennisgovce.com.br.' });
     }
-    if (new Set(modalityDefinitions.map((definition) => definition.name)).size !== modalityDefinitions.length) {
-      return res.status(400).json({ success: false, message: 'Cada modalidade só pode ser adicionada uma vez.' });
-    }
     if (modalityDefinitions.some((definition, index) => !definition.genders?.includes(requestedRegistrationEntries[index].naipe))) {
       return res.status(400).json({ success: false, message: 'O naipe selecionado não é permitido na modalidade correspondente.' });
     }
@@ -317,9 +314,6 @@ router.put('/:id', auth, async (req, res, next) => {
       || requestedModalities.some((value) => !value)
       || requestedRegistrationEntries.some((entry) => !entry?.naipe)) {
       return res.status(400).json({ success: false, message: 'Selecione uma modalidade válida.' });
-    }
-    if (new Set(resolvedModalities).size !== resolvedModalities.length) {
-      return res.status(400).json({ success: false, message: 'Cada modalidade só pode ser adicionada uma vez.' });
     }
     const existingModalityNames = [athlete.modality, ...(athlete.modalities || [])];
     if (resolvedModalityDefinitions.some((definition) => isExternalRegistrationModality(definition)

@@ -180,7 +180,6 @@ export default function EntityAthleteCreatePage() {
     if (!isValidEmail(form.email)) return setError('Informe um e-mail válido do atleta.');
     if (!form.modalityRegistrations.length || form.modalityRegistrations.some((entry) => !entry.modality)) return setError('Selecione uma modalidade para cada inscrição.');
     if (form.modalityRegistrations.some((entry) => !entry.naipe)) return setError('Selecione o naipe de cada modalidade.');
-    if (new Set(form.modalityRegistrations.map((entry) => entry.modality)).size !== form.modalityRegistrations.length) return setError('Cada modalidade só pode ser adicionada uma vez.');
     if (!form.photoUrl) return setError('Selecione a foto do atleta.');
     if (!form.proofUrl) return setError('Selecione o comprovante do atleta.');
     if (!form.affiliationProofUrl) return setError('Selecione o comprovante de vínculo com o órgão.');

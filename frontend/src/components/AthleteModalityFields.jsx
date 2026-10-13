@@ -13,13 +13,36 @@ import {
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 
-const legacySwimmingNames = new Set([
+const legacyModalityNames = new Set([
   'natacao-revezamento-masculino',
   'natacao-revezamento-feminino',
   'natacao-revezamento-misto',
   'Natação Revezamento masculino',
   'Natação Revezamento feminino',
   'Natação Revezamento misto',
+  'volei-de-praia-4x4-misto',
+  'volei-de-praia-4x4-masculino',
+  'volei-de-praia-4x4-feminino',
+  'Vôlei de praia 4x4 Misto',
+  'Vôlei de praia 4x4 Masculino',
+  'Vôlei de praia 4x4 Feminino',
+]);
+
+const legacyModalityNamesByCanonical = new Map([
+  ['natacao-revezamento', 'Natação Revezamento'],
+  ['natacao-revezamento-masculino', 'Natação Revezamento'],
+  ['natacao-revezamento-feminino', 'Natação Revezamento'],
+  ['natacao-revezamento-misto', 'Natação Revezamento'],
+  ['Natação Revezamento masculino', 'Natação Revezamento'],
+  ['Natação Revezamento feminino', 'Natação Revezamento'],
+  ['Natação Revezamento misto', 'Natação Revezamento'],
+  ['volei-de-praia-4x4', 'Vôlei de praia 4x4'],
+  ['volei-de-praia-4x4-misto', 'Vôlei de praia 4x4'],
+  ['volei-de-praia-4x4-masculino', 'Vôlei de praia 4x4'],
+  ['volei-de-praia-4x4-feminino', 'Vôlei de praia 4x4'],
+  ['Vôlei de praia 4x4 Misto', 'Vôlei de praia 4x4'],
+  ['Vôlei de praia 4x4 Masculino', 'Vôlei de praia 4x4'],
+  ['Vôlei de praia 4x4 Feminino', 'Vôlei de praia 4x4'],
 ]);
 
 const getModalityDefinition = (modalities, value) => modalities.find((modality) => (
@@ -31,21 +54,17 @@ export const getAthleteModalityRegistrations = (athlete, modalities = []) => {
     ? athlete.modalityRegistrations
     : (athlete.modalities?.length ? athlete.modalities : [athlete.modality].filter(Boolean))
       .map((modality) => ({ modality, naipe: athlete.naipe || athlete.gender || '' }));
-  const uniqueEntries = new Map();
-
-  savedEntries.forEach((entry) => {
+  const entries = savedEntries.map((entry) => {
     const savedName = typeof entry === 'string' ? entry : entry.modality;
     const definition = getModalityDefinition(modalities, savedName);
-    const modality = definition?.name || (legacySwimmingNames.has(savedName) ? 'Natação Revezamento' : savedName);
-    if (modality && !uniqueEntries.has(modality)) {
-      uniqueEntries.set(modality, {
-        modality,
-        naipe: typeof entry === 'string' ? athlete.naipe || athlete.gender || '' : entry.naipe || '',
-      });
-    }
+    const modality = definition?.name || (legacyModalityNames.has(savedName) ? legacyModalityNamesByCanonical.get(savedName) : savedName);
+    return {
+      modality,
+      naipe: typeof entry === 'string' ? athlete.naipe || athlete.gender || '' : entry.naipe || '',
+    };
   });
 
-  return uniqueEntries.size ? [...uniqueEntries.values()] : [{ modality: '', naipe: '' }];
+  return entries.length ? entries : [{ modality: '', naipe: '' }];
 };
 
 export default function AthleteModalityFields({ modalities, entries, raceRegistrationOpen, onChange }) {
@@ -70,12 +89,6 @@ export default function AthleteModalityFields({ modalities, entries, raceRegistr
       <Typography variant="subtitle1" fontWeight={700}>Modalidades e naipes</Typography>
       {entries.map((entry, index) => {
         const definition = getModalityDefinition(modalities, entry.modality);
-        const availableModalities = modalities.filter((modality) => (
-          (modality.name || modality.slug) === entry.modality
-          || !entries.some((otherEntry, otherIndex) => (
-            otherIndex !== index && otherEntry.modality === (modality.name || modality.slug)
-          ))
-        ));
         return (
           <Box key={`${entry.modality || 'new'}-${index}`} sx={{ py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Grid container spacing={2} alignItems="center">
@@ -89,7 +102,7 @@ export default function AthleteModalityFields({ modalities, entries, raceRegistr
                     onChange={(event) => selectModality(index, event.target.value)}
                   >
                     <MenuItem value="">Selecione a modalidade</MenuItem>
-                    {availableModalities.map((modality) => {
+                    {modalities.map((modality) => {
                       const modalityName = modality.name || modality.slug;
                       const isClosedRace = !raceRegistrationOpen && modality.slug === 'corrida-5km' && entry.modality !== modalityName;
                       return (
