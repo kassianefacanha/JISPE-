@@ -10,6 +10,7 @@ import {
   Container,
   Divider,
   FormControl,
+  FormControlLabel,
   Grid,
   InputLabel,
   ListItemText,
@@ -38,6 +39,11 @@ const emptyForm = {
   proofUrl: '',
   modalities: [],
   naipe: '',
+  isPcd: false,
+  hasAllergy: false,
+  allergyDetails: '',
+  hasSpecialCondition: false,
+  specialConditionDetails: '',
   matricula: 'Gerada automaticamente',
 };
 
@@ -136,6 +142,11 @@ export default function AdminAthleteCreatePage() {
             proofUrl: athlete.proofUrl || '',
             modalities: athleteModalities,
             naipe: allowedAthleteGenders.includes(athleteNaipe) ? athleteNaipe : allowedAthleteGenders[0] || '',
+            isPcd: Boolean(athlete.isPcd),
+            hasAllergy: Boolean(athlete.hasAllergy),
+            allergyDetails: athlete.allergyDetails || '',
+            hasSpecialCondition: Boolean(athlete.hasSpecialCondition),
+            specialConditionDetails: athlete.specialConditionDetails || '',
             matricula: athlete.matricula || 'Gerada automaticamente',
           });
           setUploadInfo({
@@ -205,6 +216,11 @@ export default function AdminAthleteCreatePage() {
         modalities: form.modalities,
         naipe: form.naipe,
         gender: form.naipe,
+        isPcd: form.isPcd,
+        hasAllergy: form.hasAllergy,
+        allergyDetails: form.allergyDetails,
+        hasSpecialCondition: form.hasSpecialCondition,
+        specialConditionDetails: form.specialConditionDetails,
       };
 
       if (editId) {
@@ -331,6 +347,21 @@ export default function AdminAthleteCreatePage() {
                 <Grid item xs={12} md={4}>
                   <TextField fullWidth label="Matrícula" value={form.matricula} disabled helperText="A matrícula é gerada automaticamente e não pode ser alterada." />
                 </Grid>
+                <Grid item xs={12}>
+                  <Divider sx={{ my: 1 }} />
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>Informações adicionais</Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <FormControlLabel control={<Checkbox checked={form.isPcd} onChange={(event) => setForm({ ...form, isPcd: event.target.checked })} />} label="Atleta é PCD" />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <FormControlLabel control={<Checkbox checked={form.hasAllergy} onChange={(event) => setForm({ ...form, hasAllergy: event.target.checked, allergyDetails: event.target.checked ? form.allergyDetails : '' })} />} label="Possui alergia" />
+                </Grid>
+                {form.hasAllergy && <Grid item xs={12} md={8}><TextField fullWidth label="Quais alergias?" value={form.allergyDetails} onChange={(event) => setForm({ ...form, allergyDetails: event.target.value })} /></Grid>}
+                <Grid item xs={12} md={4}>
+                  <FormControlLabel control={<Checkbox checked={form.hasSpecialCondition} onChange={(event) => setForm({ ...form, hasSpecialCondition: event.target.checked, specialConditionDetails: event.target.checked ? form.specialConditionDetails : '' })} />} label="Possui condição especial" />
+                </Grid>
+                {form.hasSpecialCondition && <Grid item xs={12} md={8}><TextField fullWidth label="Descreva a condição especial" value={form.specialConditionDetails} onChange={(event) => setForm({ ...form, specialConditionDetails: event.target.value })} /></Grid>}
 
                 <Grid item xs={12}>
                   <Divider sx={{ my: 1 }} />

@@ -16,6 +16,11 @@ const athleteSchema = new mongoose.Schema(
     matricula: { type: String, unique: true, sparse: true },
     ageCategory: { type: String, default: 'adulto' },
     gender: { type: String, enum: ['masculino', 'feminino', 'misto'], required: true, default: 'masculino' },
+    isPcd: { type: Boolean, default: false },
+    hasAllergy: { type: Boolean, default: false },
+    allergyDetails: { type: String, trim: true, default: '' },
+    hasSpecialCondition: { type: Boolean, default: false },
+    specialConditionDetails: { type: String, trim: true, default: '' },
   },
   { timestamps: true }
 );

@@ -951,6 +951,9 @@ function DetailDialog({ detailDialog, setDetailDialog }) {
         ['Data de nascimento', data.birthDate || '—'],
         ['Matrícula', data.matricula],
         ['Entidade', data.entityName || data.entityId],
+        ['PCD', data.isPcd ? 'Sim' : 'Não'],
+        ['Alergia', data.hasAllergy ? data.allergyDetails || 'Sim, sem detalhes informados' : 'Não'],
+        ['Condição especial', data.hasSpecialCondition ? data.specialConditionDetails || 'Sim, sem detalhes informados' : 'Não'],
       ];
 
   const photoUrl = isEntity ? data.responsible?.photoUrl : data.photoUrl;

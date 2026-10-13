@@ -124,7 +124,7 @@ router.post('/', auth, async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Acesso restrito à entidade ou ao administrador' });
     }
 
-    const { entityId, cpf, fullName, birthDate, phone, email, gender, naipe, modality, modalities, photoUrl, proofUrl } = req.body;
+    const { entityId, cpf, fullName, birthDate, phone, email, gender, naipe, modality, modalities, photoUrl, proofUrl, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
     const resolvedEntityId = req.user.type === 'entity' ? req.user.id : entityId;
     const resolvedNaipe = naipe || gender || 'masculino';
     const requestedModalities = Array.isArray(modalities) ? modalities : [modality].filter(Boolean);
@@ -150,6 +150,9 @@ router.post('/', auth, async (req, res, next) => {
 
     if (modalityDefinitions.some((definition) => !definition)) {
       return res.status(400).json({ success: false, message: 'Selecione uma modalidade válida.' });
+    }
+    if (modalityDefinitions.some((definition) => definition.active === false)) {
+      return res.status(400).json({ success: false, message: 'Beach Tennis deve ser inscrito exclusivamente em beachtennisgovce.com.br.' });
     }
     if (modalityDefinitions.some((definition) => !definition.genders?.includes(resolvedNaipe))) {
       return res.status(400).json({ success: false, message: 'O naipe selecionado não é permitido nesta modalidade.' });
@@ -212,6 +215,11 @@ router.post('/', auth, async (req, res, next) => {
       gender: resolvedNaipe,
       ageCategory: category,
       matricula,
+      isPcd: Boolean(isPcd),
+      hasAllergy: Boolean(hasAllergy),
+      allergyDetails: hasAllergy ? allergyDetails || '' : '',
+      hasSpecialCondition: Boolean(hasSpecialCondition),
+      specialConditionDetails: hasSpecialCondition ? specialConditionDetails || '' : '',
     });
     const hasRaceModality = modalityNames.some((name) => raceAliases.includes(name));
     let raceReserved = false;
@@ -255,7 +263,7 @@ router.put('/:id', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Atleta não encontrado' });
     }
 
-    const { entityId, cpf, fullName, birthDate, photoUrl, phone, email, gender, naipe, modality, modalities, proofUrl } = req.body;
+    const { entityId, cpf, fullName, birthDate, photoUrl, phone, email, gender, naipe, modality, modalities, proofUrl, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
     const assetError = (photoUrl !== undefined && !isSameStoredAsset(photoUrl, athlete.photoUrl) && validateUploadedAsset(photoUrl, 'photo'))
       || (proofUrl !== undefined && !isSameStoredAsset(proofUrl, athlete.proofUrl) && validateUploadedAsset(proofUrl, 'proof'));
     if (assetError) return res.status(400).json({ success: false, message: assetError });
@@ -280,6 +288,10 @@ router.put('/:id', auth, async (req, res, next) => {
     if (!resolvedModalities.length || resolvedModalityDefinitions.length !== modalityDefinitions.length) {
       return res.status(400).json({ success: false, message: 'Selecione uma modalidade válida.' });
     }
+    const existingModalityNames = [athlete.modality, ...(athlete.modalities || [])];
+    if (resolvedModalityDefinitions.some((definition) => definition.active === false && !existingModalityNames.includes(definition.name))) {
+      return res.status(400).json({ success: false, message: 'Beach Tennis deve ser inscrito exclusivamente em beachtennisgovce.com.br.' });
+    }
     if (resolvedModalityDefinitions.some((definition) => !definition.genders?.includes(resolvedNaipe))) {
       return res.status(400).json({ success: false, message: 'O naipe selecionado não é permitido nesta modalidade.' });
     }
@@ -293,6 +305,11 @@ router.put('/:id', auth, async (req, res, next) => {
       ...(proofUrl ? { proofUrl: await storeAsset(proofUrl, `athletes/${athlete._id}/proof`, athlete.proofUrl) } : {}),
       ...(resolvedNaipe ? { gender: resolvedNaipe, naipe: resolvedNaipe } : {}),
       ...(resolvedModality ? { modality: resolvedModality, modalities: resolvedModalities } : {}),
+      ...(isPcd !== undefined ? { isPcd: Boolean(isPcd) } : {}),
+      ...(hasAllergy !== undefined ? { hasAllergy: Boolean(hasAllergy), allergyDetails: hasAllergy ? allergyDetails || '' : '' } : {}),
+      ...(allergyDetails !== undefined && hasAllergy === undefined ? { allergyDetails } : {}),
+      ...(hasSpecialCondition !== undefined ? { hasSpecialCondition: Boolean(hasSpecialCondition), specialConditionDetails: hasSpecialCondition ? specialConditionDetails || '' : '' } : {}),
+      ...(specialConditionDetails !== undefined && hasSpecialCondition === undefined ? { specialConditionDetails } : {}),
       ageCategory: getAgeCategory(resolvedBirthDate, resolvedModality, resolvedModalityDefinitions[0].categories || []),
     };
 
@@ -493,6 +510,9 @@ router.post('/:id/registrations', auth, async (req, res, next) => {
 
     const modalityDefinition = await getModalityDefinition(modality);
     if (!modalityDefinition) return res.status(400).json({ success: false, message: 'Selecione uma modalidade válida.' });
+    if (modalityDefinition.active === false) {
+      return res.status(400).json({ success: false, message: 'Beach Tennis deve ser inscrito exclusivamente em beachtennisgovce.com.br.' });
+    }
 
     const isRaceRegistration = raceAliases.some((alias) => String(alias).toLowerCase() === String(modality).trim().toLowerCase());
     let raceReserved = false;

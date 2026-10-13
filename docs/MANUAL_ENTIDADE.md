@@ -9,8 +9,11 @@
 ## Cadastro de atletas
 
 - Informe nome completo, CPF, data de nascimento, gênero, telefone e e-mail.
+- Informe se o atleta é PCD e registre alergias ou condições especiais, quando houver.
 - O sistema valida o CPF e gera a matrícula automaticamente.
 - A entidade pode cadastrar vários atletas desde que o CPF seja único dentro da mesma entidade.
+
+As inscrições para os torneios de Beach Tennis dos Jogos dos Servidores 2026 devem ser realizadas exclusivamente pelo site [beachtennisgovce.com.br](https://beachtennisgovce.com.br).
 
 ## Inscrições
 

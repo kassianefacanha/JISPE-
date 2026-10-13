@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  Alert,
   Box,
   Button,
   Checkbox,
@@ -287,6 +288,11 @@ export default function EntityDashboard() {
           </Grid>
         </Paper>
 
+        <Alert severity="info" sx={{ mt: 2 }}>
+          As inscrições para os torneios de Beach Tennis dos Jogos dos Servidores 2026 devem ser realizadas exclusivamente pelo site{' '}
+          <a href="https://beachtennisgovce.com.br" target="_blank" rel="noreferrer">beachtennisgovce.com.br</a>.
+        </Alert>
+
         <Paper sx={{ mt: 4, p: { xs: 2, md: 3 }, borderRadius: 4, border: '1px solid #e2e8f0' }}>
           <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} spacing={2} sx={{ mb: 2 }}>
             <Typography variant="h6" fontWeight={700}>
@@ -371,6 +377,9 @@ export default function EntityDashboard() {
               ['Naipe', detailAthlete?.naipe || detailAthlete?.gender],
               ['Categoria', detailAthlete?.ageCategory],
               ['Data de nascimento', formatBirthDate(detailAthlete?.birthDate)],
+              ['PCD', detailAthlete?.isPcd ? 'Sim' : 'Não'],
+              ['Alergia', detailAthlete?.hasAllergy ? detailAthlete.allergyDetails || 'Sim, sem detalhes informados' : 'Não'],
+              ['Condição especial', detailAthlete?.hasSpecialCondition ? detailAthlete.specialConditionDetails || 'Sim, sem detalhes informados' : 'Não'],
             ].map(([label, value]) => (
               <Typography key={label}><strong>{label}:</strong> {value || '—'}</Typography>
             ))}

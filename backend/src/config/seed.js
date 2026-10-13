@@ -157,7 +157,7 @@ const runSeed = async () => {
       }
     }
 
-    const modalityRules = createdEntities.flatMap((entity) => defaultModalities.map((modality) => ({
+    const modalityRules = createdEntities.flatMap((entity) => defaultModalities.filter((modality) => modality.active !== false).map((modality) => ({
       entityId: entity._id,
       modalitySlug: modality.slug,
       enabled: true,
@@ -195,7 +195,7 @@ const runSeed = async () => {
         || item.slug === seed.modality
         || item.legacyNames?.includes(seed.modality)
       );
-      if (!modality || !modality.genders.includes(seed.naipe)) continue;
+      if (!modality || modality.active === false || !modality.genders.includes(seed.naipe)) continue;
 
       const existing = await Athlete.findOne({ entityId: entity._id, cpf: seed.cpf });
       if (!existing) {

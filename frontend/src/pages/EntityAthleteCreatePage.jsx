@@ -9,6 +9,7 @@ import {
   Checkbox,
   Container,
   Divider,
+  FormControlLabel,
   Grid,
   ListItemText,
   MenuItem,
@@ -34,6 +35,11 @@ const emptyForm = {
   proofUrl: '',
   modalities: [],
   naipe: '',
+  isPcd: false,
+  hasAllergy: false,
+  allergyDetails: '',
+  hasSpecialCondition: false,
+  specialConditionDetails: '',
 };
 
 const readFileAsDataUrl = (file) =>
@@ -120,6 +126,11 @@ export default function EntityAthleteCreatePage() {
           proofUrl: athlete.proofUrl || '',
           modalities: athlete.modalities?.length ? athlete.modalities : [athlete.modality].filter(Boolean),
           naipe: athlete.naipe || athlete.gender || '',
+          isPcd: Boolean(athlete.isPcd),
+          hasAllergy: Boolean(athlete.hasAllergy),
+          allergyDetails: athlete.allergyDetails || '',
+          hasSpecialCondition: Boolean(athlete.hasSpecialCondition),
+          specialConditionDetails: athlete.specialConditionDetails || '',
         });
         setUploadInfo({
           photo: athlete.photoUrl ? 'Foto já carregada' : '',
@@ -215,6 +226,10 @@ export default function EntityAthleteCreatePage() {
               {!raceRegistrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>As inscrições para a corrida foram encerradas: limite de 3.000 corredores atingido.</Alert>}
               {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
               {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+              <Alert severity="info" sx={{ mb: 2 }}>
+                As inscrições para os torneios de Beach Tennis dos Jogos dos Servidores 2026 devem ser realizadas exclusivamente pelo site{' '}
+                <a href="https://beachtennisgovce.com.br" target="_blank" rel="noreferrer">beachtennisgovce.com.br</a>.
+              </Alert>
 
               <Grid container spacing={2}>
                 <Grid item xs={12} md={4}>
@@ -271,6 +286,21 @@ export default function EntityAthleteCreatePage() {
                 <Grid item xs={12} md={6}>
                   <Box sx={{ minHeight: 150, display: 'flex', alignItems: 'center', gap: 2, p: 2, border: '1px dashed #94a3b8', borderRadius: 1, backgroundColor: '#f8fafc' }}>
                     {form.photoUrl ? (
+                <Grid item xs={12}>
+                  <Divider sx={{ my: 1 }} />
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>Informações adicionais</Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <FormControlLabel control={<Checkbox checked={form.isPcd} onChange={(event) => setForm({ ...form, isPcd: event.target.checked })} />} label="Atleta é PCD" />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <FormControlLabel control={<Checkbox checked={form.hasAllergy} onChange={(event) => setForm({ ...form, hasAllergy: event.target.checked, allergyDetails: event.target.checked ? form.allergyDetails : '' })} />} label="Possui alergia" />
+                </Grid>
+                {form.hasAllergy && <Grid item xs={12} md={8}><TextField fullWidth label="Quais alergias?" value={form.allergyDetails} onChange={(event) => setForm({ ...form, allergyDetails: event.target.value })} /></Grid>}
+                <Grid item xs={12} md={4}>
+                  <FormControlLabel control={<Checkbox checked={form.hasSpecialCondition} onChange={(event) => setForm({ ...form, hasSpecialCondition: event.target.checked, specialConditionDetails: event.target.checked ? form.specialConditionDetails : '' })} />} label="Possui condição especial" />
+                </Grid>
+                {form.hasSpecialCondition && <Grid item xs={12} md={8}><TextField fullWidth label="Descreva a condição especial" value={form.specialConditionDetails} onChange={(event) => setForm({ ...form, specialConditionDetails: event.target.value })} /></Grid>}
                       <Box component="img" src={form.photoUrl} alt="Prévia da foto do atleta" sx={{ width: 76, height: 100, flexShrink: 0, objectFit: 'cover', borderRadius: 1, border: '1px solid #cbd5e1' }} />
                     ) : (
                       <Box sx={{ width: 76, height: 100, flexShrink: 0, display: 'grid', placeItems: 'center', borderRadius: 1, backgroundColor: '#e2e8f0', color: '#64748b' }}><ImageOutlinedIcon /></Box>

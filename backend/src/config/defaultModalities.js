@@ -15,7 +15,7 @@ const defaultModalities = [
   { name: 'Tênis de Mesa', slug: 'tenis-de-mesa', genders: ['masculino', 'feminino'], categories: ['Aberto', 'Adulto', 'Master'], maxTeamsPerEntity: 3, isCollective: false, active: true },
   { name: 'Carimba', slug: 'carimba', genders: ['masculino', 'feminino'], categories: ['Aberto'], maxTeamsPerEntity: 3, maxAthletesPerTeam: 15, isCollective: true, active: true },
   { name: 'Handebol', slug: 'handebol', genders: ['masculino', 'feminino'], categories: ['Aberto'], maxTeamsPerEntity: 3, maxAthletesPerTeam: 15, isCollective: true, active: true },
-  { name: 'Beach Tennis', slug: 'beach-tennis', genders: ['masculino', 'feminino', 'misto'], categories: ['Aberto'], maxTeamsPerEntity: 3, maxAthletesPerTeam: 4, isCollective: true, active: true },
+  { name: 'Beach Tennis', slug: 'beach-tennis', genders: ['masculino', 'feminino', 'misto'], categories: ['Aberto'], maxTeamsPerEntity: 3, maxAthletesPerTeam: 4, isCollective: true, active: false },
   { name: 'Xadrez', slug: 'xadrez', genders: ['masculino', 'feminino'], categories: ['Aberto'], isCollective: false, active: true },
   { name: 'Dama', slug: 'dama', genders: ['masculino', 'feminino'], categories: ['Aberto'], isCollective: false, active: true },
   { name: 'Corrida 5km', slug: 'corrida-5km', genders: ['masculino', 'feminino'], categories: ['18-29', '30-39', '40-49', '50+'], isCollective: false, active: true },
