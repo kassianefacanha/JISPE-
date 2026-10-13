@@ -11,7 +11,6 @@ import {
   Divider,
   FormControlLabel,
   Grid,
-  ListItemText,
   MenuItem,
   Paper,
   Stack,
@@ -21,8 +20,9 @@ import {
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
-import { getAutomaticAgeCategory, hasCompletedMinimumAge } from '../utils/athleteAge';
+import { hasCompletedMinimumAge } from '../utils/athleteAge';
 import { isExternalRegistrationModality } from '../utils/externalRegistrationModality';
+import AthleteModalityFields, { getAthleteModalityRegistrations } from '../components/AthleteModalityFields';
 import api, { getApiErrorMessage } from '../services/api';
 import { useFeedback } from '../contexts/FeedbackContext';
 
@@ -30,13 +30,13 @@ const emptyForm = {
   cpf: '',
   fullName: '',
   birthDate: '',
+  sex: '',
   photoUrl: '',
   phone: '',
   email: '',
   proofUrl: '',
   affiliationProofUrl: '',
-  modalities: [],
-  naipe: '',
+  modalityRegistrations: [{ modality: '', naipe: '' }],
   isPcd: false,
   hasAllergy: false,
   allergyDetails: '',
@@ -86,14 +86,6 @@ export default function EntityAthleteCreatePage() {
   const [raceRegistrationOpen, setRaceRegistrationOpen] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const selectedModalities = modalities.filter((modality) =>
-    form.modalities.includes(modality.name || modality.slug) || modality.legacyNames?.some((name) => form.modalities.includes(name))
-  );
-  const ageCategories = selectedModalities[0]?.categories || [];
-  const allowedGenders = selectedModalities.reduce((genders, modality) =>
-    genders.filter((gender) => modality.genders?.includes(gender)), selectedModalities[0]?.genders || []);
-  const calculatedAgeCategory = getAutomaticAgeCategory(form.birthDate, form.modalities[0], ageCategories);
-
   useEffect(() => {
     api.get('/modalities')
       .then((response) => setModalities((response.data.modalities || []).filter((modality) => !isExternalRegistrationModality(modality))))
@@ -122,13 +114,13 @@ export default function EntityAthleteCreatePage() {
           cpf: athlete.cpf || '',
           fullName: athlete.fullName || '',
           birthDate: birthDate && !Number.isNaN(birthDate.getTime()) ? birthDate.toISOString().slice(0, 10) : '',
+          sex: ['masculino', 'feminino'].includes(athlete.sex) ? athlete.sex : ['masculino', 'feminino'].includes(athlete.gender) ? athlete.gender : '',
           photoUrl: athlete.photoUrl || '',
           phone: athlete.phone || '',
           email: athlete.email || '',
           proofUrl: athlete.proofUrl || '',
           affiliationProofUrl: athlete.affiliationProofUrl || '',
-          modalities: athlete.modalities?.length ? athlete.modalities : [athlete.modality].filter(Boolean),
-          naipe: athlete.naipe || athlete.gender || '',
+          modalityRegistrations: getAthleteModalityRegistrations(athlete, modalities),
           isPcd: Boolean(athlete.isPcd),
           hasAllergy: Boolean(athlete.hasAllergy),
           allergyDetails: athlete.allergyDetails || '',
@@ -177,20 +169,31 @@ export default function EntityAthleteCreatePage() {
     if (!form.fullName.trim()) return setError('Informe o nome completo do atleta.');
     if (!isValidCPF(form.cpf)) return setError('CPF do atleta inválido.');
     if (!form.birthDate) return setError('Informe a data de nascimento do atleta.');
+    if (!form.sex) return setError('Informe o sexo da pessoa.');
     if (!hasCompletedMinimumAge(form.birthDate)) return setError('O atleta precisa já ter completado 18 anos para se cadastrar.');
     if (!isValidPhone(form.phone)) return setError('Informe um telefone válido com DDD (10 ou 11 dígitos).');
     if (!isValidEmail(form.email)) return setError('Informe um e-mail válido do atleta.');
-    if (!form.modalities.length) return setError('Selecione ao menos uma modalidade para o atleta.');
+    if (!form.modalityRegistrations.length || form.modalityRegistrations.some((entry) => !entry.modality)) return setError('Selecione uma modalidade para cada inscrição.');
+    if (form.modalityRegistrations.some((entry) => !entry.naipe)) return setError('Selecione o naipe de cada modalidade.');
+    if (new Set(form.modalityRegistrations.map((entry) => entry.modality)).size !== form.modalityRegistrations.length) return setError('Cada modalidade só pode ser adicionada uma vez.');
     if (!form.photoUrl) return setError('Selecione a foto do atleta.');
     if (!form.proofUrl) return setError('Selecione o comprovante do atleta.');
     if (!form.affiliationProofUrl) return setError('Selecione o comprovante de vínculo com o órgão.');
 
     try {
       setSaving(true);
+      const firstRegistration = form.modalityRegistrations[0];
+      const payload = {
+        ...form,
+        modality: firstRegistration.modality,
+        modalities: form.modalityRegistrations.map((entry) => entry.modality),
+        naipe: firstRegistration.naipe,
+        gender: firstRegistration.naipe,
+      };
       if (isEditing) {
-        await api.put(`/athletes/${athleteId}`, { ...form, gender: form.naipe });
+        await api.put(`/athletes/${athleteId}`, payload);
       } else {
-        await api.post('/athletes', { ...form, gender: form.naipe });
+        await api.post('/athletes', payload);
       }
       const message = isEditing ? 'Dados do atleta atualizados com sucesso.' : 'Atleta cadastrado com sucesso.';
       setSuccess(message);
@@ -250,41 +253,26 @@ export default function EntityAthleteCreatePage() {
                   <TextField fullWidth required type="date" label="Data de nascimento" InputLabelProps={{ shrink: true }} value={form.birthDate} onChange={(event) => setForm({ ...form, birthDate: event.target.value })} />
                 </Grid>
                 <Grid item xs={12} md={4}>
+                  <TextField select fullWidth required label="Sexo" value={form.sex} onChange={(event) => setForm({ ...form, sex: event.target.value })}>
+                    <MenuItem value="">Selecione o sexo</MenuItem>
+                    <MenuItem value="feminino">Feminino</MenuItem>
+                    <MenuItem value="masculino">Masculino</MenuItem>
+                  </TextField>
+                </Grid>
+                <Grid item xs={12} md={4}>
                   <TextField fullWidth required type="tel" label="Telefone" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} error={Boolean(error && !isValidPhone(form.phone))} helperText={error && !isValidPhone(form.phone) ? 'Informe DDD e número: 10 ou 11 dígitos.' : 'Com DDD. Ex.: (11) 99999-9999'} />
                 </Grid>
                 <Grid item xs={12} md={4}>
                   <TextField fullWidth required type="email" label="E-mail" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} error={Boolean(error && !isValidEmail(form.email))} helperText={error && !isValidEmail(form.email) ? 'Informe um endereço de e-mail válido.' : ''} />
                 </Grid>
-                <Grid item xs={12} md={4}>
-                  <TextField select fullWidth required label="Modalidades" value={form.modalities} SelectProps={{ multiple: true, renderValue: (selected) => selected.join(', ') }} onChange={(event) => {
-                    const modalityNames = event.target.value;
-                    const nextModalities = modalities.filter((modality) => modalityNames.includes(modality.name || modality.slug));
-                    const nextGenders = nextModalities.reduce((genders, modality) =>
-                      genders.filter((gender) => modality.genders?.includes(gender)), nextModalities[0]?.genders || []);
-                    setForm((current) => ({
-                      ...current,
-                      modalities: modalityNames,
-                      naipe: nextGenders.includes(current.naipe) ? current.naipe : nextGenders[0] || '',
-                    }));
-                  }}>
-                    {modalities.map((modality) => (
-                      <MenuItem key={modality._id || modality.slug} value={modality.name || modality.slug} disabled={!raceRegistrationOpen && modality.slug === 'corrida-5km' && !form.modalities.includes(modality.name || modality.slug)}>
-                        <Checkbox checked={form.modalities.includes(modality.name || modality.slug)} size="small" />
-                        <ListItemText primary={modality.name || modality.slug} />
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <TextField select fullWidth required label="Naipe" value={form.naipe} onChange={(event) => setForm({ ...form, naipe: event.target.value })}>
-                    <MenuItem value="">Selecione o naipe</MenuItem>
-                    {allowedGenders.map((gender) => (
-                      <MenuItem key={gender} value={gender}>{gender === 'masculino' ? 'Masculino' : gender === 'feminino' ? 'Feminino' : 'Misto'}</MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <TextField fullWidth disabled label="Categoria etária (automática)" value={calculatedAgeCategory || 'Informe nascimento e modalidade'} helperText="Calculada pelo ano de nascimento e pelas regras do evento 2026." />
+                <Grid item xs={12}>
+                  <AthleteModalityFields
+                    modalities={modalities}
+                    entries={form.modalityRegistrations}
+                    birthDate={form.birthDate}
+                    raceRegistrationOpen={raceRegistrationOpen}
+                    onChange={(modalityRegistrations) => setForm((current) => ({ ...current, modalityRegistrations }))}
+                  />
                 </Grid>
                 <Grid item xs={12}>
                   <Divider sx={{ my: 1 }} />

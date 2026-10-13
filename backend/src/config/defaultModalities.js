@@ -3,9 +3,7 @@ const defaultModalities = [
   { name: 'Futebol de 7', slug: 'futebol-de-7', genders: ['masculino', 'feminino'], categories: ['Aberto', 'Adulto', 'Master'], maxTeamsPerEntity: 3, maxAthletesPerTeam: 15, isCollective: true, active: true },
   { name: 'Basquetebol', slug: 'basquetebol', genders: ['masculino', 'feminino'], categories: ['Aberto'], maxTeamsPerEntity: 3, maxAthletesPerTeam: 15, isCollective: true, active: true },
 
-  { name: 'Natação Revezamento masculino', slug: 'natacao-revezamento-masculino', genders: ['masculino'], categories: ['Adulto (18-35)', 'Master (36+)'], isCollective: true, active: true },
-  { name: 'Natação Revezamento feminino', slug: 'natacao-revezamento-feminino', genders: ['feminino'], categories: ['Adulto (18-35)', 'Master (36+)'], isCollective: true, active: true },
-  { name: 'Natação Revezamento misto', slug: 'natacao-revezamento-misto', genders: ['misto'], categories: ['Adulto (18-35)', 'Master (36+)'], isCollective: true, active: true },
+  { name: 'Natação Revezamento', slug: 'natacao-revezamento', legacySlugs: ['natacao-revezamento-masculino', 'natacao-revezamento-feminino', 'natacao-revezamento-misto'], legacyNames: ['Natação Revezamento masculino', 'Natação Revezamento feminino', 'Natação Revezamento misto'], genders: ['masculino', 'feminino', 'misto'], categories: ['Adulto (18-35)', 'Master (36+)'], isCollective: true, active: true },
   { name: 'Natação 50m livre', slug: 'natacao-50m-livre', genders: ['masculino', 'feminino'], categories: ['Adulto (18-35)', 'Master (36+)'], isCollective: false, active: true },
   { name: 'Voleibol de Quadra', slug: 'voleibol-de-quadra', legacySlugs: ['volei'], legacyNames: ['Vôlei'], genders: ['masculino', 'feminino'], categories: ['Aberto'], maxTeamsPerEntity: 3, maxAthletesPerTeam: 12, isCollective: true, active: true },
  
@@ -44,7 +42,13 @@ const getModalityCatalog = (storedModalities = []) => {
     if (stored) matchedSlugs.add(stored.slug);
     return { ...stored, ...modality, _id: stored?._id || modality.slug };
   });
-  const customModalities = storedModalities.filter((modality) => !matchedSlugs.has(modality.slug));
+  const officialSlugs = new Set(defaultModalities.flatMap((modality) => [modality.slug, ...(modality.legacySlugs || [])]));
+  const officialNames = new Set(defaultModalities.flatMap((modality) => [modality.name, ...(modality.legacyNames || [])]));
+  const customModalities = storedModalities.filter((modality) => (
+    !matchedSlugs.has(modality.slug)
+    && !officialSlugs.has(modality.slug)
+    && !officialNames.has(modality.name)
+  ));
   return [...officialModalities, ...customModalities]
     .filter((modality) => modality.active !== false && !isExternalRegistrationModality(modality))
     .sort((left, right) => left.name.localeCompare(right.name, 'pt-BR'));

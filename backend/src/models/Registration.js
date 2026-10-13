@@ -5,7 +5,7 @@ const registrationSchema = new mongoose.Schema(
     athleteId: { type: mongoose.Schema.Types.ObjectId, ref: 'Athlete', required: true },
     entityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Entity', required: true },
     modality: { type: String, required: true },
-    gender: { type: String, enum: ['masculino', 'feminino'], required: true },
+    gender: { type: String, enum: ['masculino', 'feminino', 'misto'], required: true },
     category: { type: String, required: true },
     status: {
       type: String,
