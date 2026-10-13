@@ -228,7 +228,6 @@ router.post('/', auth, async (req, res, next) => {
       modalityRegistrations: modalityDefinitions.map((definition, index) => ({
         modality: definition.name,
         naipe: requestedRegistrationEntries[index].naipe,
-        category: getAgeCategory(birthDate, definition.name, definition.categories || []),
       })),
       modality: primaryModality.name,
       modalities: modalityNames,
@@ -345,7 +344,6 @@ router.put('/:id', auth, async (req, res, next) => {
       modalityRegistrations: resolvedModalityDefinitions.map((definition, index) => ({
         modality: definition.name,
         naipe: requestedRegistrationEntries[index].naipe,
-        category: getAgeCategory(resolvedBirthDate, definition.name, definition.categories || []),
       })),
       ...(isPcd !== undefined ? { isPcd: Boolean(isPcd) } : {}),
       ...(hasAllergy !== undefined ? { hasAllergy: Boolean(hasAllergy), allergyDetails: hasAllergy ? allergyDetails || '' : '' } : {}),

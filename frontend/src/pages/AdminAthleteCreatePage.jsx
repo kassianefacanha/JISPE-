@@ -13,7 +13,6 @@ import {
   FormControlLabel,
   Grid,
   InputLabel,
-  ListItemText,
   MenuItem,
   Paper,
   Select,
@@ -25,8 +24,8 @@ import {
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
-import { hasCompletedMinimumAge } from '../utils/athleteAge';
-import { isExternalRegistrationModality } from '../utils/externalRegistrationModality';
+import { getAutomaticAgeCategory, hasCompletedMinimumAge } from '../utils/athleteAge';
+import { normalizeModalityCatalog } from '../utils/externalRegistrationModality';
 import AthleteModalityFields, { getAthleteModalityRegistrations } from '../components/AthleteModalityFields';
 import api, { getApiErrorMessage } from '../services/api';
 
@@ -98,6 +97,11 @@ export default function AdminAthleteCreatePage() {
   const [raceRegistrationOpen, setRaceRegistrationOpen] = useState(true);
   const [uploadInfo, setUploadInfo] = useState({ photo: '', proof: '', affiliationProof: '' });
   const approvedEntities = entities.filter((entity) => entity.status === 'approved');
+  const primaryModality = modalities.find((modality) => (
+    [modality.name, modality.slug, ...(modality.legacyNames || []), ...(modality.legacySlugs || [])]
+      .includes(form.modalityRegistrations[0]?.modality)
+  ));
+  const calculatedAgeCategory = getAutomaticAgeCategory(form.birthDate, primaryModality?.name, primaryModality?.categories || []);
   useEffect(() => {
     const load = async () => {
       try {
@@ -109,7 +113,7 @@ export default function AdminAthleteCreatePage() {
         ]);
 
         const loadedEntities = entitiesResponse.data.entities || [];
-        const loadedModalities = (modalitiesResponse.data.modalities || []).filter((modality) => !isExternalRegistrationModality(modality));
+        const loadedModalities = normalizeModalityCatalog(modalitiesResponse.data.modalities || []);
         setEntities(loadedEntities);
         setModalities(loadedModalities);
         setRaceRegistrationOpen(registrationStatusResponse.data.raceRegistrationOpen !== false);
@@ -321,10 +325,12 @@ export default function AdminAthleteCreatePage() {
                   <AthleteModalityFields
                     modalities={modalities}
                     entries={form.modalityRegistrations}
-                    birthDate={form.birthDate}
                     raceRegistrationOpen={raceRegistrationOpen}
                     onChange={(modalityRegistrations) => setForm((current) => ({ ...current, modalityRegistrations }))}
                   />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField fullWidth disabled label="Categoria etária (automática)" value={calculatedAgeCategory || 'Informe nascimento e modalidade'} helperText="Calculada pelas regras do evento 2026." />
                 </Grid>
                 <Grid item xs={12} md={4}>
                   <TextField fullWidth label="Matrícula" value={form.matricula} disabled helperText="A matrícula é gerada automaticamente e não pode ser alterada." />

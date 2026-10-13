@@ -17,7 +17,6 @@ const athleteSchema = new mongoose.Schema(
     modalityRegistrations: [{
       modality: { type: String, required: true, trim: true },
       naipe: { type: String, enum: ['masculino', 'feminino', 'misto'], required: true },
-      category: { type: String, default: '' },
     }],
     naipe: { type: String, enum: ['masculino', 'feminino', 'misto'], required: true, default: 'masculino' },
     matricula: { type: String, unique: true, sparse: true },

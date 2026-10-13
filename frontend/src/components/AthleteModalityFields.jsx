@@ -8,12 +8,10 @@ import {
   MenuItem,
   Select,
   Stack,
-  TextField,
   Typography,
 } from '@mui/material';
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import { getAutomaticAgeCategory } from '../utils/athleteAge';
 
 const legacySwimmingNames = new Set([
   'natacao-revezamento-masculino',
@@ -50,7 +48,7 @@ export const getAthleteModalityRegistrations = (athlete, modalities = []) => {
   return uniqueEntries.size ? [...uniqueEntries.values()] : [{ modality: '', naipe: '' }];
 };
 
-export default function AthleteModalityFields({ modalities, entries, birthDate, raceRegistrationOpen, onChange }) {
+export default function AthleteModalityFields({ modalities, entries, raceRegistrationOpen, onChange }) {
   const updateEntry = (index, changes) => {
     onChange(entries.map((entry, entryIndex) => (
       entryIndex === index ? { ...entry, ...changes } : entry
@@ -78,12 +76,10 @@ export default function AthleteModalityFields({ modalities, entries, birthDate, 
             otherIndex !== index && otherEntry.modality === (modality.name || modality.slug)
           ))
         ));
-        const ageCategory = getAutomaticAgeCategory(birthDate, definition?.name, definition?.categories || []);
-
         return (
           <Box key={`${entry.modality || 'new'}-${index}`} sx={{ py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={5}>
                 <FormControl fullWidth required>
                   <InputLabel id={`athlete-modality-${index}`}>Modalidade</InputLabel>
                   <Select
@@ -105,7 +101,7 @@ export default function AthleteModalityFields({ modalities, entries, birthDate, 
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} md={3}>
+              <Grid item xs={12} md={5}>
                 <FormControl fullWidth required disabled={!definition}>
                   <InputLabel id={`athlete-naipe-${index}`}>Naipe</InputLabel>
                   <Select
@@ -123,15 +119,7 @@ export default function AthleteModalityFields({ modalities, entries, birthDate, 
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} md={4}>
-                <TextField
-                  fullWidth
-                  disabled
-                  label="Categoria etária (automática)"
-                  value={ageCategory || (birthDate && definition ? 'Categoria não definida' : 'Informe nascimento e modalidade')}
-                />
-              </Grid>
-              <Grid item xs={12} md={1}>
+              <Grid item xs={12} md={2}>
                 {entries.length > 1 && (
                   <IconButton
                     aria-label={`Remover modalidade ${index + 1}`}
