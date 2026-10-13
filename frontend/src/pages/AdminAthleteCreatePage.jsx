@@ -34,7 +34,6 @@ const emptyForm = {
   cpf: '',
   fullName: '',
   birthDate: '',
-  sex: '',
   photoUrl: '',
   phone: '',
   email: '',
@@ -129,7 +128,6 @@ export default function AdminAthleteCreatePage() {
             cpf: athlete.cpf,
             fullName: athlete.fullName,
             birthDate: athlete.birthDate ? new Date(athlete.birthDate).toISOString().slice(0, 10) : '',
-            sex: ['masculino', 'feminino'].includes(athlete.sex) ? athlete.sex : ['masculino', 'feminino'].includes(athlete.gender) ? athlete.gender : '',
             photoUrl: athlete.photoUrl || '',
             phone: athlete.phone,
             email: athlete.email,
@@ -175,7 +173,6 @@ export default function AdminAthleteCreatePage() {
     if (!form.cpf || !isValidCPF(form.cpf)) return 'CPF do atleta inválido.';
     if (!form.fullName.trim()) return 'Informe o nome completo do atleta.';
     if (!form.birthDate) return 'Informe a data de nascimento.';
-    if (!form.sex) return 'Informe o sexo da pessoa.';
     if (!hasCompletedMinimumAge(form.birthDate)) return 'O atleta precisa já ter completado 18 anos para se cadastrar.';
     if (!isValidPhone(form.phone)) return 'Informe um telefone válido com DDD (10 ou 11 dígitos).';
     if (!form.email || !isValidEmail(form.email)) return 'Informe um e-mail válido.';
@@ -205,7 +202,6 @@ export default function AdminAthleteCreatePage() {
         cpf: form.cpf,
         fullName: form.fullName,
         birthDate: form.birthDate,
-        sex: form.sex,
         photoUrl: form.photoUrl,
         phone: form.phone,
         email: form.email,
@@ -302,16 +298,6 @@ export default function AdminAthleteCreatePage() {
                 </Grid>
                 <Grid item xs={12} md={4}>
                   <TextField fullWidth type="date" label="Data de nascimento" InputLabelProps={{ shrink: true }} value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} />
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <FormControl fullWidth>
-                    <InputLabel>Sexo</InputLabel>
-                    <Select label="Sexo" value={form.sex} onChange={(event) => setForm({ ...form, sex: event.target.value })}>
-                      <MenuItem value="">Selecione o sexo</MenuItem>
-                      <MenuItem value="feminino">Feminino</MenuItem>
-                      <MenuItem value="masculino">Masculino</MenuItem>
-                    </Select>
-                  </FormControl>
                 </Grid>
                 <Grid item xs={12} md={4}>
                   <TextField fullWidth type="tel" label="Telefone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} error={Boolean(error && !isValidPhone(form.phone))} helperText={error && !isValidPhone(form.phone) ? 'Informe DDD e número: 10 ou 11 dígitos.' : 'Com DDD. Ex.: (11) 99999-9999'} />

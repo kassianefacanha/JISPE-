@@ -375,7 +375,6 @@ export default function EntityDashboard() {
               ['Telefone', detailAthlete?.phone],
               ['Modalidades', (detailAthlete?.modalities?.length ? detailAthlete.modalities : [detailAthlete?.modality]).filter(Boolean).join(', ')],
               ['Naipe', detailAthlete?.naipe || detailAthlete?.gender],
-              ['Sexo', detailAthlete?.sex === 'feminino' ? 'Feminino' : detailAthlete?.sex === 'masculino' ? 'Masculino' : '—'],
               ['Categoria', detailAthlete?.ageCategory],
               ['Data de nascimento', formatBirthDate(detailAthlete?.birthDate)],
               ['PCD', detailAthlete?.isPcd ? 'Sim' : 'Não'],

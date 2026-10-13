@@ -6,7 +6,6 @@ const athleteSchema = new mongoose.Schema(
     cpf: { type: String, required: true },
     fullName: { type: String, required: true, trim: true },
     birthDate: { type: Date, required: true },
-    sex: { type: String, enum: ['masculino', 'feminino'], required: true },
     photoUrl: { type: String, default: '' },
     phone: { type: String, required: true },
     email: { type: String, required: true, lowercase: true, trim: true },

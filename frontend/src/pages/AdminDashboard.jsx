@@ -948,7 +948,6 @@ function DetailDialog({ detailDialog, setDetailDialog }) {
         ['Telefone', data.phone],
         ['Modalidade', data.modality],
         ['Naipe', data.naipe],
-        ['Sexo', data.sex === 'feminino' ? 'Feminino' : data.sex === 'masculino' ? 'Masculino' : '—'],
         ['Data de nascimento', data.birthDate || '—'],
         ['Matrícula', data.matricula],
         ['Entidade', data.entityName || data.entityId],

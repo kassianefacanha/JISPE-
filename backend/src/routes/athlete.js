@@ -125,7 +125,7 @@ router.post('/', auth, async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Acesso restrito à entidade ou ao administrador' });
     }
 
-    const { entityId, cpf, fullName, birthDate, sex, phone, email, gender, naipe, modality, modalities, modalityRegistrations, photoUrl, proofUrl, affiliationProofUrl, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
+    const { entityId, cpf, fullName, birthDate, phone, email, gender, naipe, modality, modalities, modalityRegistrations, photoUrl, proofUrl, affiliationProofUrl, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
     const resolvedEntityId = req.user.type === 'entity' ? req.user.id : entityId;
     const legacyNaipe = naipe || gender || 'masculino';
     const requestedRegistrationEntries = Array.isArray(modalityRegistrations) && modalityRegistrations.length
@@ -141,9 +141,6 @@ router.post('/', auth, async (req, res, next) => {
     }
     if (requestedModalities.some((value) => !value) || requestedRegistrationEntries.some((entry) => !entry?.naipe)) {
       return res.status(400).json({ success: false, message: 'Informe uma modalidade e um naipe para cada inscrição.' });
-    }
-    if (!['masculino', 'feminino'].includes(sex)) {
-      return res.status(400).json({ success: false, message: 'Informe o sexo da pessoa.' });
     }
 
     const assetError = validateUploadedAsset(photoUrl, 'photo')
@@ -216,7 +213,6 @@ router.post('/', auth, async (req, res, next) => {
       cpf,
       fullName,
       birthDate,
-      sex,
       photoUrl,
       phone,
       email,
@@ -281,15 +277,12 @@ router.put('/:id', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Atleta não encontrado' });
     }
 
-    const { entityId, cpf, fullName, birthDate, sex, photoUrl, phone, email, gender, naipe, modality, modalities, modalityRegistrations, proofUrl, affiliationProofUrl, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
+    const { entityId, cpf, fullName, birthDate, photoUrl, phone, email, gender, naipe, modality, modalities, modalityRegistrations, proofUrl, affiliationProofUrl, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
     const assetError = (photoUrl !== undefined && !isSameStoredAsset(photoUrl, athlete.photoUrl) && validateUploadedAsset(photoUrl, 'photo'))
       || (proofUrl !== undefined && !isSameStoredAsset(proofUrl, athlete.proofUrl) && validateUploadedAsset(proofUrl, 'proof'))
       || (affiliationProofUrl !== undefined && !isSameStoredAsset(affiliationProofUrl, athlete.affiliationProofUrl) && validateUploadedAsset(affiliationProofUrl, 'proof'));
     if (assetError) return res.status(400).json({ success: false, message: assetError });
     const legacyNaipe = naipe || gender || athlete.naipe || athlete.gender;
-    if (sex !== undefined && !['masculino', 'feminino'].includes(sex)) {
-      return res.status(400).json({ success: false, message: 'O sexo deve ser masculino ou feminino.' });
-    }
     const requestedRegistrationEntries = Array.isArray(modalityRegistrations) && modalityRegistrations.length
       ? modalityRegistrations
       : (Array.isArray(modalities)
@@ -327,7 +320,6 @@ router.put('/:id', auth, async (req, res, next) => {
       ...(cpf ? { cpf } : {}),
       ...(fullName ? { fullName } : {}),
       ...(birthDate ? { birthDate } : {}),
-      ...(sex ? { sex } : {}),
       ...(photoUrl ? { photoUrl: await storeAsset(photoUrl, `athletes/${athlete._id}/photo`, athlete.photoUrl) } : {}),
       ...(phone ? { phone } : {}),
       ...(email ? { email } : {}),

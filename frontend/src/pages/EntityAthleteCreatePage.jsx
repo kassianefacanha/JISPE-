@@ -30,7 +30,6 @@ const emptyForm = {
   cpf: '',
   fullName: '',
   birthDate: '',
-  sex: '',
   photoUrl: '',
   phone: '',
   email: '',
@@ -119,7 +118,6 @@ export default function EntityAthleteCreatePage() {
           cpf: athlete.cpf || '',
           fullName: athlete.fullName || '',
           birthDate: birthDate && !Number.isNaN(birthDate.getTime()) ? birthDate.toISOString().slice(0, 10) : '',
-          sex: ['masculino', 'feminino'].includes(athlete.sex) ? athlete.sex : ['masculino', 'feminino'].includes(athlete.gender) ? athlete.gender : '',
           photoUrl: athlete.photoUrl || '',
           phone: athlete.phone || '',
           email: athlete.email || '',
@@ -174,7 +172,6 @@ export default function EntityAthleteCreatePage() {
     if (!form.fullName.trim()) return setError('Informe o nome completo do atleta.');
     if (!isValidCPF(form.cpf)) return setError('CPF do atleta inválido.');
     if (!form.birthDate) return setError('Informe a data de nascimento do atleta.');
-    if (!form.sex) return setError('Informe o sexo da pessoa.');
     if (!hasCompletedMinimumAge(form.birthDate)) return setError('O atleta precisa já ter completado 18 anos para se cadastrar.');
     if (!isValidPhone(form.phone)) return setError('Informe um telefone válido com DDD (10 ou 11 dígitos).');
     if (!isValidEmail(form.email)) return setError('Informe um e-mail válido do atleta.');
@@ -255,13 +252,6 @@ export default function EntityAthleteCreatePage() {
                 </Grid>
                 <Grid item xs={12} md={4}>
                   <TextField fullWidth required type="date" label="Data de nascimento" InputLabelProps={{ shrink: true }} value={form.birthDate} onChange={(event) => setForm({ ...form, birthDate: event.target.value })} />
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <TextField select fullWidth required label="Sexo" value={form.sex} onChange={(event) => setForm({ ...form, sex: event.target.value })}>
-                    <MenuItem value="">Selecione o sexo</MenuItem>
-                    <MenuItem value="feminino">Feminino</MenuItem>
-                    <MenuItem value="masculino">Masculino</MenuItem>
-                  </TextField>
                 </Grid>
                 <Grid item xs={12} md={4}>
                   <TextField fullWidth required type="tel" label="Telefone" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} error={Boolean(error && !isValidPhone(form.phone))} helperText={error && !isValidPhone(form.phone) ? 'Informe DDD e número: 10 ou 11 dígitos.' : 'Com DDD. Ex.: (11) 99999-9999'} />
