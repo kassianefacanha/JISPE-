@@ -76,7 +76,12 @@ export default function AthleteModalityFields({ modalities, entries, raceRegistr
 
   const selectModality = (index, modalityName) => {
     const definition = getModalityDefinition(modalities, modalityName);
-    const allowedGenders = definition?.genders || [];
+    const otherBinaryNaipe = entries.find((entry, entryIndex) => (
+      entryIndex !== index && ['masculino', 'feminino'].includes(entry.naipe)
+    ))?.naipe;
+    const allowedGenders = (definition?.genders || []).filter((gender) => (
+      gender === 'misto' || !otherBinaryNaipe || gender === otherBinaryNaipe
+    ));
     const currentNaipe = entries[index]?.naipe;
     updateEntry(index, {
       modality: modalityName,
@@ -89,6 +94,12 @@ export default function AthleteModalityFields({ modalities, entries, raceRegistr
       <Typography variant="subtitle1" fontWeight={700}>Modalidades e naipes</Typography>
       {entries.map((entry, index) => {
         const definition = getModalityDefinition(modalities, entry.modality);
+        const otherBinaryNaipe = entries.find((otherEntry, otherIndex) => (
+          otherIndex !== index && ['masculino', 'feminino'].includes(otherEntry.naipe)
+        ))?.naipe;
+        const allowedGenders = (definition?.genders || []).filter((gender) => (
+          gender === 'misto' || !otherBinaryNaipe || gender === otherBinaryNaipe
+        ));
         return (
           <Box key={`${entry.modality || 'new'}-${index}`} sx={{ py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Grid container spacing={2} alignItems="center">
@@ -124,7 +135,7 @@ export default function AthleteModalityFields({ modalities, entries, raceRegistr
                     onChange={(event) => updateEntry(index, { naipe: event.target.value })}
                   >
                     <MenuItem value="">Selecione o naipe</MenuItem>
-                    {(definition?.genders || []).map((gender) => (
+                    {allowedGenders.map((gender) => (
                       <MenuItem key={gender} value={gender}>
                         {gender === 'masculino' ? 'Masculino' : gender === 'feminino' ? 'Feminino' : 'Misto'}
                       </MenuItem>

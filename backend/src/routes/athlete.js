@@ -87,6 +87,11 @@ const getModalityDefinition = async (modalityName) => {
   return Modality.findOne({ $or: [{ name: modalityName }, { slug: modalityName }] }).select('name slug genders categories');
 };
 
+const hasConflictingBinaryNaipe = (entries) => {
+  const naipes = new Set(entries.map((entry) => typeof entry === 'string' ? entry : entry?.naipe));
+  return naipes.has('masculino') && naipes.has('feminino');
+};
+
 const router = express.Router();
 
 router.get('/', auth, async (req, res, next) => {
@@ -141,6 +146,9 @@ router.post('/', auth, async (req, res, next) => {
     }
     if (requestedModalities.some((value) => !value) || requestedRegistrationEntries.some((entry) => !entry?.naipe)) {
       return res.status(400).json({ success: false, message: 'Informe uma modalidade e um naipe para cada inscrição.' });
+    }
+    if (hasConflictingBinaryNaipe(requestedRegistrationEntries)) {
+      return res.status(400).json({ success: false, message: 'O atleta não pode se inscrever nos naipes masculino e feminino ao mesmo tempo. O naipe misto pode ser combinado com qualquer um.' });
     }
 
     const assetError = validateUploadedAsset(photoUrl, 'photo')
@@ -307,6 +315,9 @@ router.put('/:id', auth, async (req, res, next) => {
       || requestedModalities.some((value) => !value)
       || requestedRegistrationEntries.some((entry) => !entry?.naipe)) {
       return res.status(400).json({ success: false, message: 'Selecione uma modalidade válida.' });
+    }
+    if (hasConflictingBinaryNaipe(requestedRegistrationEntries)) {
+      return res.status(400).json({ success: false, message: 'O atleta não pode se inscrever nos naipes masculino e feminino ao mesmo tempo. O naipe misto pode ser combinado com qualquer um.' });
     }
     const existingModalityNames = [athlete.modality, ...(athlete.modalities || [])];
     if (resolvedModalityDefinitions.some((definition) => isExternalRegistrationModality(definition)
@@ -539,6 +550,14 @@ router.post('/:id/registrations', auth, async (req, res, next) => {
     if (!modalityDefinition) return res.status(400).json({ success: false, message: 'Selecione uma modalidade válida.' });
     if (isExternalRegistrationModality(modalityDefinition) || isExternalRegistrationModality(modality)) {
       return res.status(400).json({ success: false, message: 'Beach Tennis deve ser inscrito exclusivamente em beachtennisgovce.com.br.' });
+    }
+    const existingRegistrations = await Registration.find({ athleteId: athlete._id }).select('gender').lean();
+    const existingNaipeEntries = [
+      ...(athlete.modalityRegistrations || []).map((entry) => entry.naipe),
+      ...existingRegistrations.map((registration) => registration.gender),
+    ];
+    if (hasConflictingBinaryNaipe([...existingNaipeEntries, gender])) {
+      return res.status(400).json({ success: false, message: 'O atleta não pode se inscrever nos naipes masculino e feminino ao mesmo tempo. O naipe misto pode ser combinado com qualquer um.' });
     }
 
     const isRaceRegistration = raceAliases.some((alias) => String(alias).toLowerCase() === String(modality).trim().toLowerCase());
