@@ -37,6 +37,7 @@ const emptyForm = {
   phone: '',
   email: '',
   proofUrl: '',
+  affiliationProofUrl: '',
   modalities: [],
   naipe: '',
   isPcd: false,
@@ -93,7 +94,7 @@ export default function AdminAthleteCreatePage() {
   const [success, setSuccess] = useState('');
   const [successOpen, setSuccessOpen] = useState(false);
   const [raceRegistrationOpen, setRaceRegistrationOpen] = useState(true);
-  const [uploadInfo, setUploadInfo] = useState({ photo: '', proof: '' });
+  const [uploadInfo, setUploadInfo] = useState({ photo: '', proof: '', affiliationProof: '' });
   const approvedEntities = entities.filter((entity) => entity.status === 'approved');
   const selectedModalities = modalities.filter((modality) =>
     form.modalities.includes(modality.name || modality.slug) || modality.legacyNames?.some((name) => form.modalities.includes(name))
@@ -140,6 +141,7 @@ export default function AdminAthleteCreatePage() {
             phone: athlete.phone,
             email: athlete.email,
             proofUrl: athlete.proofUrl || '',
+            affiliationProofUrl: athlete.affiliationProofUrl || '',
             modalities: athleteModalities,
             naipe: allowedAthleteGenders.includes(athleteNaipe) ? athleteNaipe : allowedAthleteGenders[0] || '',
             isPcd: Boolean(athlete.isPcd),
@@ -152,6 +154,7 @@ export default function AdminAthleteCreatePage() {
           setUploadInfo({
             photo: athlete.photoUrl ? 'Foto já carregada' : '',
             proof: athlete.proofUrl ? 'Documento já carregado' : '',
+            affiliationProof: athlete.affiliationProofUrl ? 'Comprovante de vínculo já carregado' : '',
           });
         }
       } catch (error) {
@@ -170,7 +173,7 @@ export default function AdminAthleteCreatePage() {
     setForm((current) => ({ ...current, [fieldName]: result }));
     setUploadInfo((current) => ({
       ...current,
-      [fieldName === 'photoUrl' ? 'photo' : 'proof']: file.name,
+      [fieldName === 'photoUrl' ? 'photo' : fieldName === 'affiliationProofUrl' ? 'affiliationProof' : 'proof']: file.name,
     }));
     event.target.value = '';
   };
@@ -187,6 +190,7 @@ export default function AdminAthleteCreatePage() {
     if (!form.naipe) return 'Selecione o naipe.';
     if (!form.photoUrl) return 'Selecione a foto do atleta.';
     if (!form.proofUrl) return 'Selecione o comprovante do atleta.';
+    if (!form.affiliationProofUrl) return 'Selecione o comprovante de vínculo com o órgão.';
     return '';
   };
 
@@ -212,6 +216,7 @@ export default function AdminAthleteCreatePage() {
         phone: form.phone,
         email: form.email,
         proofUrl: form.proofUrl,
+        affiliationProofUrl: form.affiliationProofUrl,
         modality: form.modalities[0],
         modalities: form.modalities,
         naipe: form.naipe,
@@ -407,6 +412,25 @@ export default function AdminAthleteCreatePage() {
                       <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />}>
                         {form.proofUrl ? 'Trocar documento' : 'Selecionar documento'}
                         <input hidden type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(event) => handleFileField(event, 'proofUrl')} />
+                      </Button>
+                    </Stack>
+                  </Box>
+                </Grid>
+                <Grid item xs={12}>
+                  <Box sx={{ minHeight: 150, display: 'flex', alignItems: 'center', gap: 2, p: 2, border: '1px dashed #94a3b8', borderRadius: 1, backgroundColor: '#f8fafc' }}>
+                    <Box sx={{ width: 76, height: 100, flexShrink: 0, display: 'grid', placeItems: 'center', borderRadius: 1, backgroundColor: '#e2e8f0', color: '#64748b' }}>
+                      <DescriptionOutlinedIcon />
+                    </Box>
+                    <Stack spacing={1} sx={{ minWidth: 0, alignItems: 'flex-start' }}>
+                      <Box>
+                        <Typography variant="subtitle2" fontWeight={700}>Comprovante de vínculo com o órgão</Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+                          {uploadInfo.affiliationProof || (form.affiliationProofUrl ? 'Comprovante de vínculo já carregado' : 'Contracheque, contrato, carteira de identificação ou crachá')}
+                        </Typography>
+                      </Box>
+                      <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />}>
+                        {form.affiliationProofUrl ? 'Trocar comprovante' : 'Selecionar comprovante'}
+                        <input hidden type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(event) => handleFileField(event, 'affiliationProofUrl')} />
                       </Button>
                     </Stack>
                   </Box>

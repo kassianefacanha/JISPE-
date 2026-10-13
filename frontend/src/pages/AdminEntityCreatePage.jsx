@@ -30,6 +30,7 @@ const emptyForm = {
   responsibleEmail: '',
   responsiblePhoto: '',
   responsibleProof: '',
+  responsibleAffiliationProof: '',
 };
 
 const readFileAsDataUrl = (file) =>
@@ -74,7 +75,7 @@ export default function AdminEntityCreatePage() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [uploadInfo, setUploadInfo] = useState({ photo: '', proof: '' });
+  const [uploadInfo, setUploadInfo] = useState({ photo: '', proof: '', affiliationProof: '' });
 
   useEffect(() => {
     const loadEntity = async () => {
@@ -93,6 +94,12 @@ export default function AdminEntityCreatePage() {
           responsibleEmail: entity.responsible?.email || '',
           responsiblePhoto: entity.responsible?.photoUrl || '',
           responsibleProof: entity.responsible?.proofUrl || '',
+          responsibleAffiliationProof: entity.responsible?.affiliationProofUrl || '',
+        });
+        setUploadInfo({
+          photo: entity.responsible?.photoUrl ? 'Foto já carregada' : '',
+          proof: entity.responsible?.proofUrl ? 'Documento já carregado' : '',
+          affiliationProof: entity.responsible?.affiliationProofUrl ? 'Comprovante de vínculo já carregado' : '',
         });
       } catch (error) {
         notify(getApiErrorMessage(error, 'Erro ao carregar entidade.'));
@@ -111,7 +118,7 @@ export default function AdminEntityCreatePage() {
     setForm((current) => ({ ...current, [fieldName]: result }));
     setUploadInfo((current) => ({
       ...current,
-      [fieldName === 'responsiblePhoto' ? 'photo' : 'proof']: file.name,
+      [fieldName === 'responsiblePhoto' ? 'photo' : fieldName === 'responsibleAffiliationProof' ? 'affiliationProof' : 'proof']: file.name,
     }));
     event.target.value = '';
   };
@@ -126,6 +133,7 @@ export default function AdminEntityCreatePage() {
     if (!form.responsibleEmail || !isValidEmail(form.responsibleEmail)) return 'Informe um e-mail válido do responsável.';
     if (!form.responsiblePhoto) return 'Selecione a foto do responsável.';
     if (!form.responsibleProof) return 'Selecione o comprovante do responsável.';
+    if (!form.responsibleAffiliationProof) return 'Selecione o comprovante de vínculo com o órgão.';
     return '';
   };
 
@@ -153,6 +161,7 @@ export default function AdminEntityCreatePage() {
           email: form.responsibleEmail,
           photoUrl: form.responsiblePhoto,
           proofUrl: form.responsibleProof,
+          affiliationProofUrl: form.responsibleAffiliationProof,
         },
       };
 
@@ -295,6 +304,25 @@ export default function AdminEntityCreatePage() {
                       <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />}>
                         {form.responsibleProof ? 'Trocar documento' : 'Selecionar documento'}
                         <input hidden type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(event) => handleFileField(event, 'responsibleProof')} />
+                      </Button>
+                    </Stack>
+                  </Box>
+                </Grid>
+                <Grid item xs={12}>
+                  <Box sx={{ minHeight: 150, display: 'flex', alignItems: 'center', gap: 2, p: 2, border: '1px dashed #94a3b8', borderRadius: 1, backgroundColor: '#f8fafc' }}>
+                    <Box sx={{ width: 76, height: 100, flexShrink: 0, display: 'grid', placeItems: 'center', borderRadius: 1, backgroundColor: '#e2e8f0', color: '#64748b' }}>
+                      <DescriptionOutlinedIcon />
+                    </Box>
+                    <Stack spacing={1} sx={{ minWidth: 0, alignItems: 'flex-start' }}>
+                      <Box>
+                        <Typography variant="subtitle2" fontWeight={700}>Comprovante de vínculo com o órgão</Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+                          {uploadInfo.affiliationProof || (form.responsibleAffiliationProof ? 'Comprovante de vínculo já carregado' : 'Contracheque, contrato, carteira de identificação ou crachá')}
+                        </Typography>
+                      </Box>
+                      <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />}>
+                        {form.responsibleAffiliationProof ? 'Trocar comprovante' : 'Selecionar comprovante'}
+                        <input hidden type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(event) => handleFileField(event, 'responsibleAffiliationProof')} />
                       </Button>
                     </Stack>
                   </Box>

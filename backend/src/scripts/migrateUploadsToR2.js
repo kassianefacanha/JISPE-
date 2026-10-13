@@ -61,6 +61,7 @@ const run = async () => {
     (athlete) => [
       { field: 'photoUrl', prefix: (item) => `athletes/${item._id}/photo` },
       { field: 'proofUrl', prefix: (item) => `athletes/${item._id}/proof` },
+      { field: 'affiliationProofUrl', prefix: (item) => `athletes/${item._id}/affiliation-proof` },
     ],
     'Atletas'
   );
@@ -69,6 +70,7 @@ const run = async () => {
     (entity) => [
       { field: 'responsible.photoUrl', prefix: (item) => `entities/${item._id}/responsible/photo` },
       { field: 'responsible.proofUrl', prefix: (item) => `entities/${item._id}/responsible/proof` },
+      { field: 'responsible.affiliationProofUrl', prefix: (item) => `entities/${item._id}/responsible/affiliation-proof` },
     ],
     'Entidades'
   );

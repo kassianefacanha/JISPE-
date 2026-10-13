@@ -958,8 +958,12 @@ function DetailDialog({ detailDialog, setDetailDialog }) {
 
   const photoUrl = isEntity ? data.responsible?.photoUrl : data.photoUrl;
   const proofUrl = isEntity ? data.responsible?.proofUrl : data.proofUrl;
+  const affiliationProofUrl = isEntity ? data.responsible?.affiliationProofUrl : data.affiliationProofUrl;
   const hasPreviewImage = Boolean(photoUrl);
-  const downloadableFiles = [proofUrl].filter(Boolean);
+  const downloadableFiles = [
+    { url: proofUrl, label: isEntity ? 'Documento do responsável' : 'Documento do atleta' },
+    { url: affiliationProofUrl, label: 'Comprovante de vínculo com o órgão' },
+  ].filter((file) => file.url);
   const hasDownloadableFile = downloadableFiles.length > 0;
 
   const closeDialog = () => setDetailDialog({ open: false, type: isEntity ? 'entidade' : 'atleta', data: null });
@@ -1012,16 +1016,16 @@ function DetailDialog({ detailDialog, setDetailDialog }) {
               </Box>
               <Stack spacing={1} sx={{ minWidth: 0, alignItems: 'flex-start' }}>
                 <Box>
-                  <Typography variant="subtitle2" fontWeight={700}>{isEntity ? 'Documento do responsável' : 'Documento do atleta'}</Typography>
+                  <Typography variant="subtitle2" fontWeight={700}>Documentos enviados</Typography>
                   <Typography variant="body2" color="text.secondary">
                     {hasDownloadableFile ? 'Comprovante enviado' : 'Nenhum documento enviado'}
                   </Typography>
                 </Box>
-                {downloadableFiles.map((url, index) => (
+                {downloadableFiles.map((file) => (
                   <Button
-                    key={`${url}-${index}`}
+                    key={file.label}
                     component="a"
-                    href={url}
+                    href={file.url}
                     target="_blank"
                     rel="noreferrer"
                     download
@@ -1030,7 +1034,7 @@ function DetailDialog({ detailDialog, setDetailDialog }) {
                     startIcon={<DownloadIcon />}
                     sx={{ textTransform: 'none' }}
                   >
-                    Baixar documento
+                    Baixar {file.label.toLowerCase()}
                   </Button>
                 ))}
               </Stack>

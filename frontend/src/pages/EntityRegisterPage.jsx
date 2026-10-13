@@ -27,6 +27,7 @@ const emptyForm = {
   responsibleEmail: '',
   responsiblePhoto: '',
   responsibleProof: '',
+  responsibleAffiliationProof: '',
 };
 
 const readFileAsDataUrl = (file) =>
@@ -50,7 +51,7 @@ export default function EntityRegisterPage() {
       .then((response) => setRegistrationOpen(response.data.entityRegistrationOpen !== false))
       .catch(() => {});
   }, []);
-  const [uploadInfo, setUploadInfo] = useState({ photo: '', proof: '' });
+  const [uploadInfo, setUploadInfo] = useState({ photo: '', proof: '', affiliationProof: '' });
 
   const handleFileField = async (event, fieldName) => {
     const file = event.target.files?.[0];
@@ -60,7 +61,7 @@ export default function EntityRegisterPage() {
     setForm((current) => ({ ...current, [fieldName]: result }));
     setUploadInfo((current) => ({
       ...current,
-      [fieldName === 'responsiblePhoto' ? 'photo' : 'proof']: file.name,
+      [fieldName === 'responsiblePhoto' ? 'photo' : fieldName === 'responsibleAffiliationProof' ? 'affiliationProof' : 'proof']: file.name,
     }));
     event.target.value = '';
   };
@@ -70,8 +71,8 @@ export default function EntityRegisterPage() {
     setMessage('');
     setError('');
 
-    if (!form.responsiblePhoto || !form.responsibleProof) {
-      setError('Selecione a foto e o comprovante do responsável para enviar o cadastro.');
+    if (!form.responsiblePhoto || !form.responsibleProof || !form.responsibleAffiliationProof) {
+      setError('Selecione a foto, o documento e o comprovante de vínculo do responsável para enviar o cadastro.');
       return;
     }
 
@@ -89,12 +90,13 @@ export default function EntityRegisterPage() {
           email: form.responsibleEmail,
           photoUrl: form.responsiblePhoto,
           proofUrl: form.responsibleProof,
+          affiliationProofUrl: form.responsibleAffiliationProof,
         },
       });
 
       setMessage('Cadastro solicitado com sucesso. Aguarde a aprovação do administrador.');
       setForm(emptyForm);
-      setUploadInfo({ photo: '', proof: '' });
+      setUploadInfo({ photo: '', proof: '', affiliationProof: '' });
       setTimeout(() => navigate('/login'), 1400);
     } catch (err) {
       setError(getApiErrorMessage(err, 'Não foi possível cadastrar a entidade.'));
@@ -171,6 +173,25 @@ export default function EntityRegisterPage() {
                     <Box>
                       <Typography variant="subtitle2" fontWeight={700}>Foto do responsável</Typography>
                       <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+                <Grid item xs={12}>
+                  <Box sx={{ minHeight: 150, display: 'flex', alignItems: 'center', gap: 2, p: 2, border: '1px dashed #94a3b8', borderRadius: 1, backgroundColor: '#f8fafc' }}>
+                    <Box sx={{ width: 76, height: 100, flexShrink: 0, display: 'grid', placeItems: 'center', borderRadius: 1, backgroundColor: '#e2e8f0', color: '#64748b' }}>
+                      <DescriptionOutlinedIcon />
+                    </Box>
+                    <Stack spacing={1} sx={{ minWidth: 0, alignItems: 'flex-start' }}>
+                      <Box>
+                        <Typography variant="subtitle2" fontWeight={700}>Comprovante de vínculo com o órgão</Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+                          {uploadInfo.affiliationProof || 'Contracheque, contrato, carteira de identificação ou crachá'}
+                        </Typography>
+                      </Box>
+                      <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />}>
+                        {form.responsibleAffiliationProof ? 'Trocar comprovante' : 'Selecionar comprovante'}
+                        <input hidden type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(event) => handleFileField(event, 'responsibleAffiliationProof')} />
+                      </Button>
+                    </Stack>
+                  </Box>
+                </Grid>
                         {uploadInfo.photo || 'Nenhuma foto selecionada'}
                       </Typography>
                     </Box>

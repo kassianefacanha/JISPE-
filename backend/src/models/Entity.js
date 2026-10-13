@@ -15,6 +15,7 @@ const entitySchema = new mongoose.Schema(
       email: { type: String, required: true },
       photoUrl: { type: String, default: '' },
       proofUrl: { type: String, default: '' },
+      affiliationProofUrl: { type: String, default: '' },
     },
     status: {
       type: String,

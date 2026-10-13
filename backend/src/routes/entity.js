@@ -24,6 +24,7 @@ const serializeEntity = async (entity) => {
   delete payload.password;
   payload.responsible.photoUrl = await getAssetUrl(payload.responsible.photoUrl);
   payload.responsible.proofUrl = await getAssetUrl(payload.responsible.proofUrl, { download: true });
+  payload.responsible.affiliationProofUrl = await getAssetUrl(payload.responsible.affiliationProofUrl, { download: true });
   return payload;
 };
 
@@ -41,6 +42,7 @@ const normalizeEntityPayload = (payload = {}) => {
       email: String(responsible?.email || '').trim().toLowerCase(),
       photoUrl: String(responsible?.photoUrl || '').trim(),
       proofUrl: String(responsible?.proofUrl || '').trim(),
+      affiliationProofUrl: String(responsible?.affiliationProofUrl || '').trim(),
     },
   };
 };
@@ -54,12 +56,13 @@ router.post('/register', registrationLimiter, async (req, res, next) => {
 
     const payload = normalizeEntityPayload(req.body);
 
-    if (!payload.name || !payload.email || !payload.password || !payload.phone || !payload.responsible.fullName || !payload.responsible.cpf || !payload.responsible.email || !payload.responsible.photoUrl || !payload.responsible.proofUrl) {
-      return res.status(400).json({ success: false, message: 'Informe todos os dados e envie a foto e o comprovante do responsável.' });
+    if (!payload.name || !payload.email || !payload.password || !payload.phone || !payload.responsible.fullName || !payload.responsible.cpf || !payload.responsible.email || !payload.responsible.photoUrl || !payload.responsible.proofUrl || !payload.responsible.affiliationProofUrl) {
+      return res.status(400).json({ success: false, message: 'Informe todos os dados e envie a foto, o documento e o comprovante de vínculo do responsável.' });
     }
 
     const assetError = validateUploadedAsset(payload.responsible.photoUrl, 'photo')
-      || validateUploadedAsset(payload.responsible.proofUrl, 'proof');
+      || validateUploadedAsset(payload.responsible.proofUrl, 'proof')
+      || validateUploadedAsset(payload.responsible.affiliationProofUrl, 'proof');
     if (assetError) return res.status(400).json({ success: false, message: assetError });
 
     if (!isValidCPF(payload.responsible.cpf)) {
@@ -82,6 +85,7 @@ router.post('/register', registrationLimiter, async (req, res, next) => {
     });
     entity.responsible.photoUrl = await storeAsset(payload.responsible.photoUrl, `entities/${entity._id}/responsible/photo`);
     entity.responsible.proofUrl = await storeAsset(payload.responsible.proofUrl, `entities/${entity._id}/responsible/proof`);
+    entity.responsible.affiliationProofUrl = await storeAsset(payload.responsible.affiliationProofUrl, `entities/${entity._id}/responsible/affiliation-proof`);
     await entity.save();
 
     void sendEntityRegistrationEmail(entity);
@@ -99,12 +103,13 @@ router.post('/', auth, async (req, res, next) => {
 
     const payload = normalizeEntityPayload(req.body);
 
-    if (!payload.name || !payload.email || !payload.password || !payload.phone || !payload.responsible.fullName || !payload.responsible.cpf || !payload.responsible.email) {
+    if (!payload.name || !payload.email || !payload.password || !payload.phone || !payload.responsible.fullName || !payload.responsible.cpf || !payload.responsible.email || !payload.responsible.affiliationProofUrl) {
       return res.status(400).json({ success: false, message: 'Dados obrigatórios não informados' });
     }
 
     const assetError = (payload.responsible.photoUrl && validateUploadedAsset(payload.responsible.photoUrl, 'photo'))
-      || (payload.responsible.proofUrl && validateUploadedAsset(payload.responsible.proofUrl, 'proof'));
+      || (payload.responsible.proofUrl && validateUploadedAsset(payload.responsible.proofUrl, 'proof'))
+      || validateUploadedAsset(payload.responsible.affiliationProofUrl, 'proof');
     if (assetError) return res.status(400).json({ success: false, message: assetError });
 
     if (!isValidCPF(payload.responsible.cpf)) {
@@ -131,6 +136,7 @@ router.post('/', auth, async (req, res, next) => {
     if (payload.responsible.proofUrl) {
       entity.responsible.proofUrl = await storeAsset(payload.responsible.proofUrl, `entities/${entity._id}/responsible/proof`);
     }
+    entity.responsible.affiliationProofUrl = await storeAsset(payload.responsible.affiliationProofUrl, `entities/${entity._id}/responsible/affiliation-proof`);
     await entity.save();
 
     res.status(201).json({ success: true, entity: await serializeEntity(entity) });
@@ -182,14 +188,16 @@ router.put('/:id', auth, async (req, res, next) => {
 
     const payload = normalizeEntityPayload(req.body);
 
-    if (!payload.name || !payload.email || !payload.phone || !payload.responsible.fullName || !payload.responsible.cpf || !payload.responsible.email || !payload.responsible.photoUrl || !payload.responsible.proofUrl) {
+    if (!payload.name || !payload.email || !payload.phone || !payload.responsible.fullName || !payload.responsible.cpf || !payload.responsible.email || !payload.responsible.photoUrl || !payload.responsible.proofUrl || !payload.responsible.affiliationProofUrl) {
       return res.status(400).json({ success: false, message: 'Dados obrigatórios não informados' });
     }
 
     const assetError = (!isSameStoredAsset(payload.responsible.photoUrl, currentEntity.responsible.photoUrl)
       && validateUploadedAsset(payload.responsible.photoUrl, 'photo'))
       || (!isSameStoredAsset(payload.responsible.proofUrl, currentEntity.responsible.proofUrl)
-        && validateUploadedAsset(payload.responsible.proofUrl, 'proof'));
+        && validateUploadedAsset(payload.responsible.proofUrl, 'proof'))
+      || (!isSameStoredAsset(payload.responsible.affiliationProofUrl, currentEntity.responsible.affiliationProofUrl)
+        && validateUploadedAsset(payload.responsible.affiliationProofUrl, 'proof'));
     if (assetError) return res.status(400).json({ success: false, message: assetError });
 
     if (!isValidCPF(payload.responsible.cpf)) {
@@ -209,6 +217,7 @@ router.put('/:id', auth, async (req, res, next) => {
         ...payload.responsible,
         photoUrl: await storeAsset(payload.responsible.photoUrl, `entities/${currentEntity._id}/responsible/photo`, currentEntity.responsible.photoUrl),
         proofUrl: await storeAsset(payload.responsible.proofUrl, `entities/${currentEntity._id}/responsible/proof`, currentEntity.responsible.proofUrl),
+        affiliationProofUrl: await storeAsset(payload.responsible.affiliationProofUrl, `entities/${currentEntity._id}/responsible/affiliation-proof`, currentEntity.responsible.affiliationProofUrl),
       },
     };
 
@@ -224,6 +233,7 @@ router.put('/:id', auth, async (req, res, next) => {
     await Promise.all([
       deleteReplacedAsset(currentEntity.responsible.photoUrl, entity.responsible.photoUrl),
       deleteReplacedAsset(currentEntity.responsible.proofUrl, entity.responsible.proofUrl),
+      deleteReplacedAsset(currentEntity.responsible.affiliationProofUrl, entity.responsible.affiliationProofUrl),
     ]);
     res.json({ success: true, entity: await serializeEntity(entity) });
   } catch (error) {
@@ -254,6 +264,7 @@ router.delete('/:id', auth, async (req, res, next) => {
     await Promise.all([
       deleteAsset(entity.responsible.photoUrl),
       deleteAsset(entity.responsible.proofUrl),
+      deleteAsset(entity.responsible.affiliationProofUrl),
     ]);
     res.json({ success: true, message: 'Entidade excluída com sucesso' });
   } catch (error) {

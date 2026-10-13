@@ -71,6 +71,7 @@ const serializeAthlete = async (athlete) => {
   payload.modalities = payload.modalities?.length ? payload.modalities : [payload.modality].filter(Boolean);
   payload.photoUrl = await getAssetUrl(payload.photoUrl);
   payload.proofUrl = await getAssetUrl(payload.proofUrl, { download: true });
+  payload.affiliationProofUrl = await getAssetUrl(payload.affiliationProofUrl, { download: true });
   return payload;
 };
 
@@ -124,7 +125,7 @@ router.post('/', auth, async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Acesso restrito à entidade ou ao administrador' });
     }
 
-    const { entityId, cpf, fullName, birthDate, phone, email, gender, naipe, modality, modalities, photoUrl, proofUrl, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
+    const { entityId, cpf, fullName, birthDate, phone, email, gender, naipe, modality, modalities, photoUrl, proofUrl, affiliationProofUrl, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
     const resolvedEntityId = req.user.type === 'entity' ? req.user.id : entityId;
     const resolvedNaipe = naipe || gender || 'masculino';
     const requestedModalities = Array.isArray(modalities) ? modalities : [modality].filter(Boolean);
@@ -133,11 +134,13 @@ router.post('/', auth, async (req, res, next) => {
       .map((value) => value.trim())
       .filter(Boolean))].map(getModalityDefinition));
 
-    if (!resolvedEntityId || !cpf || !fullName || !birthDate || !phone || !email || !modalityDefinitions.length || !resolvedNaipe || !photoUrl || !proofUrl) {
+    if (!resolvedEntityId || !cpf || !fullName || !birthDate || !phone || !email || !modalityDefinitions.length || !resolvedNaipe || !photoUrl || !proofUrl || !affiliationProofUrl) {
       return res.status(400).json({ success: false, message: 'Todos os campos do atleta são obrigatórios' });
     }
 
-    const assetError = validateUploadedAsset(photoUrl, 'photo') || validateUploadedAsset(proofUrl, 'proof');
+    const assetError = validateUploadedAsset(photoUrl, 'photo')
+      || validateUploadedAsset(proofUrl, 'proof')
+      || validateUploadedAsset(affiliationProofUrl, 'proof');
     if (assetError) return res.status(400).json({ success: false, message: assetError });
 
     if (!isValidCPF(cpf)) {
@@ -209,6 +212,7 @@ router.post('/', auth, async (req, res, next) => {
       phone,
       email,
       proofUrl,
+      affiliationProofUrl,
       modality: primaryModality.name,
       modalities: modalityNames,
       naipe: resolvedNaipe,
@@ -234,6 +238,7 @@ router.post('/', auth, async (req, res, next) => {
     try {
       athlete.photoUrl = await storeAsset(photoUrl, `athletes/${athlete._id}/photo`);
       athlete.proofUrl = await storeAsset(proofUrl, `athletes/${athlete._id}/proof`);
+      athlete.affiliationProofUrl = await storeAsset(affiliationProofUrl, `athletes/${athlete._id}/affiliation-proof`);
       await athlete.save();
     } catch (error) {
       if (raceReserved) await releaseRaceRegistration(athlete._id);
@@ -263,9 +268,10 @@ router.put('/:id', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Atleta não encontrado' });
     }
 
-    const { entityId, cpf, fullName, birthDate, photoUrl, phone, email, gender, naipe, modality, modalities, proofUrl, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
+    const { entityId, cpf, fullName, birthDate, photoUrl, phone, email, gender, naipe, modality, modalities, proofUrl, affiliationProofUrl, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
     const assetError = (photoUrl !== undefined && !isSameStoredAsset(photoUrl, athlete.photoUrl) && validateUploadedAsset(photoUrl, 'photo'))
-      || (proofUrl !== undefined && !isSameStoredAsset(proofUrl, athlete.proofUrl) && validateUploadedAsset(proofUrl, 'proof'));
+      || (proofUrl !== undefined && !isSameStoredAsset(proofUrl, athlete.proofUrl) && validateUploadedAsset(proofUrl, 'proof'))
+      || (affiliationProofUrl !== undefined && !isSameStoredAsset(affiliationProofUrl, athlete.affiliationProofUrl) && validateUploadedAsset(affiliationProofUrl, 'proof'));
     if (assetError) return res.status(400).json({ success: false, message: assetError });
     const resolvedNaipe = naipe || gender || athlete.naipe || athlete.gender;
     const requestedModalities = Array.isArray(modalities)
@@ -303,6 +309,7 @@ router.put('/:id', auth, async (req, res, next) => {
       ...(phone ? { phone } : {}),
       ...(email ? { email } : {}),
       ...(proofUrl ? { proofUrl: await storeAsset(proofUrl, `athletes/${athlete._id}/proof`, athlete.proofUrl) } : {}),
+      ...(affiliationProofUrl ? { affiliationProofUrl: await storeAsset(affiliationProofUrl, `athletes/${athlete._id}/affiliation-proof`, athlete.affiliationProofUrl) } : {}),
       ...(resolvedNaipe ? { gender: resolvedNaipe, naipe: resolvedNaipe } : {}),
       ...(resolvedModality ? { modality: resolvedModality, modalities: resolvedModalities } : {}),
       ...(isPcd !== undefined ? { isPcd: Boolean(isPcd) } : {}),
@@ -356,6 +363,7 @@ router.put('/:id', auth, async (req, res, next) => {
     await Promise.all([
       deleteReplacedAsset(athlete.photoUrl, updated.photoUrl),
       deleteReplacedAsset(athlete.proofUrl, updated.proofUrl),
+      deleteReplacedAsset(athlete.affiliationProofUrl, updated.affiliationProofUrl),
     ]);
     res.json({ success: true, athlete: await serializeAthlete(updated) });
   } catch (error) {
@@ -380,7 +388,7 @@ router.delete('/:id', auth, async (req, res, next) => {
       await releaseRaceRegistration(athlete._id);
     }
 
-    await Promise.all([deleteAsset(athlete.photoUrl), deleteAsset(athlete.proofUrl)]);
+    await Promise.all([deleteAsset(athlete.photoUrl), deleteAsset(athlete.proofUrl), deleteAsset(athlete.affiliationProofUrl)]);
     res.json({ success: true, message: 'Atleta excluído com sucesso' });
   } catch (error) {
     next(error);

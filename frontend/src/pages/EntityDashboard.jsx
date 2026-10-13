@@ -383,6 +383,19 @@ export default function EntityDashboard() {
             ].map(([label, value]) => (
               <Typography key={label}><strong>{label}:</strong> {value || '—'}</Typography>
             ))}
+            {detailAthlete?.affiliationProofUrl && (
+              <Button
+                component="a"
+                href={detailAthlete.affiliationProofUrl}
+                target="_blank"
+                rel="noreferrer"
+                download
+                startIcon={<DownloadIcon />}
+                sx={{ alignSelf: 'flex-start' }}
+              >
+                Baixar comprovante de vínculo
+              </Button>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>

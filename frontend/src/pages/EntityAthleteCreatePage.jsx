@@ -33,6 +33,7 @@ const emptyForm = {
   phone: '',
   email: '',
   proofUrl: '',
+  affiliationProofUrl: '',
   modalities: [],
   naipe: '',
   isPcd: false,
@@ -78,7 +79,7 @@ export default function EntityAthleteCreatePage() {
   const isEditing = Boolean(athleteId);
   const [form, setForm] = useState(emptyForm);
   const [modalities, setModalities] = useState([]);
-  const [uploadInfo, setUploadInfo] = useState({ photo: '', proof: '' });
+  const [uploadInfo, setUploadInfo] = useState({ photo: '', proof: '', affiliationProof: '' });
   const [saving, setSaving] = useState(false);
   const [athleteRegistrationOpen, setAthleteRegistrationOpen] = useState(true);
   const [raceRegistrationOpen, setRaceRegistrationOpen] = useState(true);
@@ -124,6 +125,7 @@ export default function EntityAthleteCreatePage() {
           phone: athlete.phone || '',
           email: athlete.email || '',
           proofUrl: athlete.proofUrl || '',
+          affiliationProofUrl: athlete.affiliationProofUrl || '',
           modalities: athlete.modalities?.length ? athlete.modalities : [athlete.modality].filter(Boolean),
           naipe: athlete.naipe || athlete.gender || '',
           isPcd: Boolean(athlete.isPcd),
@@ -135,6 +137,7 @@ export default function EntityAthleteCreatePage() {
         setUploadInfo({
           photo: athlete.photoUrl ? 'Foto já carregada' : '',
           proof: athlete.proofUrl ? 'Documento já carregado' : '',
+          affiliationProof: athlete.affiliationProofUrl ? 'Comprovante de vínculo já carregado' : '',
         });
       })
       .catch((loadError) => {
@@ -153,7 +156,10 @@ export default function EntityAthleteCreatePage() {
     try {
       const result = await readFileAsDataUrl(file);
       setForm((current) => ({ ...current, [fieldName]: result }));
-      setUploadInfo((current) => ({ ...current, [fieldName === 'photoUrl' ? 'photo' : 'proof']: file.name }));
+      setUploadInfo((current) => ({
+        ...current,
+        [fieldName === 'photoUrl' ? 'photo' : fieldName === 'affiliationProofUrl' ? 'affiliationProof' : 'proof']: file.name,
+      }));
       setError('');
     } catch (fileError) {
       setError(fileError.message || 'Não foi possível ler o arquivo.');
@@ -176,6 +182,7 @@ export default function EntityAthleteCreatePage() {
     if (!form.modalities.length) return setError('Selecione ao menos uma modalidade para o atleta.');
     if (!form.photoUrl) return setError('Selecione a foto do atleta.');
     if (!form.proofUrl) return setError('Selecione o comprovante do atleta.');
+    if (!form.affiliationProofUrl) return setError('Selecione o comprovante de vínculo com o órgão.');
 
     try {
       setSaving(true);
@@ -191,7 +198,7 @@ export default function EntityAthleteCreatePage() {
         navigate('/entity');
       } else {
         setForm(emptyForm);
-        setUploadInfo({ photo: '', proof: '' });
+        setUploadInfo({ photo: '', proof: '', affiliationProof: '' });
       }
     } catch (saveError) {
       const message = getApiErrorMessage(saveError, 'Erro ao cadastrar atleta.');
@@ -332,6 +339,23 @@ export default function EntityAthleteCreatePage() {
                       <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />}>
                         {form.proofUrl ? 'Trocar documento' : 'Selecionar documento'}
                         <input hidden type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(event) => handleFileField(event, 'proofUrl')} />
+                      </Button>
+                    </Stack>
+                  </Box>
+                </Grid>
+                <Grid item xs={12}>
+                  <Box sx={{ minHeight: 150, display: 'flex', alignItems: 'center', gap: 2, p: 2, border: '1px dashed #94a3b8', borderRadius: 1, backgroundColor: '#f8fafc' }}>
+                    <Box sx={{ width: 76, height: 100, flexShrink: 0, display: 'grid', placeItems: 'center', borderRadius: 1, backgroundColor: '#e2e8f0', color: '#64748b' }}><DescriptionOutlinedIcon /></Box>
+                    <Stack spacing={1} sx={{ minWidth: 0, alignItems: 'flex-start' }}>
+                      <Box>
+                        <Typography variant="subtitle2" fontWeight={700}>Comprovante de vínculo com o órgão</Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+                          {uploadInfo.affiliationProof || (form.affiliationProofUrl ? 'Comprovante de vínculo já carregado' : 'Contracheque, contrato, carteira de identificação ou crachá')}
+                        </Typography>
+                      </Box>
+                      <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />}>
+                        {form.affiliationProofUrl ? 'Trocar comprovante' : 'Selecionar comprovante'}
+                        <input hidden type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(event) => handleFileField(event, 'affiliationProofUrl')} />
                       </Button>
                     </Stack>
                   </Box>

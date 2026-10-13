@@ -10,6 +10,7 @@ const athleteSchema = new mongoose.Schema(
     phone: { type: String, required: true },
     email: { type: String, required: true, lowercase: true, trim: true },
     proofUrl: { type: String, default: '' },
+    affiliationProofUrl: { type: String, default: '' },
     modality: { type: String, required: true, trim: true },
     modalities: { type: [{ type: String, trim: true }], default: undefined },
     naipe: { type: String, enum: ['masculino', 'feminino', 'misto'], required: true, default: 'masculino' },
