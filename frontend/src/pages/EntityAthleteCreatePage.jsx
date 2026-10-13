@@ -318,7 +318,7 @@ export default function EntityAthleteCreatePage() {
                     <Box sx={{ width: 76, height: 100, flexShrink: 0, display: 'grid', placeItems: 'center', borderRadius: 1, backgroundColor: '#e2e8f0', color: '#64748b' }}><DescriptionOutlinedIcon /></Box>
                     <Stack spacing={1} sx={{ minWidth: 0, alignItems: 'flex-start' }}>
                       <Box>
-                        <Typography variant="subtitle2" fontWeight={700}>Comprovante</Typography>
+                        <Typography variant="subtitle2" fontWeight={700}>Documento do atleta (RG ou CNH)</Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>{uploadInfo.proof || (form.proofUrl ? 'Documento já carregado' : 'Nenhum documento selecionado')}</Typography>
                       </Box>
                       <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />}>

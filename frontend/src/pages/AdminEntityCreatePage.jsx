@@ -296,7 +296,7 @@ export default function AdminEntityCreatePage() {
                     </Box>
                     <Stack spacing={1} sx={{ minWidth: 0, alignItems: 'flex-start' }}>
                       <Box>
-                        <Typography variant="subtitle2" fontWeight={700}>Documento do responsável</Typography>
+                        <Typography variant="subtitle2" fontWeight={700}>Documento do responsável (RG ou CNH)</Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
                           {uploadInfo.proof || (form.responsibleProof ? 'Documento já carregado' : 'Nenhum documento selecionado')}
                         </Typography>

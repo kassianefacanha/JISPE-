@@ -20,4 +20,4 @@ Acesse o painel administrativo com a conta:
 - Entidades precisam estar aprovadas antes do login
 - Atenção à categoria por idade e ao uso de CPF único por entidade
 - Revisão documental deve ocorrer antes da aprovação final
-- Confira o documento do responsável/atleta e o comprovante de vínculo com o órgão (contracheque, contrato, carteira de identificação ou crachá)
+- Confira o RG ou CNH do responsável/atleta e o comprovante de vínculo com o órgão (contracheque, contrato, carteira de identificação ou crachá)

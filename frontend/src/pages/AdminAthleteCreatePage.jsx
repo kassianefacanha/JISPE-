@@ -372,7 +372,7 @@ export default function AdminAthleteCreatePage() {
                     </Box>
                     <Stack spacing={1} sx={{ minWidth: 0, alignItems: 'flex-start' }}>
                       <Box>
-                        <Typography variant="subtitle2" fontWeight={700}>Documento do atleta</Typography>
+                        <Typography variant="subtitle2" fontWeight={700}>Documento do atleta (RG ou CNH)</Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
                           {uploadInfo.proof || (form.proofUrl ? 'Documento já carregado' : 'Nenhum documento selecionado')}
                         </Typography>
