@@ -278,14 +278,6 @@ export default function EntityAthleteCreatePage() {
                 <Grid item xs={12} md={4}>
                   <TextField fullWidth disabled label="Categoria etária (automática)" value={calculatedAgeCategory || 'Informe nascimento e modalidade'} helperText="Calculada pelo ano de nascimento e pelas regras do evento 2026." />
                 </Grid>
-              </Grid>
-
-              <Divider sx={{ my: 2 }} />
-              <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>Foto e documento</Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <Box sx={{ minHeight: 150, display: 'flex', alignItems: 'center', gap: 2, p: 2, border: '1px dashed #94a3b8', borderRadius: 1, backgroundColor: '#f8fafc' }}>
-                    {form.photoUrl ? (
                 <Grid item xs={12}>
                   <Divider sx={{ my: 1 }} />
                   <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>Informações adicionais</Typography>
@@ -294,13 +286,25 @@ export default function EntityAthleteCreatePage() {
                   <FormControlLabel control={<Checkbox checked={form.isPcd} onChange={(event) => setForm({ ...form, isPcd: event.target.checked })} />} label="Atleta é PCD" />
                 </Grid>
                 <Grid item xs={12} md={4}>
-                  <FormControlLabel control={<Checkbox checked={form.hasAllergy} onChange={(event) => setForm({ ...form, hasAllergy: event.target.checked, allergyDetails: event.target.checked ? form.allergyDetails : '' })} />} label="Possui alergia" />
+                  <FormControlLabel control={<Checkbox checked={form.hasAllergy} onChange={(event) => setForm({ ...form, hasAllergy: event.target.checked })} />} label="Possui alergia" />
                 </Grid>
-                {form.hasAllergy && <Grid item xs={12} md={8}><TextField fullWidth label="Quais alergias?" value={form.allergyDetails} onChange={(event) => setForm({ ...form, allergyDetails: event.target.value })} /></Grid>}
+                <Grid item xs={12} md={8}>
+                  <TextField fullWidth label="Quais alergias?" disabled={!form.hasAllergy} value={form.allergyDetails} onChange={(event) => setForm({ ...form, allergyDetails: event.target.value })} />
+                </Grid>
                 <Grid item xs={12} md={4}>
-                  <FormControlLabel control={<Checkbox checked={form.hasSpecialCondition} onChange={(event) => setForm({ ...form, hasSpecialCondition: event.target.checked, specialConditionDetails: event.target.checked ? form.specialConditionDetails : '' })} />} label="Possui condição especial" />
+                  <FormControlLabel control={<Checkbox checked={form.hasSpecialCondition} onChange={(event) => setForm({ ...form, hasSpecialCondition: event.target.checked })} />} label="Possui condição especial" />
                 </Grid>
-                {form.hasSpecialCondition && <Grid item xs={12} md={8}><TextField fullWidth label="Descreva a condição especial" value={form.specialConditionDetails} onChange={(event) => setForm({ ...form, specialConditionDetails: event.target.value })} /></Grid>}
+                <Grid item xs={12} md={8}>
+                  <TextField fullWidth label="Descreva a condição especial" disabled={!form.hasSpecialCondition} value={form.specialConditionDetails} onChange={(event) => setForm({ ...form, specialConditionDetails: event.target.value })} />
+                </Grid>
+              </Grid>
+
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>Foto e documento</Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ minHeight: 150, display: 'flex', alignItems: 'center', gap: 2, p: 2, border: '1px dashed #94a3b8', borderRadius: 1, backgroundColor: '#f8fafc' }}>
+                    {form.photoUrl ? (
                       <Box component="img" src={form.photoUrl} alt="Prévia da foto do atleta" sx={{ width: 76, height: 100, flexShrink: 0, objectFit: 'cover', borderRadius: 1, border: '1px solid #cbd5e1' }} />
                     ) : (
                       <Box sx={{ width: 76, height: 100, flexShrink: 0, display: 'grid', placeItems: 'center', borderRadius: 1, backgroundColor: '#e2e8f0', color: '#64748b' }}><ImageOutlinedIcon /></Box>
