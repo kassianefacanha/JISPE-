@@ -13,7 +13,7 @@ const { auth } = require('../middlewares/auth');
 const { isValidCPF } = require('../utils/cpfValidator');
 const { generateMatricula } = require('../utils/matriculaGenerator');
 const { getAgeCategory, hasCompletedMinimumAge } = require('../services/ageCategory');
-const { defaultModalities } = require('../config/defaultModalities');
+const { defaultModalities, isExternalRegistrationModality } = require('../config/defaultModalities');
 const { validateUploadedAsset } = require('../utils/uploadValidation');
 const { deleteAsset, deleteReplacedAsset, getAssetBuffer, getAssetUrl, isR2Value, isSameStoredAsset, storeAsset } = require('../services/r2Storage');
 const { sendAthleteRegistrationEmail } = require('../services/passwordResetEmail');
@@ -154,7 +154,7 @@ router.post('/', auth, async (req, res, next) => {
     if (modalityDefinitions.some((definition) => !definition)) {
       return res.status(400).json({ success: false, message: 'Selecione uma modalidade válida.' });
     }
-    if (modalityDefinitions.some((definition) => definition.active === false)) {
+    if (requestedModalities.some(isExternalRegistrationModality) || modalityDefinitions.some(isExternalRegistrationModality)) {
       return res.status(400).json({ success: false, message: 'Beach Tennis deve ser inscrito exclusivamente em beachtennisgovce.com.br.' });
     }
     if (modalityDefinitions.some((definition) => !definition.genders?.includes(resolvedNaipe))) {
@@ -295,7 +295,8 @@ router.put('/:id', auth, async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Selecione uma modalidade válida.' });
     }
     const existingModalityNames = [athlete.modality, ...(athlete.modalities || [])];
-    if (resolvedModalityDefinitions.some((definition) => definition.active === false && !existingModalityNames.includes(definition.name))) {
+    if (resolvedModalityDefinitions.some((definition) => isExternalRegistrationModality(definition)
+      && !existingModalityNames.some(isExternalRegistrationModality))) {
       return res.status(400).json({ success: false, message: 'Beach Tennis deve ser inscrito exclusivamente em beachtennisgovce.com.br.' });
     }
     if (resolvedModalityDefinitions.some((definition) => !definition.genders?.includes(resolvedNaipe))) {
@@ -518,7 +519,7 @@ router.post('/:id/registrations', auth, async (req, res, next) => {
 
     const modalityDefinition = await getModalityDefinition(modality);
     if (!modalityDefinition) return res.status(400).json({ success: false, message: 'Selecione uma modalidade válida.' });
-    if (modalityDefinition.active === false) {
+    if (isExternalRegistrationModality(modalityDefinition) || isExternalRegistrationModality(modality)) {
       return res.status(400).json({ success: false, message: 'Beach Tennis deve ser inscrito exclusivamente em beachtennisgovce.com.br.' });
     }
 

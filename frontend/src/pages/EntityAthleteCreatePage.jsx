@@ -22,6 +22,7 @@ import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { getAutomaticAgeCategory, hasCompletedMinimumAge } from '../utils/athleteAge';
+import { isExternalRegistrationModality } from '../utils/externalRegistrationModality';
 import api, { getApiErrorMessage } from '../services/api';
 import { useFeedback } from '../contexts/FeedbackContext';
 
@@ -95,7 +96,7 @@ export default function EntityAthleteCreatePage() {
 
   useEffect(() => {
     api.get('/modalities')
-      .then((response) => setModalities(response.data.modalities || []))
+      .then((response) => setModalities((response.data.modalities || []).filter((modality) => !isExternalRegistrationModality(modality))))
       .catch((loadError) => setError(getApiErrorMessage(loadError, 'Não foi possível carregar as modalidades.')));
   }, []);
 

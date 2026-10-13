@@ -130,6 +130,10 @@ export default function AdminRegistrationSettings({ entities }) {
     <Stack spacing={2.5}>
       <Typography variant="h6" fontWeight={700}>Controles gerais de inscrição</Typography>
       {error && <Alert severity="error">{error}</Alert>}
+      <Alert severity="info">
+        As inscrições para os torneios de Beach Tennis dos Jogos dos Servidores 2026 são feitas exclusivamente em{' '}
+        <a href="https://beachtennisgovce.com.br" target="_blank" rel="noreferrer">beachtennisgovce.com.br</a>.
+      </Alert>
       <Paper variant="outlined" sx={{ p: { xs: 2, md: 2.5 } }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} divider={<Box sx={{ borderColor: 'divider' }} />}>
           <FormControlLabel

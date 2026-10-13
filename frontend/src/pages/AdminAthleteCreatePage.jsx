@@ -26,6 +26,7 @@ import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { getAutomaticAgeCategory, hasCompletedMinimumAge } from '../utils/athleteAge';
+import { isExternalRegistrationModality } from '../utils/externalRegistrationModality';
 import api, { getApiErrorMessage } from '../services/api';
 
 const emptyForm = {
@@ -115,7 +116,7 @@ export default function AdminAthleteCreatePage() {
         ]);
 
         const loadedEntities = entitiesResponse.data.entities || [];
-        const loadedModalities = modalitiesResponse.data.modalities || [];
+        const loadedModalities = (modalitiesResponse.data.modalities || []).filter((modality) => !isExternalRegistrationModality(modality));
         setEntities(loadedEntities);
         setModalities(loadedModalities);
         setRaceRegistrationOpen(registrationStatusResponse.data.raceRegistrationOpen !== false);
@@ -283,6 +284,10 @@ export default function AdminAthleteCreatePage() {
                 <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
               )}
               {!raceRegistrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>As inscrições para a corrida foram encerradas: limite de 3.000 corredores atingido.</Alert>}
+              <Alert severity="info" sx={{ mb: 2 }}>
+                As inscrições para os torneios de Beach Tennis dos Jogos dos Servidores 2026 são feitas exclusivamente em{' '}
+                <a href="https://beachtennisgovce.com.br" target="_blank" rel="noreferrer">beachtennisgovce.com.br</a>.
+              </Alert>
               <Grid container spacing={2}>
                 <Grid item xs={12} md={4}>
                   <TextField fullWidth label="Nome completo" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />

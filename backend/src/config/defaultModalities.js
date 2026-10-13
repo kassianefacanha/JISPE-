@@ -15,11 +15,24 @@ const defaultModalities = [
   { name: 'Tênis de Mesa', slug: 'tenis-de-mesa', genders: ['masculino', 'feminino'], categories: ['Aberto', 'Adulto', 'Master'], maxTeamsPerEntity: 3, isCollective: false, active: true },
   { name: 'Carimba', slug: 'carimba', genders: ['masculino', 'feminino'], categories: ['Aberto'], maxTeamsPerEntity: 3, maxAthletesPerTeam: 15, isCollective: true, active: true },
   { name: 'Handebol', slug: 'handebol', genders: ['masculino', 'feminino'], categories: ['Aberto'], maxTeamsPerEntity: 3, maxAthletesPerTeam: 15, isCollective: true, active: true },
-  { name: 'Beach Tennis', slug: 'beach-tennis', genders: ['masculino', 'feminino', 'misto'], categories: ['Aberto'], maxTeamsPerEntity: 3, maxAthletesPerTeam: 4, isCollective: true, active: false },
   { name: 'Xadrez', slug: 'xadrez', genders: ['masculino', 'feminino'], categories: ['Aberto'], isCollective: false, active: true },
   { name: 'Dama', slug: 'dama', genders: ['masculino', 'feminino'], categories: ['Aberto'], isCollective: false, active: true },
   { name: 'Corrida 5km', slug: 'corrida-5km', genders: ['masculino', 'feminino'], categories: ['18-29', '30-39', '40-49', '50+'], isCollective: false, active: true },
 ];
+
+const normalizeModalityIdentifier = (value) => String(value || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .replace(/[^a-z0-9]/g, '');
+
+const isExternalRegistrationModality = (value) => {
+  const identifiers = typeof value === 'string' ? [value] : [value?.name, value?.slug];
+  return identifiers.some((identifier) => {
+    const normalized = normalizeModalityIdentifier(identifier);
+    return normalized.includes('beachtennis') || normalized.includes('beachtenis');
+  });
+};
 
 const getModalityCatalog = (storedModalities = []) => {
   const matchedSlugs = new Set();
@@ -33,8 +46,8 @@ const getModalityCatalog = (storedModalities = []) => {
   });
   const customModalities = storedModalities.filter((modality) => !matchedSlugs.has(modality.slug));
   return [...officialModalities, ...customModalities]
-    .filter((modality) => modality.active !== false)
+    .filter((modality) => modality.active !== false && !isExternalRegistrationModality(modality))
     .sort((left, right) => left.name.localeCompare(right.name, 'pt-BR'));
 };
 
-module.exports = { defaultModalities, getModalityCatalog };
+module.exports = { defaultModalities, getModalityCatalog, isExternalRegistrationModality };
