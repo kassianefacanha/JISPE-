@@ -182,7 +182,7 @@ export default function EntityRegisterPage() {
                       <Box>
                         <Typography variant="subtitle2" fontWeight={700}>Comprovante de vínculo com o órgão</Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
-                          {uploadInfo.affiliationProof || 'Contracheque, contrato, carteira de identificação ou crachá'}
+                          {uploadInfo.affiliationProof || 'Declaração do RH, contrato, carteira de identificação ou crachá'}
                         </Typography>
                       </Box>
                       <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />}>

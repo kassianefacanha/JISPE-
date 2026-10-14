@@ -14,7 +14,7 @@
 - O sistema valida o CPF e gera a matrícula automaticamente.
 - A entidade pode cadastrar vários atletas desde que o CPF seja único dentro da mesma entidade.
 
-O comprovante de vínculo pode ser contracheque, contrato, carteira de identificação ou crachá. Envie em JPG, PNG, WebP ou PDF, com até 3 MiB por arquivo.
+O comprovante de vínculo pode ser declaração do RH, contrato, carteira de identificação ou crachá. Envie em JPG, PNG, WebP ou PDF, com até 3 MiB por arquivo.
 
 As inscrições para os torneios de Beach Tennis dos Jogos dos Servidores 2026 devem ser realizadas exclusivamente pelo site [beachtennisgovce.com.br](https://beachtennisgovce.com.br).
 

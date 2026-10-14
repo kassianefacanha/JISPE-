@@ -141,7 +141,7 @@ router.post('/login', loginLimiter, async (req, res, next) => {
 
     const admin = await Admin.findOne({ email: email.toLowerCase() }).select('+password +sessionVersion');
     if (admin && (await bcrypt.compare(password, admin.password))) {
-      const token = jwt.sign({ id: admin._id, role: admin.role, type: 'admin', sessionVersion: admin.sessionVersion || 0 }, jwtSecret, { expiresIn: '7d' });
+      const token = jwt.sign({ id: admin._id, role: admin.role, type: 'admin', sessionVersion: admin.sessionVersion || 0 }, jwtSecret, { expiresIn: '1d' });
       return res.json({ success: true, token, user: { id: admin._id, name: admin.name, email: admin.email, role: admin.role } });
     }
 
@@ -151,7 +151,7 @@ router.post('/login', loginLimiter, async (req, res, next) => {
         return res.status(403).json({ success: false, message: 'Entidade ainda não foi aprovada' });
       }
 
-      const token = jwt.sign({ id: entity._id, role: 'entity', type: 'entity', sessionVersion: entity.sessionVersion || 0 }, jwtSecret, { expiresIn: '7d' });
+      const token = jwt.sign({ id: entity._id, role: 'entity', type: 'entity', sessionVersion: entity.sessionVersion || 0 }, jwtSecret, { expiresIn: '1d' });
       return res.json({ success: true, token, user: { id: entity._id, name: entity.name, email: entity.email, role: 'entity', status: entity.status } });
     }
 

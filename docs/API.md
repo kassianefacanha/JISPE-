@@ -48,6 +48,6 @@
 
 ## Observações
 
-- JWT expira em 7 dias.
+- JWT expira em 24 horas.
 - Entidades só pode logar após aprovação.
 - CPF deve ser validado em todas as entradas de pessoa.
