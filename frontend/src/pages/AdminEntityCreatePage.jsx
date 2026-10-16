@@ -17,6 +17,7 @@ import {
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
+import PrivacyNotice from '../components/PrivacyNotice';
 import { useFeedback } from '../contexts/FeedbackContext';
 import api, { getApiErrorMessage } from '../services/api';
 
@@ -229,6 +230,7 @@ export default function AdminEntityCreatePage() {
               {success && (
                 <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>
               )}
+              <PrivacyNotice />
               <Grid container spacing={2}>
                 <Grid item xs={12} md={4}>
                   <TextField fullWidth label="Nome da entidade" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />

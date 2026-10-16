@@ -1,16 +1,13 @@
 const express = require('express');
 const ExcelJS = require('exceljs');
 const { auth } = require('../middlewares/auth');
+const { adminViewerOnly } = require('../middlewares/adminPermissions');
 const Athlete = require('../models/Athlete');
 
 const router = express.Router();
 
-router.get('/athletes', auth, async (req, res, next) => {
+router.get('/athletes', auth, adminViewerOnly, async (req, res, next) => {
   try {
-    if (req.user.type !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Acesso restrito ao administrador' });
-    }
-
     const athletes = await Athlete.find().sort({ createdAt: -1 });
 
     if (req.query.format === 'xlsx') {

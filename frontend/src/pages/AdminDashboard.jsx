@@ -194,7 +194,8 @@ const exportPdf = async (rows, columns, filename) => {
 };
 
 export default function AdminDashboard() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+  const isReadOnly = user?.role === 'gerencia';
   const { notify, confirm } = useFeedback();
   const [activeTab, setActiveTab] = useState('entidades');
   const [entities, setEntities] = useState([]);
@@ -531,12 +532,12 @@ export default function AdminDashboard() {
       disableColumnMenu: true,
       renderCell: (params) => (
         <Stack direction="row" spacing={0.5} useFlexGap>
-          {params.row.status !== 'approved' && (
+          {!isReadOnly && params.row.status !== 'approved' && (
             <IconButton color="success" size="small" onClick={() => updateEntityStatus(params.row._id, 'approved')} title="Aprovar">
               <CheckCircleIcon fontSize="small" />
             </IconButton>
           )}
-          {params.row.status !== 'rejected' && (
+          {!isReadOnly && params.row.status !== 'rejected' && (
             <IconButton color="error" size="small" onClick={() => updateEntityStatus(params.row._id, 'rejected')} title="Rejeitar">
               <CloseIcon fontSize="small" />
             </IconButton>
@@ -544,12 +545,16 @@ export default function AdminDashboard() {
           <IconButton color="info" size="small" onClick={() => setDetailDialog({ open: true, type: 'entidade', data: params.row })} title="Ver detalhes">
             <VisibilityIcon fontSize="small" />
           </IconButton>
-          <IconButton color="warning" size="small" component={Link} to={`/admin/entidades/novo?id=${params.row._id}`} title="Editar">
-            <EditIcon fontSize="small" />
-          </IconButton>
-          <IconButton color="inherit" size="small" onClick={() => deleteEntity(params.row._id)} title="Excluir">
-            <DeleteIcon fontSize="small" />
-          </IconButton>
+          {!isReadOnly && (
+            <>
+              <IconButton color="warning" size="small" component={Link} to={`/admin/entidades/novo?id=${params.row._id}`} title="Editar">
+                <EditIcon fontSize="small" />
+              </IconButton>
+              <IconButton color="inherit" size="small" onClick={() => deleteEntity(params.row._id)} title="Excluir">
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </>
+          )}
         </Stack>
       ),
     },
@@ -588,12 +593,16 @@ export default function AdminDashboard() {
           <IconButton color="info" size="small" onClick={() => setDetailDialog({ open: true, type: 'atleta', data: params.row })} title="Ver detalhes">
             <VisibilityIcon fontSize="small" />
           </IconButton>
-          <IconButton color="warning" size="small" component={Link} to={`/admin/atletas/novo?id=${params.row._id}`} title="Editar">
-            <EditIcon fontSize="small" />
-          </IconButton>
-          <IconButton color="inherit" size="small" onClick={() => deleteAthlete(params.row._id)} title="Excluir">
-            <DeleteIcon fontSize="small" />
-          </IconButton>
+          {!isReadOnly && (
+            <>
+              <IconButton color="warning" size="small" component={Link} to={`/admin/atletas/novo?id=${params.row._id}`} title="Editar">
+                <EditIcon fontSize="small" />
+              </IconButton>
+              <IconButton color="inherit" size="small" onClick={() => deleteAthlete(params.row._id)} title="Excluir">
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </>
+          )}
           <IconButton color="secondary" size="small" onClick={() => downloadBadge(params.row._id)} title="Gerar carteirinha">
             <DownloadIcon fontSize="small" />
           </IconButton>
@@ -637,15 +646,16 @@ export default function AdminDashboard() {
             <Box component="img" src="/logo.png" alt="JISPE 2026" sx={{ display: 'block', width: { xs: 72, sm: 104 }, maxWidth: '35vw', height: 'auto', flexShrink: 0 }} />
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="overline" color="primary.main" sx={{ letterSpacing: 3, fontWeight: 800 }}>
-                Admin
+                {isReadOnly ? 'Gerência' : 'Admin'}
               </Typography>
-              <Typography variant="h4" fontWeight={800} color="text.primary" sx={{ fontSize: { xs: 22, sm: 34 }, lineHeight: 1.15 }}>
-                Dashboard administrativo
+                <Typography variant="h4" fontWeight={800} color="text.primary" sx={{ fontSize: { xs: 22, sm: 34 }, lineHeight: 1.15 }}>
+                  {isReadOnly ? 'Consulta de dados' : 'Dashboard administrativo'}
               </Typography>
             </Box>
           </Box>
 
           <Stack direction="row" spacing={1}>
+            {!isReadOnly && <Button component={Link} to="/admin/gestao" variant="outlined">Gestão geral</Button>}
             <Button component={Link} to="/perfil" variant="outlined" startIcon={<ManageAccountsIcon />}>
               Perfil
             </Button>
@@ -731,16 +741,18 @@ export default function AdminDashboard() {
                     >
                       Exportar
                     </Button>
-                    <Button
-                      component={Link}
-                      to="/admin/entidades/novo"
-                      variant="contained"
-                      size="small"
-                      sx={{ textTransform: 'none', minWidth: 140 }}
-                      startIcon={<AddIcon />}
-                    >
-                      Novo cadastro
-                    </Button>
+                    {!isReadOnly && (
+                      <Button
+                        component={Link}
+                        to="/admin/entidades/novo"
+                        variant="contained"
+                        size="small"
+                        sx={{ textTransform: 'none', minWidth: 140 }}
+                        startIcon={<AddIcon />}
+                      >
+                        Novo cadastro
+                      </Button>
+                    )}
                   </Stack>
                 </Stack>
 
@@ -846,16 +858,18 @@ export default function AdminDashboard() {
                     >
                       Exportar
                     </Button>
-                    <Button
-                      component={Link}
-                      to="/admin/atletas/novo"
-                      variant="contained"
-                      size="small"
-                      sx={{ textTransform: 'none', minWidth: 140 }}
-                      startIcon={<AddIcon />}
-                    >
-                      Novo cadastro
-                    </Button>
+                    {!isReadOnly && (
+                      <Button
+                        component={Link}
+                        to="/admin/atletas/novo"
+                        variant="contained"
+                        size="small"
+                        sx={{ textTransform: 'none', minWidth: 140 }}
+                        startIcon={<AddIcon />}
+                      >
+                        Novo cadastro
+                      </Button>
+                    )}
                   </Stack>
                 </Stack>
 
@@ -914,7 +928,7 @@ export default function AdminDashboard() {
                 </Paper>
               </Box>
             ) : (
-              <AdminRegistrationSettings entities={entities} />
+              <AdminRegistrationSettings entities={entities} readOnly={isReadOnly} />
             )}
           </Box>
         </Paper>

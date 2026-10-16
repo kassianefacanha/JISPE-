@@ -24,13 +24,21 @@ const initialAthleteForm = {
   gender: 'masculino',
 };
 
+const initialManagerForm = {
+  name: '',
+  email: '',
+  password: '',
+};
+
 export default function AdminManagementPage() {
   const { logout } = useAuth();
   const { notify, confirm } = useFeedback();
   const [entities, setEntities] = useState([]);
   const [athletes, setAthletes] = useState([]);
+  const [managers, setManagers] = useState([]);
   const [entityForm, setEntityForm] = useState(initialEntityForm);
   const [athleteForm, setAthleteForm] = useState(initialAthleteForm);
+  const [managerForm, setManagerForm] = useState(initialManagerForm);
   const [editingEntityId, setEditingEntityId] = useState(null);
   const [editingAthleteId, setEditingAthleteId] = useState(null);
 
@@ -41,12 +49,14 @@ export default function AdminManagementPage() {
 
   const loadData = async () => {
     try {
-      const [entitiesResponse, athletesResponse] = await Promise.all([
+      const [entitiesResponse, athletesResponse, managersResponse] = await Promise.all([
         api.get('/entities'),
         api.get('/athletes'),
+        api.get('/admin/managers'),
       ]);
       setEntities(entitiesResponse.data.entities || []);
       setAthletes(athletesResponse.data.athletes || []);
+      setManagers(managersResponse.data.managers || []);
     } catch (error) {
       notify(getApiErrorMessage(error, 'Não foi possível carregar os dados de gerenciamento.'));
     }
@@ -55,6 +65,36 @@ export default function AdminManagementPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleManagerSave = async (event) => {
+    event.preventDefault();
+    try {
+      await api.post('/admin/managers', managerForm);
+      setManagerForm(initialManagerForm);
+      await loadData();
+      notify('Conta de Gerência criada. O usuário já pode entrar com esse e-mail e senha.', 'success');
+    } catch (error) {
+      notify(getApiErrorMessage(error, 'Não foi possível criar a conta de Gerência.'));
+    }
+  };
+
+  const deleteManager = async (manager) => {
+    const confirmed = await confirm({
+      title: 'Remover acesso da Gerência',
+      message: `Deseja remover o acesso de ${manager.name} (${manager.email})?`,
+      confirmLabel: 'Remover acesso',
+      severity: 'error',
+    });
+    if (!confirmed) return;
+
+    try {
+      await api.delete(`/admin/managers/${manager._id}`);
+      await loadData();
+      notify('Acesso da Gerência removido.', 'success');
+    } catch (error) {
+      notify(getApiErrorMessage(error, 'Não foi possível remover o acesso.'));
+    }
+  };
 
   const handleEntitySave = async (event) => {
     event.preventDefault();
@@ -230,6 +270,43 @@ export default function AdminManagementPage() {
             <button onClick={logout} className="rounded-xl bg-slate-800 px-4 py-2 text-sm font-medium text-white">Sair</button>
           </div>
         </header>
+
+        <section className="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-slate-800">Contas de Gerência</h2>
+            <p className="mt-1 text-sm text-slate-600">Acesso de consulta aos dados, sem permissão para alterar cadastros ou configurações.</p>
+          </div>
+          <form onSubmit={handleManagerSave} className="mb-5 grid gap-3 md:grid-cols-4">
+            <input required value={managerForm.name} onChange={(event) => setManagerForm({ ...managerForm, name: event.target.value })} className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Nome" />
+            <input required type="email" value={managerForm.email} onChange={(event) => setManagerForm({ ...managerForm, email: event.target.value })} className="rounded-xl border border-slate-300 px-3 py-2" placeholder="E-mail" />
+            <input required type="password" minLength={12} value={managerForm.password} onChange={(event) => setManagerForm({ ...managerForm, password: event.target.value })} className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Senha (mínimo 12 caracteres)" />
+            <button type="submit" className="rounded-xl bg-jispe-green px-4 py-2 font-semibold text-white">Criar conta</button>
+          </form>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-slate-50 text-slate-600">
+                <tr>
+                  <th className="px-3 py-2 font-semibold">Nome</th>
+                  <th className="px-3 py-2 font-semibold">E-mail</th>
+                  <th className="px-3 py-2 font-semibold">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {managers.length === 0 ? (
+                  <tr><td colSpan="3" className="px-3 py-4 text-slate-500">Nenhuma conta de Gerência cadastrada.</td></tr>
+                ) : managers.map((manager) => (
+                  <tr key={manager._id} className="border-t border-slate-200">
+                    <td className="px-3 py-3 font-medium text-slate-800">{manager.name}</td>
+                    <td className="px-3 py-3 text-slate-600">{manager.email}</td>
+                    <td className="px-3 py-3">
+                      <button type="button" onClick={() => deleteManager(manager)} className="rounded-lg bg-slate-800 px-2 py-1 text-xs font-medium text-white">Remover acesso</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
         <div className="grid gap-6 xl:grid-cols-2">
           <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">

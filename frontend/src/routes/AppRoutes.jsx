@@ -14,10 +14,11 @@ import PublicBadgeValidationPage from '../pages/PublicBadgeValidationPage';
 
 function ProtectedRoute({ children, role }) {
   const { user, loading } = useAuth();
+  const allowedRoles = Array.isArray(role) ? role : role ? [role] : [];
 
   if (loading) return <div className="flex min-h-screen items-center justify-center text-slate-600">Carregando...</div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (role && user.role !== role) return <Navigate to="/login" replace />;
+  if (allowedRoles.length && !allowedRoles.includes(user.role)) return <Navigate to="/login" replace />;
 
   return children;
 }
@@ -36,7 +37,7 @@ export default function AppRoutes() {
       <Route
         path="/admin"
         element={
-          <ProtectedRoute role="admin">
+          <ProtectedRoute role={['admin', 'superadmin', 'gerencia']}>
             <AdminDashboard />
           </ProtectedRoute>
         }
@@ -45,7 +46,7 @@ export default function AppRoutes() {
       <Route
         path="/admin/entidades/novo"
         element={
-          <ProtectedRoute role="admin">
+          <ProtectedRoute role={['admin', 'superadmin']}>
             <AdminEntityCreatePage />
           </ProtectedRoute>
         }
@@ -54,7 +55,7 @@ export default function AppRoutes() {
       <Route
         path="/admin/atletas/novo"
         element={
-          <ProtectedRoute role="admin">
+          <ProtectedRoute role={['admin', 'superadmin']}>
             <AdminAthleteCreatePage />
           </ProtectedRoute>
         }
@@ -63,7 +64,7 @@ export default function AppRoutes() {
       <Route
         path="/admin/gestao"
         element={
-          <ProtectedRoute role="admin">
+          <ProtectedRoute role={['admin', 'superadmin']}>
             <AdminManagementPage />
           </ProtectedRoute>
         }

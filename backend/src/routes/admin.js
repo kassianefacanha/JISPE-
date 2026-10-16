@@ -1,5 +1,8 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const { auth } = require('../middlewares/auth');
+const { adminEditorOnly, adminViewerOnly } = require('../middlewares/adminPermissions');
+const Admin = require('../models/Admin');
 const Entity = require('../models/Entity');
 const Athlete = require('../models/Athlete');
 const Modality = require('../models/Modality');
@@ -8,13 +11,6 @@ const EntityModalityRule = require('../models/EntityModalityRule');
 const { getModalityCatalog } = require('../config/defaultModalities');
 
 const router = express.Router();
-
-const adminOnly = (req, res, next) => {
-  if (req.user.type !== 'admin') {
-    return res.status(403).json({ success: false, message: 'Acesso restrito ao administrador' });
-  }
-  next();
-};
 
 const getRegistrationControls = () => RegistrationControls.findOneAndUpdate(
   { _id: 'global' },
@@ -33,7 +29,7 @@ router.get('/me', auth, (req, res) => {
   });
 });
 
-router.get('/registration-controls', auth, adminOnly, async (req, res, next) => {
+router.get('/registration-controls', auth, adminViewerOnly, async (req, res, next) => {
   try {
     const controls = await getRegistrationControls();
     res.json({ success: true, controls });
@@ -42,7 +38,7 @@ router.get('/registration-controls', auth, adminOnly, async (req, res, next) => 
   }
 });
 
-router.patch('/registration-controls', auth, adminOnly, async (req, res, next) => {
+router.patch('/registration-controls', auth, adminEditorOnly, async (req, res, next) => {
   try {
     const update = {};
     for (const field of ['entityRegistrationOpen', 'athleteRegistrationOpen']) {
@@ -63,7 +59,7 @@ router.patch('/registration-controls', auth, adminOnly, async (req, res, next) =
   }
 });
 
-router.get('/entities/:entityId/modality-rules', auth, adminOnly, async (req, res, next) => {
+router.get('/entities/:entityId/modality-rules', auth, adminViewerOnly, async (req, res, next) => {
   try {
     const entity = await Entity.findById(req.params.entityId).select('name status');
     if (!entity) return res.status(404).json({ success: false, message: 'Entidade não encontrada.' });
@@ -100,7 +96,7 @@ router.get('/entities/:entityId/modality-rules', auth, adminOnly, async (req, re
   }
 });
 
-router.put('/entities/:entityId/modality-rules', auth, adminOnly, async (req, res, next) => {
+router.put('/entities/:entityId/modality-rules', auth, adminEditorOnly, async (req, res, next) => {
   try {
     const entity = await Entity.findById(req.params.entityId).select('_id');
     if (!entity) return res.status(404).json({ success: false, message: 'Entidade não encontrada.' });
@@ -137,6 +133,57 @@ router.put('/entities/:entityId/modality-rules', auth, adminOnly, async (req, re
 
     if (operations.length) await EntityModalityRule.bulkWrite(operations);
     res.json({ success: true, message: 'Limites de modalidade atualizados.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/managers', auth, adminEditorOnly, async (req, res, next) => {
+  try {
+    const managers = await Admin.find({ role: 'gerencia' }).select('name email role createdAt').sort({ name: 1 }).lean();
+    res.json({ success: true, managers });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/managers', auth, adminEditorOnly, async (req, res, next) => {
+  try {
+    const name = String(req.body?.name || '').trim();
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const password = req.body?.password;
+    if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || typeof password !== 'string' || password.length < 12) {
+      return res.status(400).json({ success: false, message: 'Informe nome, e-mail válido e senha com pelo menos 12 caracteres.' });
+    }
+
+    const [existingAdmin, existingEntity] = await Promise.all([
+      Admin.exists({ email }),
+      Entity.exists({ email }),
+    ]);
+    if (existingAdmin || existingEntity) {
+      return res.status(409).json({ success: false, message: 'Já existe uma conta com esse e-mail.' });
+    }
+
+    const manager = await Admin.create({
+      name,
+      email,
+      password: await bcrypt.hash(password, 12),
+      role: 'gerencia',
+    });
+    res.status(201).json({
+      success: true,
+      manager: { _id: manager._id, name: manager.name, email: manager.email, role: manager.role, createdAt: manager.createdAt },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/managers/:id', auth, adminEditorOnly, async (req, res, next) => {
+  try {
+    const manager = await Admin.findOneAndDelete({ _id: req.params.id, role: 'gerencia' });
+    if (!manager) return res.status(404).json({ success: false, message: 'Conta de Gerência não encontrada.' });
+    res.json({ success: true, message: 'Conta de Gerência removida.' });
   } catch (error) {
     next(error);
   }

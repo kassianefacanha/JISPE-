@@ -27,7 +27,7 @@ export default function LoginPage() {
 
     try {
       const user = await login(form.email, form.password);
-      if (user.role === 'admin') navigate('/admin');
+      if (['admin', 'superadmin', 'gerencia'].includes(user.role)) navigate('/admin');
       else navigate('/entity');
     } catch (err) {
       setError(getApiErrorMessage(err, 'Não foi possível entrar no sistema.'));

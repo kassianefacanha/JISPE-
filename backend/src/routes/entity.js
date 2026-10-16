@@ -5,6 +5,7 @@ const Entity = require('../models/Entity');
 const Athlete = require('../models/Athlete');
 const RegistrationControls = require('../models/RegistrationControls');
 const { auth } = require('../middlewares/auth');
+const { adminEditorOnly, adminViewerOnly } = require('../middlewares/adminPermissions');
 const { isValidCPF } = require('../utils/cpfValidator');
 const { validateUploadedAsset } = require('../utils/uploadValidation');
 const { deleteAsset, deleteReplacedAsset, getAssetUrl, isSameStoredAsset, storeAsset } = require('../services/r2Storage');
@@ -95,12 +96,8 @@ router.post('/register', registrationLimiter, async (req, res, next) => {
   }
 });
 
-router.post('/', auth, async (req, res, next) => {
+router.post('/', auth, adminEditorOnly, async (req, res, next) => {
   try {
-    if (req.user.type !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Acesso restrito ao administrador' });
-    }
-
     const payload = normalizeEntityPayload(req.body);
 
     if (!payload.name || !payload.email || !payload.password || !payload.phone || !payload.responsible.fullName || !payload.responsible.cpf || !payload.responsible.email || !payload.responsible.affiliationProofUrl) {
@@ -145,12 +142,8 @@ router.post('/', auth, async (req, res, next) => {
   }
 });
 
-router.get('/', auth, async (req, res, next) => {
+router.get('/', auth, adminViewerOnly, async (req, res, next) => {
   try {
-    if (req.user.type !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Acesso restrito ao administrador' });
-    }
-
     const entities = await Entity.find().sort({ createdAt: -1 });
     res.json({ success: true, entities: await Promise.all(entities.map(serializeEntity)) });
   } catch (error) {
@@ -158,12 +151,8 @@ router.get('/', auth, async (req, res, next) => {
   }
 });
 
-router.get('/:id', auth, async (req, res, next) => {
+router.get('/:id', auth, adminViewerOnly, async (req, res, next) => {
   try {
-    if (req.user.type !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Acesso restrito ao administrador' });
-    }
-
     const entity = await Entity.findById(req.params.id);
     if (!entity) {
       return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
@@ -175,12 +164,8 @@ router.get('/:id', auth, async (req, res, next) => {
   }
 });
 
-router.put('/:id', auth, async (req, res, next) => {
+router.put('/:id', auth, adminEditorOnly, async (req, res, next) => {
   try {
-    if (req.user.type !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Acesso restrito ao administrador' });
-    }
-
     const currentEntity = await Entity.findById(req.params.id);
     if (!currentEntity) {
       return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
@@ -241,12 +226,8 @@ router.put('/:id', auth, async (req, res, next) => {
   }
 });
 
-router.delete('/:id', auth, async (req, res, next) => {
+router.delete('/:id', auth, adminEditorOnly, async (req, res, next) => {
   try {
-    if (req.user.type !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Acesso restrito ao administrador' });
-    }
-
     const associatedAthletes = await Athlete.find({ entityId: req.params.id }).select('fullName');
     if (associatedAthletes.length > 0) {
       return res.status(400).json({
@@ -272,12 +253,8 @@ router.delete('/:id', auth, async (req, res, next) => {
   }
 });
 
-router.patch('/:id/approve', auth, async (req, res, next) => {
+router.patch('/:id/approve', auth, adminEditorOnly, async (req, res, next) => {
   try {
-    if (req.user.type !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Acesso restrito ao administrador' });
-    }
-
     const entity = await Entity.findByIdAndUpdate(req.params.id, { status: 'approved' }, { new: true });
     if (!entity) {
       return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
@@ -290,12 +267,8 @@ router.patch('/:id/approve', auth, async (req, res, next) => {
   }
 });
 
-router.patch('/:id/reject', auth, async (req, res, next) => {
+router.patch('/:id/reject', auth, adminEditorOnly, async (req, res, next) => {
   try {
-    if (req.user.type !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Acesso restrito ao administrador' });
-    }
-
     const entity = await Entity.findByIdAndUpdate(req.params.id, { status: 'rejected' }, { new: true });
     if (!entity) {
       return res.status(404).json({ success: false, message: 'Entidade não encontrada' });

@@ -15,6 +15,7 @@ import {
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
+import PrivacyNotice from '../components/PrivacyNotice';
 import api, { getApiErrorMessage } from '../services/api';
 
 const emptyForm = {
@@ -130,6 +131,7 @@ export default function EntityRegisterPage() {
             Preencha os dados abaixo para solicitar o cadastro da sua entidade. O acesso será liberado somente após aprovação do administrador.
           </Typography>
           {!registrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>O cadastro de novas entidades está temporariamente fechado.</Alert>}
+          <PrivacyNotice />
 
           <Box component="form" onSubmit={handleSubmit} noValidate>
             <Grid container spacing={2}>

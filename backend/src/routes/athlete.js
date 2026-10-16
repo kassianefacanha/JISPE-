@@ -10,6 +10,7 @@ const Registration = require('../models/Registration');
 const RegistrationControls = require('../models/RegistrationControls');
 const EntityModalityRule = require('../models/EntityModalityRule');
 const { auth } = require('../middlewares/auth');
+const { isAdminEditor, isAdminViewer } = require('../middlewares/adminPermissions');
 const { isValidCPF } = require('../utils/cpfValidator');
 const { generateMatricula } = require('../utils/matriculaGenerator');
 const { getAgeCategory, hasCompletedMinimumAge } = require('../services/ageCategory');
@@ -96,7 +97,7 @@ const router = express.Router();
 
 router.get('/', auth, async (req, res, next) => {
   try {
-    const isAdmin = req.user.type === 'admin';
+    const isAdmin = isAdminViewer(req.user);
     const query = isAdmin ? {} : { entityId: req.user.id };
 
     const athletes = await Athlete.find(query).sort({ createdAt: -1 });
@@ -108,7 +109,7 @@ router.get('/', auth, async (req, res, next) => {
 
 router.get('/:id', auth, async (req, res, next) => {
   try {
-    const isAdmin = req.user.type === 'admin';
+    const isAdmin = isAdminViewer(req.user);
     const athlete = await Athlete.findOne({
       _id: req.params.id,
       ...(isAdmin ? {} : { entityId: req.user.id }),
@@ -126,7 +127,7 @@ router.get('/:id', auth, async (req, res, next) => {
 
 router.post('/', auth, async (req, res, next) => {
   try {
-    if (req.user.type !== 'entity' && req.user.type !== 'admin') {
+    if (req.user.type !== 'entity' && !isAdminEditor(req.user)) {
       return res.status(403).json({ success: false, message: 'Acesso restrito à entidade ou ao administrador' });
     }
 
@@ -272,7 +273,7 @@ router.post('/', auth, async (req, res, next) => {
 
 router.put('/:id', auth, async (req, res, next) => {
   try {
-    if (req.user.type !== 'admin' && req.user.type !== 'entity') {
+    if (!isAdminEditor(req.user) && req.user.type !== 'entity') {
       return res.status(403).json({ success: false, message: 'Acesso negado' });
     }
 
@@ -350,7 +351,7 @@ router.put('/:id', auth, async (req, res, next) => {
       ageCategory: getAgeCategory(resolvedBirthDate, resolvedModality, resolvedModalityDefinitions[0].categories || []),
     };
 
-    if (req.user.type === 'admin' && entityId && String(entityId) !== String(athlete.entityId)) {
+    if (isAdminEditor(req.user) && entityId && String(entityId) !== String(athlete.entityId)) {
       const approvedEntity = await Entity.findOne({ _id: entityId, status: 'approved' }).select('_id');
       if (!approvedEntity) {
         return res.status(400).json({ success: false, message: 'Selecione uma entidade aprovada para o atleta.' });
@@ -403,7 +404,7 @@ router.put('/:id', auth, async (req, res, next) => {
 
 router.delete('/:id', auth, async (req, res, next) => {
   try {
-    if (req.user.type !== 'admin' && req.user.type !== 'entity') {
+    if (!isAdminEditor(req.user) && req.user.type !== 'entity') {
       return res.status(403).json({ success: false, message: 'Acesso negado' });
     }
 
@@ -427,7 +428,7 @@ router.delete('/:id', auth, async (req, res, next) => {
 
 router.get('/:id/badge', auth, async (req, res, next) => {
   try {
-    const isAdmin = req.user.type === 'admin';
+    const isAdmin = isAdminViewer(req.user);
     const athlete = await Athlete.findOne({
       _id: req.params.id,
       ...(isAdmin ? {} : { entityId: req.user.id }),

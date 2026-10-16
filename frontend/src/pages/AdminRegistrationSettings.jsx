@@ -30,7 +30,7 @@ const defaultControls = {
   athleteRegistrationOpen: true,
 };
 
-export default function AdminRegistrationSettings({ entities }) {
+export default function AdminRegistrationSettings({ entities, readOnly = false }) {
   const { notify } = useFeedback();
   const [controls, setControls] = useState(defaultControls);
   const [selectedEntityId, setSelectedEntityId] = useState('');
@@ -129,6 +129,7 @@ export default function AdminRegistrationSettings({ entities }) {
   return (
     <Stack spacing={2.5}>
       <Typography variant="h6" fontWeight={700}>Controles gerais de inscrição</Typography>
+      {readOnly && <Alert severity="info">Perfil Gerência: visualização somente leitura.</Alert>}
       {error && <Alert severity="error">{error}</Alert>}
       <Alert severity="info">
         As inscrições para os torneios de Beach Tennis dos Jogos dos Servidores 2026 são feitas exclusivamente em{' '}
@@ -137,11 +138,11 @@ export default function AdminRegistrationSettings({ entities }) {
       <Paper variant="outlined" sx={{ p: { xs: 2, md: 2.5 } }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} divider={<Box sx={{ borderColor: 'divider' }} />}>
           <FormControlLabel
-            control={<Switch checked={controls.entityRegistrationOpen} disabled={loadingControls} onChange={(event) => updateGlobalControl('entityRegistrationOpen', event.target.checked)} />}
+            control={<Switch checked={controls.entityRegistrationOpen} disabled={loadingControls || readOnly} onChange={(event) => updateGlobalControl('entityRegistrationOpen', event.target.checked)} />}
             label={<Box><Typography fontWeight={700}>Cadastro de entidades</Typography><Typography variant="body2" color="text.secondary">{controls.entityRegistrationOpen ? 'Recebendo novas solicitações' : 'Bloqueado para novos cadastros'}</Typography></Box>}
           />
           <FormControlLabel
-            control={<Switch checked={controls.athleteRegistrationOpen} disabled={loadingControls} onChange={(event) => updateGlobalControl('athleteRegistrationOpen', event.target.checked)} />}
+            control={<Switch checked={controls.athleteRegistrationOpen} disabled={loadingControls || readOnly} onChange={(event) => updateGlobalControl('athleteRegistrationOpen', event.target.checked)} />}
             label={<Box><Typography fontWeight={700}>Cadastro de atletas</Typography><Typography variant="body2" color="text.secondary">{controls.athleteRegistrationOpen ? 'Entidades podem cadastrar atletas' : 'Bloqueado para entidades'}</Typography></Box>}
           />
         </Stack>
@@ -187,12 +188,13 @@ export default function AdminRegistrationSettings({ entities }) {
                     <TableCell>{rule.categories.join(', ') || '—'}</TableCell>
                     <TableCell align="center">{rule.registeredCount}</TableCell>
                     <TableCell align="center">
-                      <Switch checked={rule.enabled} onChange={(event) => updateRule(rule.modalitySlug, 'enabled', event.target.checked)} inputProps={{ 'aria-label': `Permitir ${rule.modalityName}` }} />
+                      <Switch checked={rule.enabled} disabled={readOnly} onChange={(event) => updateRule(rule.modalitySlug, 'enabled', event.target.checked)} inputProps={{ 'aria-label': `Permitir ${rule.modalityName}` }} />
                     </TableCell>
                     <TableCell align="center">
                       <TextField
                         type="number"
                         size="small"
+                        disabled={readOnly}
                         value={rule.maxAthletes ?? ''}
                         onChange={(event) => updateRule(rule.modalitySlug, 'maxAthletes', event.target.value)}
                         inputProps={{ min: 1, step: 1, 'aria-label': `Vagas de ${rule.modalityName}` }}
@@ -212,11 +214,13 @@ export default function AdminRegistrationSettings({ entities }) {
         </TableContainer>
       )}
 
-      <Stack direction="row" justifyContent="flex-end">
-        <Button variant="contained" startIcon={<SaveOutlinedIcon />} onClick={saveRules} disabled={!selectedEntityId || loadingRules || savingRules}>
-          {savingRules ? 'Salvando...' : 'Salvar limites'}
-        </Button>
-      </Stack>
+      {!readOnly && (
+        <Stack direction="row" justifyContent="flex-end">
+          <Button variant="contained" startIcon={<SaveOutlinedIcon />} onClick={saveRules} disabled={!selectedEntityId || loadingRules || savingRules}>
+            {savingRules ? 'Salvando...' : 'Salvar limites'}
+          </Button>
+        </Stack>
+      )}
     </Stack>
   );
 }

@@ -24,6 +24,7 @@ import {
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
+import PrivacyNotice from '../components/PrivacyNotice';
 import { getAutomaticAgeCategory, hasCompletedMinimumAge } from '../utils/athleteAge';
 import { normalizeModalityCatalog } from '../utils/externalRegistrationModality';
 import AthleteModalityFields, { getAthleteModalityRegistrations } from '../components/AthleteModalityFields';
@@ -274,6 +275,7 @@ export default function AdminAthleteCreatePage() {
                 <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
               )}
               {!raceRegistrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>As inscrições para a corrida foram encerradas: limite de 3.000 corredores atingido.</Alert>}
+              <PrivacyNotice />
               <Alert severity="info" sx={{ mb: 2 }}>
                 As inscrições para os torneios de Beach Tennis dos Jogos dos Servidores 2026 são feitas exclusivamente em{' '}
                 <a href="https://beachtennisgovce.com.br" target="_blank" rel="noreferrer">beachtennisgovce.com.br</a>.
