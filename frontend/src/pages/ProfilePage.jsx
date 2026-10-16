@@ -22,7 +22,7 @@ export default function ProfilePage() {
   const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const homePath = user?.role === 'admin' ? '/admin' : '/entity';
+  const homePath = ['admin', 'superadmin', 'gerencia'].includes(user?.role) ? '/admin' : '/entity';
 
   const handleSubmit = async (event) => {
     event.preventDefault();
