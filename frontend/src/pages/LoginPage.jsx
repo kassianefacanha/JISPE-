@@ -91,34 +91,37 @@ export default function LoginPage() {
               </Stack>
             </Box>
 
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-              <Button
-                component={Link}
-                to="/cadastro-atleta"
-                variant="contained"
-                color="secondary"
-                size="large"
-                sx={{ borderRadius: 2, fontWeight: 700, flex: 1 }}
-              >
-                Cadastro de atleta
-              </Button>
-              <Button
-                component={Link}
-                to="/cadastro-entidade"
-                variant="outlined"
-                color="primary"
-                size="large"
-                sx={{ borderRadius: 2, fontWeight: 700, flex: 1 }}
-              >
-                Cadastrar órgão
-              </Button>
+            <Stack spacing={1.5}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                <Button
+                  component={Link}
+                  to="/cadastro-atleta"
+                  variant="contained"
+                  color="secondary"
+                  size="large"
+                  sx={{ borderRadius: 2, fontWeight: 700, flex: 1, minWidth: 0, minHeight: 56, whiteSpace: 'normal', lineHeight: 1.2 }}
+                >
+                  Cadastro de atleta
+                </Button>
+                <Button
+                  component={Link}
+                  to="/cadastro-entidade"
+                  variant="outlined"
+                  color="primary"
+                  size="large"
+                  sx={{ borderRadius: 2, fontWeight: 700, flex: 1, minWidth: 0, minHeight: 56, whiteSpace: 'normal', lineHeight: 1.2 }}
+                >
+                  Cadastrar órgão
+                </Button>
+              </Stack>
               <Button
                 component={Link}
                 to="/validar-carteirinha"
                 variant="text"
                 color="secondary"
                 size="large"
-                sx={{ borderRadius: 2, fontWeight: 700, flex: 1 }}
+                fullWidth
+                sx={{ borderRadius: 2, fontWeight: 700, minHeight: 48 }}
               >
                 Validar carteirinha
               </Button>

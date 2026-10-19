@@ -288,7 +288,7 @@ export default function EntityAthleteCreatePage({ selfRegistration = false }) {
                 <a href="https://beachtennisgovce.com.br" target="_blank" rel="noreferrer">beachtennisgovce.com.br</a>.
               </Alert>
 
-              <Grid container spacing={2}>
+              <Grid container spacing={2.5}>
                 {selfRegistration && (
                   <Grid item xs={12}>
                     <TextField
@@ -307,6 +307,10 @@ export default function EntityAthleteCreatePage({ selfRegistration = false }) {
                     {!entities.length && <Typography variant="caption" color="text.secondary">Não há órgãos aprovados disponíveis para cadastro.</Typography>}
                   </Grid>
                 )}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" fontWeight={700}>Dados pessoais</Typography>
+                  <Divider sx={{ mt: 1 }} />
+                </Grid>
                 <Grid item xs={12} md={4}>
                   <TextField fullWidth required label="Nome completo" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} />
                 </Grid>
@@ -323,6 +327,10 @@ export default function EntityAthleteCreatePage({ selfRegistration = false }) {
                   <TextField fullWidth required type="email" label="E-mail" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} error={Boolean(error && !isValidEmail(form.email))} helperText={error && !isValidEmail(form.email) ? 'Informe um endereço de e-mail válido.' : ''} />
                 </Grid>
                 <Grid item xs={12}>
+                  <Typography variant="subtitle1" fontWeight={700}>Modalidade e naipe</Typography>
+                  <Divider sx={{ mt: 1 }} />
+                </Grid>
+                <Grid item xs={12}>
                   <AthleteModalityFields
                     modalities={modalities}
                     entries={form.modalityRegistrations}
@@ -335,22 +343,64 @@ export default function EntityAthleteCreatePage({ selfRegistration = false }) {
                 </Grid>
                 <Grid item xs={12}>
                   <Divider sx={{ my: 1 }} />
-                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>Informações adicionais</Typography>
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 1, mb: 0.5 }}>Saúde e acessibilidade</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Informe essas condições quando necessário para garantir acessibilidade e segurança.
+                  </Typography>
                 </Grid>
-                <Grid item xs={12} md={4}>
-                  <FormControlLabel control={<Checkbox checked={form.isPcd} onChange={(event) => setForm({ ...form, isPcd: event.target.checked })} />} label="Atleta é PCD" />
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <FormControlLabel control={<Checkbox checked={form.hasAllergy} onChange={(event) => setForm({ ...form, hasAllergy: event.target.checked })} />} label="Possui alergia" />
-                </Grid>
-                <Grid item xs={12} md={8}>
-                  <TextField fullWidth label="Quais alergias?" disabled={!form.hasAllergy} value={form.allergyDetails} onChange={(event) => setForm({ ...form, allergyDetails: event.target.value })} />
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <FormControlLabel control={<Checkbox checked={form.hasSpecialCondition} onChange={(event) => setForm({ ...form, hasSpecialCondition: event.target.checked })} />} label="Possui condição especial" />
-                </Grid>
-                <Grid item xs={12} md={8}>
-                  <TextField fullWidth label="Descreva a condição especial" disabled={!form.hasSpecialCondition} value={form.specialConditionDetails} onChange={(event) => setForm({ ...form, specialConditionDetails: event.target.value })} />
+                <Grid item xs={12}>
+                  <Box sx={{ p: { xs: 1.5, sm: 2 }, border: '1px solid', borderColor: 'divider', borderRadius: 2, backgroundColor: '#fafafa' }}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <FormControlLabel
+                          control={<Checkbox checked={form.isPcd} onChange={(event) => setForm({ ...form, isPcd: event.target.checked })} />}
+                          label="Atleta é PCD"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <FormControlLabel
+                          control={<Checkbox checked={form.hasAllergy} onChange={(event) => setForm((current) => ({
+                            ...current,
+                            hasAllergy: event.target.checked,
+                            allergyDetails: event.target.checked ? current.allergyDetails : '',
+                          }))} />}
+                          label="Possui alergia"
+                        />
+                        {form.hasAllergy && (
+                          <TextField
+                            fullWidth
+                            multiline
+                            minRows={2}
+                            sx={{ mt: 1 }}
+                            label="Quais alergias?"
+                            value={form.allergyDetails}
+                            onChange={(event) => setForm({ ...form, allergyDetails: event.target.value })}
+                          />
+                        )}
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <FormControlLabel
+                          control={<Checkbox checked={form.hasSpecialCondition} onChange={(event) => setForm((current) => ({
+                            ...current,
+                            hasSpecialCondition: event.target.checked,
+                            specialConditionDetails: event.target.checked ? current.specialConditionDetails : '',
+                          }))} />}
+                          label="Possui condição especial"
+                        />
+                        {form.hasSpecialCondition && (
+                          <TextField
+                            fullWidth
+                            multiline
+                            minRows={2}
+                            sx={{ mt: 1 }}
+                            label="Descreva a condição especial"
+                            value={form.specialConditionDetails}
+                            onChange={(event) => setForm({ ...form, specialConditionDetails: event.target.value })}
+                          />
+                        )}
+                      </Grid>
+                    </Grid>
+                  </Box>
                 </Grid>
                 {!isEditing && (
                   <Grid item xs={12}>
@@ -374,7 +424,7 @@ export default function EntityAthleteCreatePage({ selfRegistration = false }) {
               </Grid>
 
               <Divider sx={{ my: 2 }} />
-              <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>Foto e documento</Typography>
+              <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>Documentos do atleta</Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
                   <Box sx={{ minHeight: 150, display: 'flex', alignItems: 'center', gap: 2, p: 2, border: '1px dashed #94a3b8', borderRadius: 1, backgroundColor: '#f8fafc' }}>
