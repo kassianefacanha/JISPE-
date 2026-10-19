@@ -28,6 +28,7 @@ import api, { getApiErrorMessage } from '../services/api';
 const defaultControls = {
   entityRegistrationOpen: true,
   athleteRegistrationOpen: true,
+  selfAthleteRegistrationOpen: true,
 };
 
 export default function AdminRegistrationSettings({ entities, readOnly = false }) {
@@ -136,7 +137,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
         <a href="https://beachtennisgovce.com.br" target="_blank" rel="noreferrer">beachtennisgovce.com.br</a>.
       </Alert>
       <Paper variant="outlined" sx={{ p: { xs: 2, md: 2.5 } }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} divider={<Box sx={{ borderColor: 'divider' }} />}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} useFlexGap flexWrap="wrap">
           <FormControlLabel
             control={<Switch checked={controls.entityRegistrationOpen} disabled={loadingControls || readOnly} onChange={(event) => updateGlobalControl('entityRegistrationOpen', event.target.checked)} />}
             label={<Box><Typography fontWeight={700}>Cadastro de órgãos</Typography><Typography variant="body2" color="text.secondary">{controls.entityRegistrationOpen ? 'Recebendo novas solicitações' : 'Bloqueado para novos cadastros'}</Typography></Box>}
@@ -144,6 +145,10 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
           <FormControlLabel
             control={<Switch checked={controls.athleteRegistrationOpen} disabled={loadingControls || readOnly} onChange={(event) => updateGlobalControl('athleteRegistrationOpen', event.target.checked)} />}
             label={<Box><Typography fontWeight={700}>Cadastro de atletas</Typography><Typography variant="body2" color="text.secondary">{controls.athleteRegistrationOpen ? 'Órgãos podem cadastrar atletas' : 'Bloqueado para órgãos'}</Typography></Box>}
+          />
+          <FormControlLabel
+            control={<Switch checked={controls.selfAthleteRegistrationOpen} disabled={loadingControls || readOnly} onChange={(event) => updateGlobalControl('selfAthleteRegistrationOpen', event.target.checked)} />}
+            label={<Box><Typography fontWeight={700}>Cadastro direto pelo atleta</Typography><Typography variant="body2" color="text.secondary">{controls.selfAthleteRegistrationOpen ? 'Atletas podem enviar cadastro para aprovação' : 'Bloqueado para novos cadastros diretos'}</Typography></Box>}
           />
         </Stack>
       </Paper>

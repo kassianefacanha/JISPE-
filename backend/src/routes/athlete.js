@@ -142,6 +142,12 @@ const createAthlete = async (req, res, next) => {
     if (!selfRegistration && req.user.type !== 'entity' && !isAdminEditor(req.user)) {
       return res.status(403).json({ success: false, message: 'Acesso restrito ao órgão ou ao administrador.' });
     }
+    if (selfRegistration) {
+      const controls = await RegistrationControls.findById('global').lean();
+      if (controls?.selfAthleteRegistrationOpen === false) {
+        return res.status(403).json({ success: false, message: 'O cadastro direto de atletas está temporariamente fechado pelo administrador.' });
+      }
+    }
 
     const { entityId, cpf, fullName, birthDate, phone, email, gender, naipe, modality, modalities, modalityRegistrations, photoUrl, proofUrl, affiliationProofUrl, medicalCertificateUrl, fitnessDeclarationConfirmed, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
     const resolvedEntityId = !selfRegistration && req.user.type === 'entity' ? req.user.id : entityId;
@@ -194,7 +200,7 @@ const createAthlete = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'O naipe selecionado não é permitido na modalidade correspondente.' });
     }
 
-    if (selfRegistration || req.user.type === 'entity') {
+    if (req.user?.type === 'entity') {
       const controls = await RegistrationControls.findById('global').lean();
       if (controls?.athleteRegistrationOpen === false) {
         return res.status(403).json({ success: false, message: 'O cadastro de atletas está temporariamente fechado.' });

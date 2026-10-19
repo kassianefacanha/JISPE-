@@ -88,6 +88,7 @@ export default function EntityAthleteCreatePage({ selfRegistration = false }) {
   const [uploadInfo, setUploadInfo] = useState({ photo: '', proof: '', affiliationProof: '', medicalCertificate: '' });
   const [saving, setSaving] = useState(false);
   const [athleteRegistrationOpen, setAthleteRegistrationOpen] = useState(true);
+  const [selfAthleteRegistrationOpen, setSelfAthleteRegistrationOpen] = useState(true);
   const [raceRegistrationOpen, setRaceRegistrationOpen] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -106,9 +107,10 @@ export default function EntityAthleteCreatePage({ selfRegistration = false }) {
     api.get('/public/registration-status')
       .then((response) => {
         setAthleteRegistrationOpen(response.data.athleteRegistrationOpen !== false);
+        setSelfAthleteRegistrationOpen(response.data.selfAthleteRegistrationOpen !== false);
         setRaceRegistrationOpen(response.data.raceRegistrationOpen !== false);
       })
-      .catch(() => {});
+      .catch((loadError) => setError(getApiErrorMessage(loadError, 'Não foi possível verificar se o cadastro está aberto.')));
   }, []);
 
   useEffect(() => {
@@ -270,7 +272,8 @@ export default function EntityAthleteCreatePage({ selfRegistration = false }) {
           <CardContent sx={{ p: { xs: 2, md: 4 } }}>
             <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>{isEditing ? 'Editar dados do atleta' : 'Dados do atleta'}</Typography>
             <Box component="form" onSubmit={handleSubmit} noValidate>
-              {!athleteRegistrationOpen && !isEditing && <Alert severity="warning" sx={{ mb: 2 }}>O cadastro de atletas está temporariamente fechado pelo administrador.</Alert>}
+              {!athleteRegistrationOpen && !selfRegistration && !isEditing && <Alert severity="warning" sx={{ mb: 2 }}>O cadastro de atletas pelos órgãos está temporariamente fechado pelo administrador.</Alert>}
+              {selfRegistration && !selfAthleteRegistrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>O cadastro direto de atletas está temporariamente fechado pelo administrador. Tente novamente quando as inscrições forem liberadas.</Alert>}
               {!raceRegistrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>As inscrições para a corrida foram encerradas: limite de 3.000 corredores atingido.</Alert>}
               {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
               {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
@@ -325,10 +328,6 @@ export default function EntityAthleteCreatePage({ selfRegistration = false }) {
                 </Grid>
                 <Grid item xs={12} md={4}>
                   <TextField fullWidth required type="email" label="E-mail" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} error={Boolean(error && !isValidEmail(form.email))} helperText={error && !isValidEmail(form.email) ? 'Informe um endereço de e-mail válido.' : ''} />
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography variant="subtitle1" fontWeight={700}>Modalidade e naipe</Typography>
-                  <Divider sx={{ mt: 1 }} />
                 </Grid>
                 <Grid item xs={12}>
                   <AthleteModalityFields
@@ -499,8 +498,8 @@ export default function EntityAthleteCreatePage({ selfRegistration = false }) {
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="flex-end" sx={{ mt: 3 }}>
                 {!selfRegistration && <Button component={Link} to="/entity" variant="text">Cancelar</Button>}
                 {selfRegistration && <Button component={Link} to="/login" variant="text">Cancelar</Button>}
-                <Button type="submit" variant="contained" disabled={saving || (!isEditing && !athleteRegistrationOpen) || (selfRegistration && !entities.length)}>
-                  {saving ? 'Salvando...' : isEditing ? 'Salvar alterações' : selfRegistration ? athleteRegistrationOpen ? 'Enviar cadastro para aprovação' : 'Cadastro fechado' : athleteRegistrationOpen ? 'Cadastrar atleta' : 'Cadastro fechado'}
+                <Button type="submit" variant="contained" disabled={saving || (!isEditing && selfRegistration && !selfAthleteRegistrationOpen) || (!isEditing && !selfRegistration && !athleteRegistrationOpen) || (selfRegistration && !entities.length)}>
+                  {saving ? 'Salvando...' : isEditing ? 'Salvar alterações' : selfRegistration ? selfAthleteRegistrationOpen ? 'Enviar cadastro para aprovação' : 'Cadastro fechado' : athleteRegistrationOpen ? 'Cadastrar atleta' : 'Cadastro fechado'}
                 </Button>
               </Stack>
             </Box>

@@ -14,7 +14,7 @@ const router = express.Router();
 
 const getRegistrationControls = () => RegistrationControls.findOneAndUpdate(
   { _id: 'global' },
-  { $setOnInsert: { entityRegistrationOpen: true, athleteRegistrationOpen: true } },
+  { $setOnInsert: { entityRegistrationOpen: true, athleteRegistrationOpen: true, selfAthleteRegistrationOpen: true } },
   { new: true, upsert: true, setDefaultsOnInsert: true }
 );
 
@@ -41,7 +41,7 @@ router.get('/registration-controls', auth, adminViewerOnly, async (req, res, nex
 router.patch('/registration-controls', auth, adminEditorOnly, async (req, res, next) => {
   try {
     const update = {};
-    for (const field of ['entityRegistrationOpen', 'athleteRegistrationOpen']) {
+    for (const field of ['entityRegistrationOpen', 'athleteRegistrationOpen', 'selfAthleteRegistrationOpen']) {
       if (typeof req.body[field] === 'boolean') update[field] = req.body[field];
     }
     if (!Object.keys(update).length) {
@@ -50,7 +50,7 @@ router.patch('/registration-controls', auth, adminEditorOnly, async (req, res, n
 
     const controls = await RegistrationControls.findOneAndUpdate(
       { _id: 'global' },
-      { $set: update, $setOnInsert: { entityRegistrationOpen: true, athleteRegistrationOpen: true } },
+      { $set: update, $setOnInsert: { entityRegistrationOpen: true, athleteRegistrationOpen: true, selfAthleteRegistrationOpen: true } },
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
     res.json({ success: true, controls });

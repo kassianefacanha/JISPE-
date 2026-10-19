@@ -59,6 +59,7 @@ const runSeed = async () => {
       _id: 'global',
       entityRegistrationOpen: true,
       athleteRegistrationOpen: true,
+      selfAthleteRegistrationOpen: true,
     });
 
     const entitySeeds = [

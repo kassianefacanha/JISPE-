@@ -23,6 +23,7 @@ router.get('/registration-status', async (req, res, next) => {
       success: true,
       entityRegistrationOpen: controls?.entityRegistrationOpen !== false,
       athleteRegistrationOpen: controls?.athleteRegistrationOpen !== false,
+      selfAthleteRegistrationOpen: controls?.selfAthleteRegistrationOpen !== false,
       raceRegistrationOpen: raceRegistrationCount < raceRegistrationLimit,
       raceRegistrationCount,
       raceRegistrationLimit,

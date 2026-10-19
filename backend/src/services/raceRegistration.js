@@ -27,7 +27,7 @@ const ensureCounter = async () => {
   const count = await getRaceRegistrationCount();
   await RegistrationControls.findOneAndUpdate(
     { _id: 'global' },
-    { $setOnInsert: { entityRegistrationOpen: true, athleteRegistrationOpen: true } },
+    { $setOnInsert: { entityRegistrationOpen: true, athleteRegistrationOpen: true, selfAthleteRegistrationOpen: true } },
     { new: true, upsert: true, setDefaultsOnInsert: true }
   );
   await RegistrationControls.updateOne(

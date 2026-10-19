@@ -41,6 +41,8 @@
   - Requer `privacyConsentConfirmed: true`; a confirmação é registrada com data, declarante e versão do termo
 - PATCH /api/athletes/:id/approve
   - Aprovação do cadastro pelo órgão; envia aviso ao e-mail informado pelo atleta
+- GET /api/admin/registration-controls e PATCH /api/admin/registration-controls
+  - Admin pode consultar/alterar `selfAthleteRegistrationOpen` para abrir ou fechar o cadastro direto feito pelos atletas; essa trava é independente do cadastro feito pelos órgãos
 - PUT /api/athletes/:id
   - Atualização de atleta; também requer `privacyConsentConfirmed: true`
 - POST /api/athletes/:id/registrations
