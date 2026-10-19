@@ -31,6 +31,14 @@ const defaultControls = {
   selfAthleteRegistrationOpen: true,
 };
 
+const normalizeControls = (controls = {}) => ({
+  ...defaultControls,
+  ...controls,
+  selfAthleteRegistrationOpen: typeof controls.selfAthleteRegistrationOpen === 'boolean'
+    ? controls.selfAthleteRegistrationOpen
+    : defaultControls.selfAthleteRegistrationOpen,
+});
+
 export default function AdminRegistrationSettings({ entities, readOnly = false }) {
   const { notify } = useFeedback();
   const [controls, setControls] = useState(defaultControls);
@@ -50,7 +58,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
     let mounted = true;
     api.get('/admin/registration-controls')
       .then((response) => {
-        if (mounted) setControls(response.data.controls || defaultControls);
+        if (mounted) setControls(normalizeControls(response.data.controls));
       })
       .catch((loadError) => {
         if (mounted) setError(getApiErrorMessage(loadError, 'Não foi possível carregar as travas de inscrição.'));
@@ -95,7 +103,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
     setControls((current) => ({ ...current, [field]: value }));
     try {
       const response = await api.patch('/admin/registration-controls', { [field]: value });
-      setControls(response.data.controls);
+      setControls(normalizeControls(response.data.controls));
       notify('Trava geral atualizada.', 'success');
     } catch (saveError) {
       setControls((current) => ({ ...current, [field]: previous }));
