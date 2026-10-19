@@ -111,8 +111,8 @@ export default function LoginPage() {
             <Stack spacing={1.5}>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
                 <Button
-                  component={Link}
-                  to="/cadastro-atleta"
+                  component={selfAthleteRegistrationOpen === true ? Link : 'button'}
+                  to={selfAthleteRegistrationOpen === true ? '/cadastro-atleta' : undefined}
                   variant="contained"
                   color="secondary"
                   size="large"
