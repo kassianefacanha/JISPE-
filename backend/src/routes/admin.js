@@ -50,7 +50,7 @@ router.patch('/registration-controls', auth, adminEditorOnly, async (req, res, n
 
     const controls = await RegistrationControls.findOneAndUpdate(
       { _id: 'global' },
-      { $set: update, $setOnInsert: { entityRegistrationOpen: true, athleteRegistrationOpen: true, selfAthleteRegistrationOpen: true } },
+      { $set: update },
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
     res.json({ success: true, controls });
