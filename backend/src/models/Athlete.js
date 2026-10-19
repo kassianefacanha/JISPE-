@@ -1,8 +1,17 @@
 const mongoose = require('mongoose');
 
+const fitnessDeclarationSchema = new mongoose.Schema(
+  {
+    acknowledgedAt: { type: Date, required: true },
+    entityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Entity', required: true },
+  },
+  { _id: false }
+);
+
 const athleteSchema = new mongoose.Schema(
   {
     entityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Entity', required: true },
+    fitnessDeclaration: { type: fitnessDeclarationSchema, default: undefined },
     cpf: { type: String, required: true },
     fullName: { type: String, required: true, trim: true },
     birthDate: { type: Date, required: true },

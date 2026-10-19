@@ -131,8 +131,11 @@ router.post('/', auth, async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Acesso restrito à entidade ou ao administrador' });
     }
 
-    const { entityId, cpf, fullName, birthDate, phone, email, gender, naipe, modality, modalities, modalityRegistrations, photoUrl, proofUrl, affiliationProofUrl, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
+    const { entityId, cpf, fullName, birthDate, phone, email, gender, naipe, modality, modalities, modalityRegistrations, photoUrl, proofUrl, affiliationProofUrl, fitnessDeclarationConfirmed, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
     const resolvedEntityId = req.user.type === 'entity' ? req.user.id : entityId;
+    if (req.user.type === 'entity' && fitnessDeclarationConfirmed !== true) {
+      return res.status(400).json({ success: false, message: 'Confirme que o atleta declarou estar apto para participar das atividades.' });
+    }
     const legacyNaipe = naipe || gender || 'masculino';
     const requestedRegistrationEntries = Array.isArray(modalityRegistrations) && modalityRegistrations.length
       ? modalityRegistrations
@@ -219,6 +222,12 @@ router.post('/', auth, async (req, res, next) => {
     const category = getAgeCategory(birthDate, primaryModality.name, primaryModality.categories || []);
     const athlete = new Athlete({
       entityId: resolvedEntityId,
+      ...(req.user.type === 'entity' ? {
+        fitnessDeclaration: {
+          acknowledgedAt: new Date(),
+          entityId: req.user.id,
+        },
+      } : {}),
       cpf,
       fullName,
       birthDate,

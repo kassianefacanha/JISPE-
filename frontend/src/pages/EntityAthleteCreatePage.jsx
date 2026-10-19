@@ -42,6 +42,7 @@ const emptyForm = {
   allergyDetails: '',
   hasSpecialCondition: false,
   specialConditionDetails: '',
+  fitnessDeclarationConfirmed: false,
 };
 
 const readFileAsDataUrl = (file) =>
@@ -181,6 +182,9 @@ export default function EntityAthleteCreatePage() {
     if (!form.photoUrl) return setError('Selecione a foto do atleta.');
     if (!form.proofUrl) return setError('Selecione o comprovante do atleta.');
     if (!form.affiliationProofUrl) return setError('Selecione o comprovante de vínculo com o órgão.');
+    if (!isEditing && !form.fitnessDeclarationConfirmed) {
+      return setError('Confirme que o atleta declarou estar apto para participar das atividades.');
+    }
 
     try {
       setSaving(true);
@@ -291,6 +295,23 @@ export default function EntityAthleteCreatePage() {
                 <Grid item xs={12} md={8}>
                   <TextField fullWidth label="Descreva a condição especial" disabled={!form.hasSpecialCondition} value={form.specialConditionDetails} onChange={(event) => setForm({ ...form, specialConditionDetails: event.target.value })} />
                 </Grid>
+                {!isEditing && (
+                  <Grid item xs={12}>
+                    <FormControlLabel
+                      control={(
+                        <Checkbox
+                          required
+                          checked={form.fitnessDeclarationConfirmed}
+                          onChange={(event) => setForm((current) => ({
+                            ...current,
+                            fitnessDeclarationConfirmed: event.target.checked,
+                          }))}
+                        />
+                      )}
+                      label="Atesto que o(a) atleta declarou estar apto(a) a participar das atividades físicas e esportivas dos Jogos da Integração do Servidor Público Estadual (JISPE), ciente das exigências físicas envolvidas e de suas condições de saúde para a prática das modalidades escolhidas."
+                    />
+                  </Grid>
+                )}
               </Grid>
 
               <Divider sx={{ my: 2 }} />
