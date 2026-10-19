@@ -77,9 +77,22 @@ const sendEntityRegistrationEmail = (entity) => sendNotification('entity-registr
 
 const sendAthleteRegistrationEmail = (entity, athlete) => sendNotification('athlete-registration', {
   to: entity.email,
-  subject: 'Confirmação de cadastro de atleta | JISPE 2026',
-  text: `Prezada ${entity.name},\n\nConfirmamos o cadastro do(a) atleta ${athlete.fullName}, matrícula ${athlete.matricula}, nas modalidades ${(athlete.modalities?.length ? athlete.modalities : [athlete.modality]).join(', ')}.\n\nAtenciosamente,\nEquipe JISPE 2026`,
-  html: `<p>Prezada ${escapeHtml(entity.name)},</p><p>Confirmamos o cadastro do(a) atleta <strong>${escapeHtml(athlete.fullName)}</strong>, matrícula <strong>${escapeHtml(athlete.matricula)}</strong>, nas modalidades ${escapeHtml((athlete.modalities?.length ? athlete.modalities : [athlete.modality]).join(', '))}.</p><p>Atenciosamente,<br>Equipe JISPE 2026</p>`,
+  subject: athlete.approvalStatus === 'pending'
+    ? 'Solicitação de cadastro de atleta para aprovação | JISPE 2026'
+    : 'Confirmação de cadastro de atleta | JISPE 2026',
+  text: athlete.approvalStatus === 'pending'
+    ? `Prezada ${entity.name},\n\nO(a) atleta ${athlete.fullName} solicitou cadastro no seu órgão para as modalidades ${(athlete.modalities?.length ? athlete.modalities : [athlete.modality]).join(', ')}. Acesse o painel do órgão para analisar e aprovar a solicitação.\n\nAtenciosamente,\nEquipe JISPE 2026`
+    : `Prezada ${entity.name},\n\nConfirmamos o cadastro do(a) atleta ${athlete.fullName}, matrícula ${athlete.matricula}, nas modalidades ${(athlete.modalities?.length ? athlete.modalities : [athlete.modality]).join(', ')}.\n\nAtenciosamente,\nEquipe JISPE 2026`,
+  html: athlete.approvalStatus === 'pending'
+    ? `<p>Prezada ${escapeHtml(entity.name)},</p><p>O(a) atleta <strong>${escapeHtml(athlete.fullName)}</strong> solicitou cadastro no seu órgão para as modalidades ${escapeHtml((athlete.modalities?.length ? athlete.modalities : [athlete.modality]).join(', '))}.</p><p>Acesse o painel do órgão para analisar e aprovar a solicitação.</p><p>Atenciosamente,<br>Equipe JISPE 2026</p>`
+    : `<p>Prezada ${escapeHtml(entity.name)},</p><p>Confirmamos o cadastro do(a) atleta <strong>${escapeHtml(athlete.fullName)}</strong>, matrícula <strong>${escapeHtml(athlete.matricula)}</strong>, nas modalidades ${escapeHtml((athlete.modalities?.length ? athlete.modalities : [athlete.modality]).join(', '))}.</p><p>Atenciosamente,<br>Equipe JISPE 2026</p>`,
+});
+
+const sendAthleteApprovalEmail = (athlete) => sendNotification('athlete-approval', {
+  to: athlete.email,
+  subject: 'Cadastro aprovado pelo órgão | JISPE 2026',
+  text: `Olá, ${athlete.fullName}.\n\nSeu cadastro para participar dos Jogos dos Servidores 2026 foi aprovado pelo órgão. Sua matrícula é ${athlete.matricula} e as modalidades informadas são ${(athlete.modalities?.length ? athlete.modalities : [athlete.modality]).join(', ')}.\n\nAtenciosamente,\nEquipe JISPE 2026`,
+  html: `<p>Olá, ${escapeHtml(athlete.fullName)}.</p><p>Seu cadastro para participar dos Jogos dos Servidores 2026 foi aprovado pelo órgão.</p><p>Matrícula: <strong>${escapeHtml(athlete.matricula)}</strong><br>Modalidades: ${escapeHtml((athlete.modalities?.length ? athlete.modalities : [athlete.modality]).join(', '))}</p><p>Atenciosamente,<br>Equipe JISPE 2026</p>`,
 });
 
 const sendPasswordChangedEmail = (account) => sendNotification('password-changed', {
@@ -107,6 +120,7 @@ const sendEntityDecisionEmail = (entity, status) => {
 module.exports = {
   assertEmailConfigured,
   isEmailConfigured,
+  sendAthleteApprovalEmail,
   sendAthleteRegistrationEmail,
   sendEntityDecisionEmail,
   sendEntityRegistrationEmail,

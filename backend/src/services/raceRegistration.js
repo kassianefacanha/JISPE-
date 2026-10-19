@@ -13,7 +13,10 @@ const hasRaceModality = (athlete) => [athlete.modality, ...(athlete.modalities |
 const getRaceRegistrationCount = async () => {
   const [athleteIds, registrationAthleteIds] = await Promise.all([
     Athlete.distinct('_id', {
-      $or: [{ modality: { $in: raceAliases } }, { modalities: { $in: raceAliases } }],
+      $and: [
+        { $or: [{ modality: { $in: raceAliases } }, { modalities: { $in: raceAliases } }] },
+        { $or: [{ approvalStatus: 'approved' }, { approvalStatus: { $exists: false } }] },
+      ],
     }),
     Registration.distinct('athleteId', { modality: { $in: raceAliases } }),
   ]);
@@ -34,8 +37,13 @@ const ensureCounter = async () => {
 };
 
 const reserveRaceRegistration = async (athleteId) => {
-  const existingAthlete = await Athlete.findById(athleteId).select('modality modalities').lean();
-  if (existingAthlete && hasRaceModality(existingAthlete)) return { reserved: false, alreadyCounted: true };
+  const existingAthlete = await Athlete.findById(athleteId).select('modality modalities approvalStatus').lean();
+  if (existingAthlete
+    && existingAthlete.approvalStatus !== 'pending'
+    && existingAthlete.approvalStatus !== 'rejected'
+    && hasRaceModality(existingAthlete)) {
+    return { reserved: false, alreadyCounted: true };
+  }
   const existingRegistration = await Registration.exists({ athleteId, modality: { $in: raceAliases } });
   if (existingRegistration) return { reserved: false, alreadyCounted: true };
 

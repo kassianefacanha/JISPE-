@@ -1,4 +1,5 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const bwipjs = require('bwip-js');
 const sharp = require('sharp');
@@ -17,7 +18,7 @@ const { getAgeCategory, hasCompletedMinimumAge } = require('../services/ageCateg
 const { defaultModalities, isExternalRegistrationModality } = require('../config/defaultModalities');
 const { validateUploadedAsset } = require('../utils/uploadValidation');
 const { deleteAsset, deleteReplacedAsset, getAssetBuffer, getAssetUrl, isR2Value, isSameStoredAsset, storeAsset } = require('../services/r2Storage');
-const { sendAthleteRegistrationEmail } = require('../services/passwordResetEmail');
+const { sendAthleteApprovalEmail, sendAthleteRegistrationEmail } = require('../services/passwordResetEmail');
 const { raceAliases, releaseRaceRegistration, reserveRaceRegistration } = require('../services/raceRegistration');
 const { createPrivacyConsent } = require('../utils/privacyConsent');
 
@@ -97,6 +98,13 @@ const hasConflictingBinaryNaipe = (entries) => {
 };
 
 const router = express.Router();
+const selfRegistrationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Muitas tentativas de cadastro. Tente novamente em 15 minutos.' },
+});
 
 router.get('/', auth, async (req, res, next) => {
   try {
@@ -128,14 +136,15 @@ router.get('/:id', auth, async (req, res, next) => {
   }
 });
 
-router.post('/', auth, async (req, res, next) => {
+const createAthlete = async (req, res, next) => {
   try {
-    if (req.user.type !== 'entity' && !isAdminEditor(req.user)) {
+    const selfRegistration = req.selfRegistration === true;
+    if (!selfRegistration && req.user.type !== 'entity' && !isAdminEditor(req.user)) {
       return res.status(403).json({ success: false, message: 'Acesso restrito ao órgão ou ao administrador.' });
     }
 
     const { entityId, cpf, fullName, birthDate, phone, email, gender, naipe, modality, modalities, modalityRegistrations, photoUrl, proofUrl, affiliationProofUrl, medicalCertificateUrl, fitnessDeclarationConfirmed, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
-    const resolvedEntityId = req.user.type === 'entity' ? req.user.id : entityId;
+    const resolvedEntityId = !selfRegistration && req.user.type === 'entity' ? req.user.id : entityId;
     if (req.body?.privacyConsentConfirmed !== true) {
       return res.status(400).json({ success: false, message: 'Leia e confirme o termo de ciência sobre o tratamento de dados.' });
     }
@@ -185,12 +194,14 @@ router.post('/', auth, async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'O naipe selecionado não é permitido na modalidade correspondente.' });
     }
 
-    if (req.user.type === 'entity') {
+    if (selfRegistration || req.user.type === 'entity') {
       const controls = await RegistrationControls.findById('global').lean();
       if (controls?.athleteRegistrationOpen === false) {
         return res.status(403).json({ success: false, message: 'O cadastro de atletas está temporariamente fechado.' });
       }
+    }
 
+    if (selfRegistration || req.user?.type === 'entity') {
       for (const modalityDefinition of modalityDefinitions) {
         const modalityRule = await EntityModalityRule.findOne({
           entityId: resolvedEntityId,
@@ -218,6 +229,11 @@ router.post('/', auth, async (req, res, next) => {
       }
     }
 
+    const approvedEntity = await Entity.findOne({ _id: resolvedEntityId, status: 'approved' }).select('_id email name');
+    if (!approvedEntity) {
+      return res.status(400).json({ success: false, message: 'Selecione um órgão aprovado.' });
+    }
+
     const existing = await Athlete.findOne({ entityId: resolvedEntityId, cpf });
     if (existing) {
       return res.status(409).json({ success: false, message: 'CPF já cadastrado para este órgão.' });
@@ -229,11 +245,19 @@ router.post('/', auth, async (req, res, next) => {
     const category = getAgeCategory(birthDate, primaryModality.name, primaryModality.categories || []);
     const athlete = new Athlete({
       entityId: resolvedEntityId,
+      approvalStatus: selfRegistration ? 'pending' : 'approved',
+      approvedAt: selfRegistration ? undefined : new Date(),
+      approvedBy: selfRegistration ? '' : String(req.user.id),
       fitnessDeclaration: {
         acknowledgedAt: new Date(),
         entityId: resolvedEntityId,
+        declaredBy: selfRegistration ? email : String(req.user.id),
+        declaredByType: selfRegistration ? 'athlete' : req.user.type,
       },
-      privacyConsent: createPrivacyConsent(req.user.id, req.user.type),
+      privacyConsent: createPrivacyConsent(
+        selfRegistration ? email : req.user.id,
+        selfRegistration ? 'athlete' : req.user.type
+      ),
       cpf,
       fullName,
       birthDate,
@@ -261,7 +285,7 @@ router.post('/', auth, async (req, res, next) => {
     });
     const hasRaceModality = modalityNames.some((name) => raceAliases.includes(name));
     let raceReserved = false;
-    if (hasRaceModality) {
+    if (hasRaceModality && !selfRegistration) {
       const reservation = await reserveRaceRegistration(athlete._id);
       if (reservation.full) {
         return res.status(409).json({ success: false, message: 'As inscrições para a corrida foram encerradas: limite de 3.000 corredores atingido.' });
@@ -273,17 +297,70 @@ router.post('/', auth, async (req, res, next) => {
       athlete.photoUrl = await storeAsset(photoUrl, `athletes/${athlete._id}/photo`);
       athlete.proofUrl = await storeAsset(proofUrl, `athletes/${athlete._id}/proof`);
       athlete.affiliationProofUrl = await storeAsset(affiliationProofUrl, `athletes/${athlete._id}/affiliation-proof`);
+      athlete.medicalCertificateUrl = await storeAsset(medicalCertificateUrl, `athletes/${athlete._id}/medical-certificate`);
       await athlete.save();
     } catch (error) {
       if (raceReserved) await releaseRaceRegistration(athlete._id);
       throw error;
     }
 
-    const entity = await Entity.findById(resolvedEntityId).select('name email');
-    if (entity) void sendAthleteRegistrationEmail(entity, athlete);
+    void sendAthleteRegistrationEmail(approvedEntity, athlete);
+    if (!selfRegistration) void sendAthleteApprovalEmail(athlete);
     res.status(201).json({ success: true, athlete: await serializeAthlete(athlete) });
   } catch (error) {
     next(error);
+  }
+};
+
+router.post('/self-register', selfRegistrationLimiter, (req, res, next) => {
+  req.selfRegistration = true;
+  return createAthlete(req, res, next);
+});
+
+router.post('/', auth, createAthlete);
+
+router.patch('/:id/approve', auth, async (req, res, next) => {
+  try {
+    if (req.user.type !== 'entity') {
+      return res.status(403).json({ success: false, message: 'A aprovação deve ser realizada pelo órgão responsável.' });
+    }
+
+    const athlete = await Athlete.findOne({ _id: req.params.id, entityId: req.user.id });
+    if (!athlete) {
+      return res.status(404).json({ success: false, message: 'Atleta não encontrado para este órgão.' });
+    }
+    if (athlete.approvalStatus !== 'pending') {
+      return res.status(409).json({ success: false, message: 'Este cadastro não está aguardando aprovação.' });
+    }
+
+    const hasRaceModality = [athlete.modality, ...(athlete.modalities || [])].some((name) => raceAliases.includes(name));
+    let raceReserved = false;
+    if (hasRaceModality) {
+      const reservation = await reserveRaceRegistration(athlete._id);
+      if (reservation.full) {
+        return res.status(409).json({ success: false, message: 'As inscrições para a corrida foram encerradas: limite de 3.000 corredores atingido.' });
+      }
+      raceReserved = reservation.reserved;
+    }
+
+    athlete.approvalStatus = 'approved';
+    athlete.approvedAt = new Date();
+    athlete.approvedBy = String(req.user.id);
+    try {
+      await athlete.save();
+    } catch (error) {
+      if (raceReserved) {
+        await RegistrationControls.updateOne(
+          { _id: 'global', raceRegistrationCount: { $gt: 0 } },
+          { $inc: { raceRegistrationCount: -1 } }
+        );
+      }
+      throw error;
+    }
+    const emailSent = await sendAthleteApprovalEmail(athlete);
+    return res.json({ success: true, emailSent, athlete: await serializeAthlete(athlete) });
+  } catch (error) {
+    return next(error);
   }
 });
 
@@ -402,7 +479,7 @@ router.put('/:id', auth, async (req, res, next) => {
     }
 
     let raceReserved = false;
-    if (hasRaceModality && !hadRaceModality) {
+    if (athlete.approvalStatus === 'approved' && hasRaceModality && !hadRaceModality) {
       const reservation = await reserveRaceRegistration(athlete._id);
       if (reservation.full) {
         return res.status(409).json({ success: false, message: 'As inscrições para a corrida foram encerradas: limite de 3.000 corredores atingido.' });
@@ -417,7 +494,9 @@ router.put('/:id', auth, async (req, res, next) => {
       if (raceReserved) await releaseRaceRegistration(athlete._id);
       throw error;
     }
-    if (hadRaceModality && !hasRaceModality) await releaseRaceRegistration(athlete._id);
+    if (athlete.approvalStatus === 'approved' && hadRaceModality && !hasRaceModality) {
+      await releaseRaceRegistration(athlete._id);
+    }
     await Promise.all([
       deleteReplacedAsset(athlete.photoUrl, updated.photoUrl),
       deleteReplacedAsset(athlete.proofUrl, updated.proofUrl),
@@ -443,7 +522,8 @@ router.delete('/:id', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Atleta não encontrado' });
     }
 
-    if (raceAliases.includes(athlete.modality) || athlete.modalities?.some((name) => raceAliases.includes(name))) {
+    if (athlete.approvalStatus === 'approved'
+      && (raceAliases.includes(athlete.modality) || athlete.modalities?.some((name) => raceAliases.includes(name)))) {
       await releaseRaceRegistration(athlete._id);
     }
 
@@ -469,6 +549,9 @@ router.get('/:id/badge', auth, async (req, res, next) => {
 
     if (!athlete) {
       return res.status(404).json({ success: false, message: 'Atleta não encontrado' });
+    }
+    if (athlete.approvalStatus !== 'approved') {
+      return res.status(403).json({ success: false, message: 'A carteirinha ficará disponível após a aprovação do cadastro pelo órgão.' });
     }
 
     if (!athlete.matricula) {
@@ -574,6 +657,9 @@ router.post('/:id/registrations', auth, async (req, res, next) => {
     const athlete = await Athlete.findOne({ _id: req.params.id, entityId: req.user.id });
     if (!athlete) {
       return res.status(404).json({ success: false, message: 'Atleta não encontrado para este órgão.' });
+    }
+    if (athlete.approvalStatus !== 'approved') {
+      return res.status(403).json({ success: false, message: 'O cadastro do atleta precisa ser aprovado pelo órgão antes da inscrição em modalidades.' });
     }
 
     if (!hasCompletedMinimumAge(athlete.birthDate)) {

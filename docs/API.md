@@ -29,10 +29,18 @@
 
 ### Atletas
 
+- GET /api/public/entities
+  - Lista os órgãos aprovados para o cadastro público de atletas
+- POST /api/athletes/self-register
+  - Cadastro público de atleta; inicia como pendente e exige aprovação do órgão escolhido
+- Cadastros feitos por administrador ou órgão autenticado
+  - São considerados aprovados automaticamente
 - POST /api/athletes
   - Cadastro de atleta por entidade autenticada
   - Requer RG/CNH, comprovante de vínculo e atestado médico em JPG, PNG, WebP ou PDF (até 3 MiB cada)
   - Requer `privacyConsentConfirmed: true`; a confirmação é registrada com data, declarante e versão do termo
+- PATCH /api/athletes/:id/approve
+  - Aprovação do cadastro pelo órgão; envia aviso ao e-mail informado pelo atleta
 - PUT /api/athletes/:id
   - Atualização de atleta; também requer `privacyConsentConfirmed: true`
 - POST /api/athletes/:id/registrations

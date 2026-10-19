@@ -31,6 +31,7 @@ export default function AppRoutes() {
       <Route path="/recuperar-senha" element={<PasswordRecoveryPage />} />
       <Route path="/redefinir-senha" element={<PasswordRecoveryPage />} />
       <Route path="/cadastro-entidade" element={<EntityRegisterPage />} />
+      <Route path="/cadastro-atleta" element={<EntityAthleteCreatePage selfRegistration />} />
       <Route path="/validar-carteirinha" element={<PublicBadgeValidationPage />} />
       <Route path="/perfil" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 

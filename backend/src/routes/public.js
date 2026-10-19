@@ -1,6 +1,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const Athlete = require('../models/Athlete');
+const Entity = require('../models/Entity');
 const RegistrationControls = require('../models/RegistrationControls');
 const { getRaceRegistrationCount, raceRegistrationLimit } = require('../services/raceRegistration');
 const { getAssetUrl } = require('../services/r2Storage');
@@ -31,6 +32,18 @@ router.get('/registration-status', async (req, res, next) => {
   }
 });
 
+router.get('/entities', async (req, res, next) => {
+  try {
+    const entities = await Entity.find({ status: 'approved' })
+      .select('_id name')
+      .sort({ name: 1 })
+      .lean();
+    res.json({ success: true, entities });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get('/validate/:matricula', badgeLookupLimiter, async (req, res, next) => {
   try {
     const rawMatricula = String(req.params.matricula || '').trim();
@@ -39,11 +52,11 @@ router.get('/validate/:matricula', badgeLookupLimiter, async (req, res, next) =>
     const matriculaCandidates = [...new Set([rawMatricula, normalized, formattedMatricula])];
 
     const athlete = await Athlete.findOne({ matricula: { $in: matriculaCandidates } })
-      .select('fullName photoUrl matricula ageCategory modality naipe entityId')
+      .select('fullName photoUrl matricula ageCategory modality naipe entityId approvalStatus')
       .populate('entityId', 'name')
       .lean();
 
-    if (!athlete) {
+    if (!athlete || (athlete.approvalStatus && athlete.approvalStatus !== 'approved')) {
       return res.status(404).json({ success: false, message: 'Carteirinha não localizada' });
     }
 

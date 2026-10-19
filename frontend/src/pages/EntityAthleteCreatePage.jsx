@@ -28,6 +28,7 @@ import api, { getApiErrorMessage } from '../services/api';
 import { useFeedback } from '../contexts/FeedbackContext';
 
 const emptyForm = {
+  entityId: '',
   cpf: '',
   fullName: '',
   birthDate: '',
@@ -75,7 +76,7 @@ const isValidCPF = (value = '') => {
 const isValidEmail = (value = '') => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim());
 const isValidPhone = (value = '') => [10, 11].includes(String(value).replace(/\D/g, '').length);
 
-export default function EntityAthleteCreatePage() {
+export default function EntityAthleteCreatePage({ selfRegistration = false }) {
   const { notify } = useFeedback();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -83,6 +84,7 @@ export default function EntityAthleteCreatePage() {
   const isEditing = Boolean(athleteId);
   const [form, setForm] = useState(emptyForm);
   const [modalities, setModalities] = useState([]);
+  const [entities, setEntities] = useState([]);
   const [uploadInfo, setUploadInfo] = useState({ photo: '', proof: '', affiliationProof: '', medicalCertificate: '' });
   const [saving, setSaving] = useState(false);
   const [athleteRegistrationOpen, setAthleteRegistrationOpen] = useState(true);
@@ -108,6 +110,19 @@ export default function EntityAthleteCreatePage() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!selfRegistration) return undefined;
+    let active = true;
+    api.get('/public/entities')
+      .then((response) => {
+        if (active) setEntities(response.data.entities || []);
+      })
+      .catch((loadError) => {
+        if (active) setError(getApiErrorMessage(loadError, 'Não foi possível carregar a lista de órgãos.'));
+      });
+    return () => { active = false; };
+  }, [selfRegistration]);
 
   useEffect(() => {
     if (!athleteId) return undefined;
@@ -179,6 +194,7 @@ export default function EntityAthleteCreatePage() {
     setSuccess('');
 
     if (!form.fullName.trim()) return setError('Informe o nome completo do atleta.');
+    if (selfRegistration && !form.entityId) return setError('Selecione o órgão ao qual você está vinculado(a).');
     if (!isValidCPF(form.cpf)) return setError('CPF do atleta inválido.');
     if (!form.birthDate) return setError('Informe a data de nascimento do atleta.');
     if (!hasCompletedMinimumAge(form.birthDate)) return setError('O atleta precisa já ter completado 18 anos para se cadastrar.');
@@ -207,16 +223,22 @@ export default function EntityAthleteCreatePage() {
       };
       if (isEditing) {
         await api.put(`/athletes/${athleteId}`, payload);
+      } else if (selfRegistration) {
+        await api.post('/athletes/self-register', payload);
       } else {
         await api.post('/athletes', payload);
       }
-      const message = isEditing ? 'Dados do atleta atualizados com sucesso.' : 'Atleta cadastrado com sucesso.';
+      const message = isEditing
+        ? 'Dados do atleta atualizados com sucesso.'
+        : selfRegistration
+          ? 'Solicitação enviada. O órgão selecionado precisa aprovar seu cadastro; você receberá um e-mail após a aprovação.'
+          : 'Atleta cadastrado com sucesso.';
       setSuccess(message);
       notify(message, 'success');
       if (isEditing) {
         navigate('/entity');
       } else {
-        setForm(emptyForm);
+        setForm({ ...emptyForm, entityId: selfRegistration ? form.entityId : '' });
         setUploadInfo({ photo: '', proof: '', affiliationProof: '', medicalCertificate: '' });
       }
     } catch (saveError) {
@@ -236,11 +258,11 @@ export default function EntityAthleteCreatePage() {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 }, minWidth: 0 }}>
               <Box component="img" src="/logo.png" alt="JISPE 2026" sx={{ display: 'block', width: { xs: 72, sm: 104 }, maxWidth: '35vw', height: 'auto', flexShrink: 0 }} />
               <Box sx={{ minWidth: 0 }}>
-                <Typography variant="overline" color="primary.main" sx={{ letterSpacing: 3, fontWeight: 800 }}>Órgão</Typography>
-                <Typography variant="h4" fontWeight={800} sx={{ fontSize: { xs: 22, sm: 34 }, lineHeight: 1.15 }}>{isEditing ? 'Editar atleta' : 'Cadastrar atleta'}</Typography>
+                <Typography variant="overline" color="primary.main" sx={{ letterSpacing: 3, fontWeight: 800 }}>{selfRegistration ? 'Atleta' : 'Órgão'}</Typography>
+                <Typography variant="h4" fontWeight={800} sx={{ fontSize: { xs: 22, sm: 34 }, lineHeight: 1.15 }}>{isEditing ? 'Editar atleta' : selfRegistration ? 'Cadastro de atleta' : 'Cadastrar atleta'}</Typography>
               </Box>
             </Box>
-            <Button component={Link} to="/entity" variant="outlined">Voltar ao painel</Button>
+            <Button component={Link} to={selfRegistration ? '/login' : '/entity'} variant="outlined">{selfRegistration ? 'Voltar ao login' : 'Voltar ao painel'}</Button>
           </Stack>
         </Paper>
 
@@ -252,6 +274,11 @@ export default function EntityAthleteCreatePage() {
               {!raceRegistrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>As inscrições para a corrida foram encerradas: limite de 3.000 corredores atingido.</Alert>}
               {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
               {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+              {selfRegistration && (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  Após enviar seus dados, o órgão escolhido analisará e aprovará o cadastro. O acesso às atividades e à carteirinha só será liberado após a aprovação.
+                </Alert>
+              )}
               <PrivacyNotice
                 checked={form.privacyConsentConfirmed}
                 onChange={(privacyConsentConfirmed) => setForm((current) => ({ ...current, privacyConsentConfirmed }))}
@@ -262,6 +289,24 @@ export default function EntityAthleteCreatePage() {
               </Alert>
 
               <Grid container spacing={2}>
+                {selfRegistration && (
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      required
+                      select
+                      label="Órgão ao qual está vinculado(a)"
+                      value={form.entityId}
+                      onChange={(event) => setForm((current) => ({ ...current, entityId: event.target.value }))}
+                    >
+                      <MenuItem value=""><em>Selecione um órgão</em></MenuItem>
+                      {entities.map((entity) => (
+                        <MenuItem key={entity._id} value={entity._id}>{entity.name}</MenuItem>
+                      ))}
+                    </TextField>
+                    {!entities.length && <Typography variant="caption" color="text.secondary">Não há órgãos aprovados disponíveis para cadastro.</Typography>}
+                  </Grid>
+                )}
                 <Grid item xs={12} md={4}>
                   <TextField fullWidth required label="Nome completo" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} />
                 </Grid>
@@ -320,7 +365,9 @@ export default function EntityAthleteCreatePage() {
                           }))}
                         />
                       )}
-                      label="Atesto que o(a) atleta declarou estar apto(a) a participar das atividades físicas e esportivas dos Jogos da Integração do Servidor Público Estadual (JISPE), ciente das exigências físicas envolvidas e de suas condições de saúde para a prática das modalidades escolhidas."
+                      label={selfRegistration
+                        ? 'Declaro estar apto(a) a participar das atividades físicas e esportivas dos Jogos da Integração do Servidor Público Estadual (JISPE), ciente das exigências físicas envolvidas e de minhas condições de saúde para a prática das modalidades escolhidas.'
+                        : 'Atesto que o(a) atleta declarou estar apto(a) a participar das atividades físicas e esportivas dos Jogos da Integração do Servidor Público Estadual (JISPE), ciente das exigências físicas envolvidas e de suas condições de saúde para a prática das modalidades escolhidas.'}
                     />
                   </Grid>
                 )}
@@ -400,9 +447,10 @@ export default function EntityAthleteCreatePage() {
               </Grid>
 
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="flex-end" sx={{ mt: 3 }}>
-                <Button component={Link} to="/entity" variant="text">Cancelar</Button>
-                <Button type="submit" variant="contained" disabled={saving || (!isEditing && !athleteRegistrationOpen)}>
-                  {saving ? 'Salvando...' : isEditing ? 'Salvar alterações' : athleteRegistrationOpen ? 'Cadastrar atleta' : 'Cadastro fechado'}
+                {!selfRegistration && <Button component={Link} to="/entity" variant="text">Cancelar</Button>}
+                {selfRegistration && <Button component={Link} to="/login" variant="text">Cancelar</Button>}
+                <Button type="submit" variant="contained" disabled={saving || (!isEditing && !athleteRegistrationOpen) || (selfRegistration && !entities.length)}>
+                  {saving ? 'Salvando...' : isEditing ? 'Salvar alterações' : selfRegistration ? athleteRegistrationOpen ? 'Enviar cadastro para aprovação' : 'Cadastro fechado' : athleteRegistrationOpen ? 'Cadastrar atleta' : 'Cadastro fechado'}
                 </Button>
               </Stack>
             </Box>

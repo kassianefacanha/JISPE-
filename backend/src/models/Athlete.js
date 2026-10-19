@@ -4,6 +4,8 @@ const fitnessDeclarationSchema = new mongoose.Schema(
   {
     acknowledgedAt: { type: Date, required: true },
     entityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Entity', required: true },
+    declaredBy: { type: String, default: '' },
+    declaredByType: { type: String, enum: ['entity', 'admin', 'athlete'], default: 'entity' },
   },
   { _id: false }
 );
@@ -11,11 +13,14 @@ const fitnessDeclarationSchema = new mongoose.Schema(
 const athleteSchema = new mongoose.Schema(
   {
     entityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Entity', required: true },
+    approvalStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved' },
+    approvedAt: { type: Date, default: null },
+    approvedBy: { type: String, default: '' },
     fitnessDeclaration: { type: fitnessDeclarationSchema, default: undefined },
     privacyConsent: {
       acceptedAt: Date,
       acceptedBy: String,
-      acceptedByType: { type: String, enum: ['entity', 'admin', 'responsible'] },
+      acceptedByType: { type: String, enum: ['entity', 'admin', 'responsible', 'athlete'] },
       version: String,
     },
     cpf: { type: String, required: true },

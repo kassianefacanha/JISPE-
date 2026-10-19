@@ -94,6 +94,16 @@ export default function LoginPage() {
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
               <Button
                 component={Link}
+                to="/cadastro-atleta"
+                variant="contained"
+                color="secondary"
+                size="large"
+                sx={{ borderRadius: 2, fontWeight: 700, flex: 1 }}
+              >
+                Cadastro de atleta
+              </Button>
+              <Button
+                component={Link}
                 to="/cadastro-entidade"
                 variant="outlined"
                 color="primary"

@@ -6,6 +6,7 @@ import {
   Button,
   Checkbox,
   Container,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -20,6 +21,7 @@ import {
   Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
 import EditIcon from '@mui/icons-material/Edit';
@@ -41,6 +43,7 @@ const athleteExportColumns = [
   { key: 'phone', label: 'Telefone' },
   { key: 'modality', label: 'Modalidade' },
   { key: 'naipe', label: 'Naipe' },
+  { key: 'approvalStatusLabel', label: 'Status do cadastro' },
   { key: 'birthDate', label: 'Data de nascimento' },
 ];
 
@@ -106,8 +109,29 @@ export default function EntityDashboard() {
     phone: athlete.phone || '—',
     modality: (athlete.modalities?.length ? athlete.modalities : [athlete.modality]).filter(Boolean).join(', ') || '—',
     naipe: athlete.naipe || athlete.gender || '—',
+    approvalStatusLabel: ({
+      pending: 'Aguardando aprovação',
+      approved: 'Aprovado',
+      rejected: 'Reprovado',
+    })[athlete.approvalStatus || 'approved'],
     birthDate: formatBirthDate(athlete.birthDate),
   }));
+  const pendingAthletesCount = athletes.filter((athlete) => athlete.approvalStatus === 'pending').length;
+
+  const approveAthlete = async (athlete) => {
+    try {
+      const response = await api.patch(`/athletes/${athlete._id}/approve`);
+      await loadAthletes();
+      notify(
+        response.data.emailSent
+          ? 'Cadastro aprovado e aviso enviado ao e-mail do atleta.'
+          : 'Cadastro aprovado, mas o aviso por e-mail não foi enviado. Verifique a configuração de e-mail.',
+        response.data.emailSent ? 'success' : 'warning'
+      );
+    } catch (error) {
+      notify(getApiErrorMessage(error, 'Não foi possível aprovar o cadastro do atleta.'));
+    }
+  };
 
   const deleteAthlete = async (athlete) => {
     const confirmed = await confirm({
@@ -211,12 +235,23 @@ export default function EntityDashboard() {
     { field: 'phone', headerName: 'Telefone', flex: 1, minWidth: 130 },
     { field: 'modality', headerName: 'Modalidade', flex: 1, minWidth: 140 },
     { field: 'naipe', headerName: 'Naipe', flex: 1, minWidth: 110 },
+    {
+      field: 'approvalStatusLabel',
+      headerName: 'Status',
+      width: 180,
+    },
     { field: 'birthDate', headerName: 'Data de nascimento', flex: 1, minWidth: 150 },
   ].map((column) => ({
     ...column,
     sortable: false,
     filterable: true,
-    renderCell: (params) => (
+    renderCell: (params) => column.field === 'approvalStatusLabel' ? (
+      <Chip
+        size="small"
+        color={params.row.approvalStatus === 'pending' ? 'warning' : params.row.approvalStatus === 'rejected' ? 'error' : 'success'}
+        label={params.value}
+      />
+    ) : (
       <Box sx={{ fontWeight: column.field === 'fullName' ? 700 : 400, display: 'flex', alignItems: 'center', minHeight: '100%' }}>
         {params.value ?? '—'}
       </Box>
@@ -226,12 +261,17 @@ export default function EntityDashboard() {
   athleteColumns.push({
     field: 'actions',
     headerName: 'Ações',
-    width: 164,
+    width: 205,
     sortable: false,
     filterable: false,
     disableColumnMenu: true,
     renderCell: (params) => (
       <Stack direction="row" spacing={0.25}>
+        {params.row.approvalStatus === 'pending' && (
+          <IconButton color="success" size="small" onClick={() => approveAthlete(params.row)} title="Aprovar cadastro">
+            <CheckCircleOutlineIcon fontSize="small" />
+          </IconButton>
+        )}
         <IconButton color="info" size="small" onClick={() => setDetailAthlete(params.row)} title="Ver detalhes">
           <VisibilityIcon fontSize="small" />
         </IconButton>
@@ -241,7 +281,13 @@ export default function EntityDashboard() {
         <IconButton color="inherit" size="small" onClick={() => deleteAthlete(params.row)} title="Excluir">
           <DeleteIcon fontSize="small" />
         </IconButton>
-        <IconButton color="secondary" size="small" onClick={() => downloadBadge(params.row)} title="Gerar carteirinha">
+        <IconButton
+          color="secondary"
+          size="small"
+          disabled={params.row.approvalStatus !== 'approved'}
+          onClick={() => downloadBadge(params.row)}
+          title={params.row.approvalStatus === 'approved' ? 'Gerar carteirinha' : 'Carteirinha disponível após aprovação'}
+        >
           <DownloadIcon fontSize="small" />
         </IconButton>
       </Stack>
@@ -292,6 +338,13 @@ export default function EntityDashboard() {
           As inscrições para os torneios de Beach Tennis dos Jogos dos Servidores 2026 devem ser realizadas exclusivamente pelo site{' '}
           <a href="https://beachtennisgovce.com.br" target="_blank" rel="noreferrer">beachtennisgovce.com.br</a>.
         </Alert>
+        {pendingAthletesCount > 0 && (
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            {pendingAthletesCount === 1
+              ? 'Há 1 cadastro de atleta aguardando aprovação. Aprove-o na coluna Ações.'
+              : `Há ${pendingAthletesCount} cadastros de atletas aguardando aprovação. Aprove-os na coluna Ações.`}
+          </Alert>
+        )}
 
         <Paper sx={{ mt: 4, p: { xs: 2, md: 3 }, borderRadius: 4, border: '1px solid #e2e8f0' }}>
           <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} spacing={2} sx={{ mb: 2 }}>
@@ -394,6 +447,19 @@ export default function EntityDashboard() {
                 sx={{ alignSelf: 'flex-start' }}
               >
                 Baixar comprovante de vínculo
+              </Button>
+            )}
+            {detailAthlete?.proofUrl && (
+              <Button
+                component="a"
+                href={detailAthlete.proofUrl}
+                target="_blank"
+                rel="noreferrer"
+                download
+                startIcon={<DownloadIcon />}
+                sx={{ alignSelf: 'flex-start' }}
+              >
+                Baixar documento do atleta (RG ou CNH)
               </Button>
             )}
             {detailAthlete?.medicalCertificateUrl && (
