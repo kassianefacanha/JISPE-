@@ -135,19 +135,20 @@ router.put('/password', auth, resetPasswordLimiter, async (req, res, next) => {
 
 router.post('/login', loginLimiter, async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const password = req.body?.password;
 
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'E-mail e senha são obrigatórios' });
     }
 
-    const admin = await Admin.findOne({ email: email.toLowerCase() }).select('+password +sessionVersion');
+    const admin = await Admin.findOne({ email }).select('+password +sessionVersion');
     if (admin && (await bcrypt.compare(password, admin.password))) {
       const token = jwt.sign({ id: admin._id, role: admin.role, type: 'admin', sessionVersion: admin.sessionVersion || 0 }, jwtSecret, { expiresIn: '1d' });
       return res.json({ success: true, token, user: { id: admin._id, name: admin.name, email: admin.email, role: admin.role } });
     }
 
-    const entity = await Entity.findOne({ email: email.toLowerCase() }).select('+password +sessionVersion');
+    const entity = await Entity.findOne({ email }).select('+password +sessionVersion');
     if (entity && (await bcrypt.compare(password, entity.password))) {
       if (entity.status !== 'approved') {
         return res.status(403).json({ success: false, message: 'O cadastro do órgão ainda não foi aprovado.' });
