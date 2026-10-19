@@ -45,18 +45,20 @@ router.post('/forgot-password', forgotPasswordLimiter, async (req, res, next) =>
       const entity = await Entity.findOne({ email }).select('+passwordResetTokenHash +passwordResetExpiresAt');
       if (entity) {
         const rawToken = crypto.randomBytes(32).toString('hex');
-        entity.passwordResetTokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+        const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+        entity.passwordResetTokenHash = tokenHash;
         entity.passwordResetExpiresAt = new Date(Date.now() + 30 * 60 * 1000);
         await entity.save();
 
         const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').split(',')[0].trim().replace(/\/+$/, '');
-        const resetUrl = new URL('/reset-password', frontendUrl);
+        const resetUrl = new URL('/redefinir-senha', frontendUrl);
         resetUrl.searchParams.set('token', rawToken);
         void sendPasswordResetEmail(email, resetUrl.toString()).then(async (sent) => {
           if (sent) return;
-          entity.passwordResetTokenHash = undefined;
-          entity.passwordResetExpiresAt = undefined;
-          await entity.save();
+          await Entity.updateOne(
+            { _id: entity._id, passwordResetTokenHash: tokenHash },
+            { $unset: { passwordResetTokenHash: 1, passwordResetExpiresAt: 1 } }
+          );
         }).catch((error) => {
           console.error('Could not clear the password reset token after email failure:', error.message);
         });
