@@ -357,7 +357,7 @@ export default function EntityAthleteCreatePage() {
                     </Stack>
                   </Box>
                 </Grid>
-                <Grid item xs={12}>
+                <Grid item xs={12} md={6}>
                   <Box sx={{ minHeight: 150, display: 'flex', alignItems: 'center', gap: 2, p: 2, border: '1px dashed #94a3b8', borderRadius: 1, backgroundColor: '#f8fafc' }}>
                     <Box sx={{ width: 76, height: 100, flexShrink: 0, display: 'grid', placeItems: 'center', borderRadius: 1, backgroundColor: '#e2e8f0', color: '#64748b' }}><DescriptionOutlinedIcon /></Box>
                     <Stack spacing={1} sx={{ minWidth: 0, alignItems: 'flex-start' }}>
@@ -374,7 +374,7 @@ export default function EntityAthleteCreatePage() {
                     </Stack>
                   </Box>
                 </Grid>
-                <Grid item xs={12}>
+                <Grid item xs={12} md={6}>
                   <Box sx={{ minHeight: 150, display: 'flex', alignItems: 'center', gap: 2, p: 2, border: '1px dashed #94a3b8', borderRadius: 1, backgroundColor: '#f8fafc' }}>
                     <Box sx={{ width: 76, height: 100, flexShrink: 0, display: 'grid', placeItems: 'center', borderRadius: 1, backgroundColor: '#e2e8f0', color: '#64748b' }}><DescriptionOutlinedIcon /></Box>
                     <Stack spacing={1} sx={{ minWidth: 0, alignItems: 'flex-start' }}>
