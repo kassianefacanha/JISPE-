@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Alert,
@@ -11,7 +11,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
-import { getApiErrorMessage } from '../services/api';
+import api, { getApiErrorMessage } from '../services/api';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -19,6 +19,23 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [selfAthleteRegistrationOpen, setSelfAthleteRegistrationOpen] = useState(null);
+  const [registrationStatusError, setRegistrationStatusError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    api.get('/public/registration-status')
+      .then((response) => {
+        if (active) setSelfAthleteRegistrationOpen(response.data.selfAthleteRegistrationOpen !== false);
+      })
+      .catch(() => {
+        if (active) {
+          setSelfAthleteRegistrationOpen(false);
+          setRegistrationStatusError(true);
+        }
+      });
+    return () => { active = false; };
+  }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -99,9 +116,14 @@ export default function LoginPage() {
                   variant="contained"
                   color="secondary"
                   size="large"
+                  disabled={selfAthleteRegistrationOpen !== true}
                   sx={{ borderRadius: 2, fontWeight: 700, flex: 1, minWidth: 0, minHeight: 56, whiteSpace: 'normal', lineHeight: 1.2 }}
                 >
-                  Cadastro de atleta
+                  {selfAthleteRegistrationOpen === null
+                    ? 'Verificando inscrições...'
+                    : selfAthleteRegistrationOpen
+                      ? 'Cadastro de atleta'
+                      : 'Inscrições de atletas encerradas'}
                 </Button>
                 <Button
                   component={Link}
@@ -114,6 +136,13 @@ export default function LoginPage() {
                   Cadastrar órgão
                 </Button>
               </Stack>
+              {selfAthleteRegistrationOpen === false && (
+                <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ px: 1 }}>
+                  {registrationStatusError
+                    ? 'Não foi possível verificar se as inscrições estão abertas. Tente novamente mais tarde.'
+                    : 'O cadastro direto de atletas está temporariamente fechado.'}
+                </Typography>
+              )}
               <Button
                 component={Link}
                 to="/validar-carteirinha"
