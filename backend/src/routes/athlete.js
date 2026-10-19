@@ -73,6 +73,7 @@ const serializeAthlete = async (athlete) => {
   payload.photoUrl = await getAssetUrl(payload.photoUrl);
   payload.proofUrl = await getAssetUrl(payload.proofUrl, { download: true });
   payload.affiliationProofUrl = await getAssetUrl(payload.affiliationProofUrl, { download: true });
+  payload.medicalCertificateUrl = await getAssetUrl(payload.medicalCertificateUrl, { download: true });
   return payload;
 };
 
@@ -131,7 +132,7 @@ router.post('/', auth, async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Acesso restrito à entidade ou ao administrador' });
     }
 
-    const { entityId, cpf, fullName, birthDate, phone, email, gender, naipe, modality, modalities, modalityRegistrations, photoUrl, proofUrl, affiliationProofUrl, fitnessDeclarationConfirmed, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
+    const { entityId, cpf, fullName, birthDate, phone, email, gender, naipe, modality, modalities, modalityRegistrations, photoUrl, proofUrl, affiliationProofUrl, medicalCertificateUrl, fitnessDeclarationConfirmed, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
     const resolvedEntityId = req.user.type === 'entity' ? req.user.id : entityId;
     if (req.user.type === 'entity' && fitnessDeclarationConfirmed !== true) {
       return res.status(400).json({ success: false, message: 'Confirme que o atleta declarou estar apto para participar das atividades.' });
@@ -145,7 +146,7 @@ router.post('/', auth, async (req, res, next) => {
     const resolvedNaipe = requestedRegistrationEntries[0]?.naipe || legacyNaipe;
     const modalityDefinitions = await Promise.all(requestedModalities.map(getModalityDefinition));
 
-    if (!resolvedEntityId || !cpf || !fullName || !birthDate || !phone || !email || !modalityDefinitions.length || !resolvedNaipe || !photoUrl || !proofUrl || !affiliationProofUrl) {
+    if (!resolvedEntityId || !cpf || !fullName || !birthDate || !phone || !email || !modalityDefinitions.length || !resolvedNaipe || !photoUrl || !proofUrl || !affiliationProofUrl || !medicalCertificateUrl) {
       return res.status(400).json({ success: false, message: 'Todos os campos do atleta são obrigatórios' });
     }
     if (requestedModalities.some((value) => !value) || requestedRegistrationEntries.some((entry) => !entry?.naipe)) {
@@ -157,7 +158,8 @@ router.post('/', auth, async (req, res, next) => {
 
     const assetError = validateUploadedAsset(photoUrl, 'photo')
       || validateUploadedAsset(proofUrl, 'proof')
-      || validateUploadedAsset(affiliationProofUrl, 'proof');
+      || validateUploadedAsset(affiliationProofUrl, 'proof')
+      || validateUploadedAsset(medicalCertificateUrl, 'medicalCertificate');
     if (assetError) return res.status(400).json({ success: false, message: assetError });
 
     if (!isValidCPF(cpf)) {
@@ -236,6 +238,7 @@ router.post('/', auth, async (req, res, next) => {
       email,
       proofUrl,
       affiliationProofUrl,
+      medicalCertificateUrl,
       modalityRegistrations: modalityDefinitions.map((definition, index) => ({
         modality: definition.name,
         naipe: requestedRegistrationEntries[index].naipe,
@@ -295,10 +298,16 @@ router.put('/:id', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Atleta não encontrado' });
     }
 
-    const { entityId, cpf, fullName, birthDate, photoUrl, phone, email, gender, naipe, modality, modalities, modalityRegistrations, proofUrl, affiliationProofUrl, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
+    const { entityId, cpf, fullName, birthDate, photoUrl, phone, email, gender, naipe, modality, modalities, modalityRegistrations, proofUrl, affiliationProofUrl, medicalCertificateUrl, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
+    const submittedMedicalCertificate = medicalCertificateUrl || athlete.medicalCertificateUrl;
+    const medicalCertificateError = athlete.medicalCertificateUrl
+      && isSameStoredAsset(submittedMedicalCertificate, athlete.medicalCertificateUrl)
+      ? null
+      : validateUploadedAsset(submittedMedicalCertificate, 'medicalCertificate');
     const assetError = (photoUrl !== undefined && !isSameStoredAsset(photoUrl, athlete.photoUrl) && validateUploadedAsset(photoUrl, 'photo'))
       || (proofUrl !== undefined && !isSameStoredAsset(proofUrl, athlete.proofUrl) && validateUploadedAsset(proofUrl, 'proof'))
-      || (affiliationProofUrl !== undefined && !isSameStoredAsset(affiliationProofUrl, athlete.affiliationProofUrl) && validateUploadedAsset(affiliationProofUrl, 'proof'));
+      || (affiliationProofUrl !== undefined && !isSameStoredAsset(affiliationProofUrl, athlete.affiliationProofUrl) && validateUploadedAsset(affiliationProofUrl, 'proof'))
+      || medicalCertificateError;
     if (assetError) return res.status(400).json({ success: false, message: assetError });
     const legacyNaipe = naipe || gender || athlete.naipe || athlete.gender;
     const requestedRegistrationEntries = Array.isArray(modalityRegistrations) && modalityRegistrations.length
@@ -346,6 +355,7 @@ router.put('/:id', auth, async (req, res, next) => {
       ...(email ? { email } : {}),
       ...(proofUrl ? { proofUrl: await storeAsset(proofUrl, `athletes/${athlete._id}/proof`, athlete.proofUrl) } : {}),
       ...(affiliationProofUrl ? { affiliationProofUrl: await storeAsset(affiliationProofUrl, `athletes/${athlete._id}/affiliation-proof`, athlete.affiliationProofUrl) } : {}),
+      ...(medicalCertificateUrl ? { medicalCertificateUrl: await storeAsset(medicalCertificateUrl, `athletes/${athlete._id}/medical-certificate`, athlete.medicalCertificateUrl) } : {}),
       ...(resolvedNaipe ? { gender: resolvedNaipe, naipe: resolvedNaipe } : {}),
       ...(resolvedModality ? { modality: resolvedModality, modalities: resolvedModalities } : {}),
       modalityRegistrations: resolvedModalityDefinitions.map((definition, index) => ({
@@ -404,6 +414,7 @@ router.put('/:id', auth, async (req, res, next) => {
       deleteReplacedAsset(athlete.photoUrl, updated.photoUrl),
       deleteReplacedAsset(athlete.proofUrl, updated.proofUrl),
       deleteReplacedAsset(athlete.affiliationProofUrl, updated.affiliationProofUrl),
+      deleteReplacedAsset(athlete.medicalCertificateUrl, updated.medicalCertificateUrl),
     ]);
     res.json({ success: true, athlete: await serializeAthlete(updated) });
   } catch (error) {
@@ -428,7 +439,12 @@ router.delete('/:id', auth, async (req, res, next) => {
       await releaseRaceRegistration(athlete._id);
     }
 
-    await Promise.all([deleteAsset(athlete.photoUrl), deleteAsset(athlete.proofUrl), deleteAsset(athlete.affiliationProofUrl)]);
+    await Promise.all([
+      deleteAsset(athlete.photoUrl),
+      deleteAsset(athlete.proofUrl),
+      deleteAsset(athlete.affiliationProofUrl),
+      deleteAsset(athlete.medicalCertificateUrl),
+    ]);
     res.json({ success: true, message: 'Atleta excluído com sucesso' });
   } catch (error) {
     next(error);

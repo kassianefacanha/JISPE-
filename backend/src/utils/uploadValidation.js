@@ -4,7 +4,8 @@ const imageTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 const validateUploadedAsset = (value, kind) => {
   if (typeof value !== 'string' || !value.trim()) {
-    return `O arquivo de ${kind === 'photo' ? 'foto' : 'comprovante'} é obrigatório.`;
+    const label = kind === 'photo' ? 'foto' : kind === 'medicalCertificate' ? 'atestado médico' : 'comprovante';
+    return `O arquivo de ${label} é obrigatório.`;
   }
 
   const asset = value.trim();
@@ -14,6 +15,8 @@ const validateUploadedAsset = (value, kind) => {
     if (!match || !allowedTypes.has(match[1].toLowerCase())) {
       return kind === 'photo'
         ? 'A foto precisa estar em JPG, PNG ou WebP.'
+        : kind === 'medicalCertificate'
+          ? 'O atestado médico precisa estar em JPG, PNG, WebP ou PDF.'
         : 'O comprovante precisa estar em JPG, PNG, WebP ou PDF.';
     }
 

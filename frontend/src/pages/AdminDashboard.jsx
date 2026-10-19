@@ -973,10 +973,12 @@ function DetailDialog({ detailDialog, setDetailDialog }) {
   const photoUrl = isEntity ? data.responsible?.photoUrl : data.photoUrl;
   const proofUrl = isEntity ? data.responsible?.proofUrl : data.proofUrl;
   const affiliationProofUrl = isEntity ? data.responsible?.affiliationProofUrl : data.affiliationProofUrl;
+  const medicalCertificateUrl = isEntity ? null : data.medicalCertificateUrl;
   const hasPreviewImage = Boolean(photoUrl);
   const downloadableFiles = [
     { url: proofUrl, label: isEntity ? 'Documento do responsável' : 'Documento do atleta' },
     { url: affiliationProofUrl, label: 'Comprovante de vínculo com o órgão' },
+    ...(medicalCertificateUrl ? [{ url: medicalCertificateUrl, label: 'Atestado médico do atleta' }] : []),
   ].filter((file) => file.url);
   const hasDownloadableFile = downloadableFiles.length > 0;
 

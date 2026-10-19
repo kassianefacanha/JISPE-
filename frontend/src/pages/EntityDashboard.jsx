@@ -396,6 +396,19 @@ export default function EntityDashboard() {
                 Baixar comprovante de vínculo
               </Button>
             )}
+            {detailAthlete?.medicalCertificateUrl && (
+              <Button
+                component="a"
+                href={detailAthlete.medicalCertificateUrl}
+                target="_blank"
+                rel="noreferrer"
+                download
+                startIcon={<DownloadIcon />}
+                sx={{ alignSelf: 'flex-start' }}
+              >
+                Baixar atestado médico
+              </Button>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>

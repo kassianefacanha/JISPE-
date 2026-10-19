@@ -28,6 +28,7 @@
 
 - POST /api/athletes
   - Cadastro de atleta por entidade autenticada
+  - Requer RG/CNH, comprovante de vínculo e atestado médico em JPG, PNG, WebP ou PDF (até 3 MiB cada)
 - POST /api/athletes/:id/registrations
   - Inscreve atleta em modalidade
 

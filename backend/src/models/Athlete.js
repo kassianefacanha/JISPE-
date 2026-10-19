@@ -20,6 +20,7 @@ const athleteSchema = new mongoose.Schema(
     email: { type: String, required: true, lowercase: true, trim: true },
     proofUrl: { type: String, default: '' },
     affiliationProofUrl: { type: String, default: '' },
+    medicalCertificateUrl: { type: String, default: '' },
     modality: { type: String, required: true, trim: true },
     modalities: { type: [{ type: String, trim: true }], default: undefined },
     modalityRegistrations: [{

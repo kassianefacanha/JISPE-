@@ -40,6 +40,7 @@ const emptyForm = {
   email: '',
   proofUrl: '',
   affiliationProofUrl: '',
+  medicalCertificateUrl: '',
   modalityRegistrations: [{ modality: '', naipe: '' }],
   isPcd: false,
   hasAllergy: false,
@@ -95,7 +96,7 @@ export default function AdminAthleteCreatePage() {
   const [success, setSuccess] = useState('');
   const [successOpen, setSuccessOpen] = useState(false);
   const [raceRegistrationOpen, setRaceRegistrationOpen] = useState(true);
-  const [uploadInfo, setUploadInfo] = useState({ photo: '', proof: '', affiliationProof: '' });
+  const [uploadInfo, setUploadInfo] = useState({ photo: '', proof: '', affiliationProof: '', medicalCertificate: '' });
   const approvedEntities = entities.filter((entity) => entity.status === 'approved');
   const primaryModality = modalities.find((modality) => (
     [modality.name, modality.slug, ...(modality.legacyNames || []), ...(modality.legacySlugs || [])]
@@ -134,6 +135,7 @@ export default function AdminAthleteCreatePage() {
             email: athlete.email,
             proofUrl: athlete.proofUrl || '',
             affiliationProofUrl: athlete.affiliationProofUrl || '',
+            medicalCertificateUrl: athlete.medicalCertificateUrl || '',
             modalityRegistrations: athleteModalityRegistrations,
             isPcd: Boolean(athlete.isPcd),
             hasAllergy: Boolean(athlete.hasAllergy),
@@ -146,6 +148,7 @@ export default function AdminAthleteCreatePage() {
             photo: athlete.photoUrl ? 'Foto já carregada' : '',
             proof: athlete.proofUrl ? 'Documento já carregado' : '',
             affiliationProof: athlete.affiliationProofUrl ? 'Comprovante de vínculo já carregado' : '',
+            medicalCertificate: athlete.medicalCertificateUrl ? 'Atestado médico já carregado' : '',
           });
         }
       } catch (error) {
@@ -164,7 +167,9 @@ export default function AdminAthleteCreatePage() {
     setForm((current) => ({ ...current, [fieldName]: result }));
     setUploadInfo((current) => ({
       ...current,
-      [fieldName === 'photoUrl' ? 'photo' : fieldName === 'affiliationProofUrl' ? 'affiliationProof' : 'proof']: file.name,
+      [fieldName === 'photoUrl' ? 'photo'
+        : fieldName === 'affiliationProofUrl' ? 'affiliationProof'
+          : fieldName === 'medicalCertificateUrl' ? 'medicalCertificate' : 'proof']: file.name,
     }));
     event.target.value = '';
   };
@@ -182,6 +187,7 @@ export default function AdminAthleteCreatePage() {
     if (!form.photoUrl) return 'Selecione a foto do atleta.';
     if (!form.proofUrl) return 'Selecione o comprovante do atleta.';
     if (!form.affiliationProofUrl) return 'Selecione o comprovante de vínculo com o órgão.';
+    if (!form.medicalCertificateUrl) return 'Selecione o atestado médico do atleta.';
     return '';
   };
 
@@ -208,6 +214,7 @@ export default function AdminAthleteCreatePage() {
         email: form.email,
         proofUrl: form.proofUrl,
         affiliationProofUrl: form.affiliationProofUrl,
+        medicalCertificateUrl: form.medicalCertificateUrl,
         modality: form.modalityRegistrations[0].modality,
         modalities: form.modalityRegistrations.map((entry) => entry.modality),
         modalityRegistrations: form.modalityRegistrations,
@@ -401,6 +408,25 @@ export default function AdminAthleteCreatePage() {
                       <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />}>
                         {form.affiliationProofUrl ? 'Trocar comprovante' : 'Selecionar comprovante'}
                         <input hidden type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(event) => handleFileField(event, 'affiliationProofUrl')} />
+                      </Button>
+                    </Stack>
+                  </Box>
+                </Grid>
+                <Grid item xs={12}>
+                  <Box sx={{ minHeight: 150, display: 'flex', alignItems: 'center', gap: 2, p: 2, border: '1px dashed #94a3b8', borderRadius: 1, backgroundColor: '#f8fafc' }}>
+                    <Box sx={{ width: 76, height: 100, flexShrink: 0, display: 'grid', placeItems: 'center', borderRadius: 1, backgroundColor: '#e2e8f0', color: '#64748b' }}>
+                      <DescriptionOutlinedIcon />
+                    </Box>
+                    <Stack spacing={1} sx={{ minWidth: 0, alignItems: 'flex-start' }}>
+                      <Box>
+                        <Typography variant="subtitle2" fontWeight={700}>Atestado médico do atleta (obrigatório)</Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+                          {uploadInfo.medicalCertificate || (form.medicalCertificateUrl ? 'Atestado médico já carregado' : 'Envie em JPG, PNG, WebP ou PDF, até 3 MiB')}
+                        </Typography>
+                      </Box>
+                      <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />}>
+                        {form.medicalCertificateUrl ? 'Trocar atestado' : 'Selecionar atestado'}
+                        <input hidden type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(event) => handleFileField(event, 'medicalCertificateUrl')} />
                       </Button>
                     </Stack>
                   </Box>

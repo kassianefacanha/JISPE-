@@ -62,6 +62,7 @@ const run = async () => {
       { field: 'photoUrl', prefix: (item) => `athletes/${item._id}/photo` },
       { field: 'proofUrl', prefix: (item) => `athletes/${item._id}/proof` },
       { field: 'affiliationProofUrl', prefix: (item) => `athletes/${item._id}/affiliation-proof` },
+      { field: 'medicalCertificateUrl', prefix: (item) => `athletes/${item._id}/medical-certificate` },
     ],
     'Atletas'
   );
