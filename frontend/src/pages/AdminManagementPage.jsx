@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api, { getApiErrorMessage } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useFeedback } from '../contexts/FeedbackContext';
+import PrivacyNotice from '../components/PrivacyNotice';
 
 const initialEntityForm = {
   name: '',
@@ -12,6 +13,7 @@ const initialEntityForm = {
   responsibleFullName: '',
   responsibleCpf: '',
   responsibleEmail: '',
+  privacyConsentConfirmed: false,
 };
 
 const initialAthleteForm = {
@@ -22,6 +24,7 @@ const initialAthleteForm = {
   phone: '',
   email: '',
   gender: 'masculino',
+  privacyConsentConfirmed: false,
 };
 
 const initialManagerForm = {
@@ -99,6 +102,10 @@ export default function AdminManagementPage() {
   const handleEntitySave = async (event) => {
     event.preventDefault();
     const wasEditing = Boolean(editingEntityId);
+    if (!entityForm.privacyConsentConfirmed) {
+      notify('Leia e confirme o termo de ciência sobre o tratamento de dados.', 'warning');
+      return;
+    }
 
     try {
       const payload = {
@@ -111,6 +118,7 @@ export default function AdminManagementPage() {
           cpf: entityForm.responsibleCpf,
           email: entityForm.responsibleEmail,
         },
+        privacyConsentConfirmed: entityForm.privacyConsentConfirmed,
       };
 
       if (editingEntityId) {
@@ -134,6 +142,10 @@ export default function AdminManagementPage() {
   const handleAthleteSave = async (event) => {
     event.preventDefault();
     const wasEditing = Boolean(editingAthleteId);
+    if (!athleteForm.privacyConsentConfirmed) {
+      notify('Leia e confirme o termo de ciência sobre o tratamento de dados.', 'warning');
+      return;
+    }
 
     try {
       const payload = {
@@ -144,6 +156,7 @@ export default function AdminManagementPage() {
         phone: athleteForm.phone,
         email: athleteForm.email,
         gender: athleteForm.gender,
+        privacyConsentConfirmed: athleteForm.privacyConsentConfirmed,
       };
 
       if (editingAthleteId) {
@@ -241,6 +254,7 @@ export default function AdminManagementPage() {
       responsibleFullName: entity.responsible?.fullName || '',
       responsibleCpf: entity.responsible?.cpf || '',
       responsibleEmail: entity.responsible?.email || '',
+      privacyConsentConfirmed: false,
     });
   };
 
@@ -254,6 +268,7 @@ export default function AdminManagementPage() {
       phone: athlete.phone,
       email: athlete.email,
       gender: athlete.gender,
+      privacyConsentConfirmed: false,
     });
   };
 
@@ -332,6 +347,12 @@ export default function AdminManagementPage() {
               <input value={entityForm.responsibleFullName} onChange={(e) => setEntityForm({ ...entityForm, responsibleFullName: e.target.value })} className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Responsável" />
               <input value={entityForm.responsibleCpf} onChange={(e) => setEntityForm({ ...entityForm, responsibleCpf: e.target.value })} className="rounded-xl border border-slate-300 px-3 py-2" placeholder="CPF responsável" />
               <input type="email" value={entityForm.responsibleEmail} onChange={(e) => setEntityForm({ ...entityForm, responsibleEmail: e.target.value })} className="rounded-xl border border-slate-300 px-3 py-2 md:col-span-2" placeholder="E-mail do responsável" />
+              <div className="md:col-span-2">
+                <PrivacyNotice
+                  checked={entityForm.privacyConsentConfirmed}
+                  onChange={(privacyConsentConfirmed) => setEntityForm((current) => ({ ...current, privacyConsentConfirmed }))}
+                />
+              </div>
               <div className="md:col-span-2 flex gap-2">
                 <button type="submit" className="rounded-xl bg-jispe-green px-4 py-2 font-semibold text-white">
                   {editingEntityId ? 'Salvar órgão' : 'Cadastrar órgão'}
@@ -433,6 +454,12 @@ export default function AdminManagementPage() {
                 <option value="masculino">Masculino</option>
                 <option value="feminino">Feminino</option>
               </select>
+              <div className="md:col-span-2">
+                <PrivacyNotice
+                  checked={athleteForm.privacyConsentConfirmed}
+                  onChange={(privacyConsentConfirmed) => setAthleteForm((current) => ({ ...current, privacyConsentConfirmed }))}
+                />
+              </div>
               <div className="md:col-span-2 flex gap-2">
                 <button type="submit" className="rounded-xl bg-jispe-green px-4 py-2 font-semibold text-white">
                   {editingAthleteId ? 'Salvar atleta' : 'Cadastrar atleta'}

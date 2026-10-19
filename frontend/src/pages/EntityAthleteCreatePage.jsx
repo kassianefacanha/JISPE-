@@ -44,6 +44,7 @@ const emptyForm = {
   hasSpecialCondition: false,
   specialConditionDetails: '',
   fitnessDeclarationConfirmed: false,
+  privacyConsentConfirmed: false,
 };
 
 const readFileAsDataUrl = (file) =>
@@ -133,6 +134,7 @@ export default function EntityAthleteCreatePage() {
           allergyDetails: athlete.allergyDetails || '',
           hasSpecialCondition: Boolean(athlete.hasSpecialCondition),
           specialConditionDetails: athlete.specialConditionDetails || '',
+          privacyConsentConfirmed: false,
         });
         setUploadInfo({
           photo: athlete.photoUrl ? 'Foto já carregada' : '',
@@ -188,6 +190,7 @@ export default function EntityAthleteCreatePage() {
     if (!form.proofUrl) return setError('Selecione o comprovante do atleta.');
     if (!form.affiliationProofUrl) return setError('Selecione o comprovante de vínculo com o órgão.');
     if (!form.medicalCertificateUrl) return setError('Selecione o atestado médico do atleta.');
+    if (!form.privacyConsentConfirmed) return setError('Leia e confirme o termo de ciência sobre o tratamento de dados.');
     if (!isEditing && !form.fitnessDeclarationConfirmed) {
       return setError('Confirme que o atleta declarou estar apto para participar das atividades.');
     }
@@ -249,7 +252,10 @@ export default function EntityAthleteCreatePage() {
               {!raceRegistrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>As inscrições para a corrida foram encerradas: limite de 3.000 corredores atingido.</Alert>}
               {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
               {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
-              <PrivacyNotice />
+              <PrivacyNotice
+                checked={form.privacyConsentConfirmed}
+                onChange={(privacyConsentConfirmed) => setForm((current) => ({ ...current, privacyConsentConfirmed }))}
+              />
               <Alert severity="info" sx={{ mb: 2 }}>
                 As inscrições para os torneios de Beach Tennis dos Jogos dos Servidores 2026 devem ser realizadas exclusivamente pelo site{' '}
                 <a href="https://beachtennisgovce.com.br" target="_blank" rel="noreferrer">beachtennisgovce.com.br</a>.

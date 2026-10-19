@@ -29,6 +29,7 @@ const emptyForm = {
   responsiblePhoto: '',
   responsibleProof: '',
   responsibleAffiliationProof: '',
+  privacyConsentConfirmed: false,
 };
 
 const readFileAsDataUrl = (file) =>
@@ -76,6 +77,10 @@ export default function EntityRegisterPage() {
       setError('Selecione a foto, o documento e o comprovante de vínculo do responsável para enviar o cadastro.');
       return;
     }
+    if (!form.privacyConsentConfirmed) {
+      setError('Leia e confirme o termo de ciência sobre o tratamento de dados para continuar.');
+      return;
+    }
 
     setSubmitting(true);
 
@@ -93,6 +98,7 @@ export default function EntityRegisterPage() {
           proofUrl: form.responsibleProof,
           affiliationProofUrl: form.responsibleAffiliationProof,
         },
+        privacyConsentConfirmed: form.privacyConsentConfirmed,
       });
 
       setMessage('Cadastro solicitado com sucesso. Aguarde a aprovação do administrador.');
@@ -131,9 +137,12 @@ export default function EntityRegisterPage() {
             Preencha os dados abaixo para solicitar o cadastro do seu órgão. O acesso será liberado somente após aprovação do administrador.
           </Typography>
           {!registrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>O cadastro de novos órgãos está temporariamente fechado.</Alert>}
-          <PrivacyNotice />
-
           <Box component="form" onSubmit={handleSubmit} noValidate>
+            <PrivacyNotice
+              checked={form.privacyConsentConfirmed}
+              onChange={(privacyConsentConfirmed) => setForm((current) => ({ ...current, privacyConsentConfirmed }))}
+            />
+            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
             <Grid container spacing={2}>
               <Grid item xs={12} md={4}>
                 <TextField fullWidth required label="Nome do órgão" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />

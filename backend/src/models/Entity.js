@@ -8,6 +8,12 @@ const entitySchema = new mongoose.Schema(
     passwordResetTokenHash: { type: String, select: false },
     passwordResetExpiresAt: { type: Date, select: false },
     sessionVersion: { type: Number, default: 0, select: false },
+    privacyConsent: {
+      acceptedAt: Date,
+      acceptedBy: String,
+      acceptedByType: { type: String, enum: ['entity', 'admin', 'responsible'] },
+      version: String,
+    },
     phone: { type: String, required: true },
     responsible: {
       fullName: { type: String, required: true },

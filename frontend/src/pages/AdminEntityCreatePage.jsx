@@ -32,6 +32,7 @@ const emptyForm = {
   responsiblePhoto: '',
   responsibleProof: '',
   responsibleAffiliationProof: '',
+  privacyConsentConfirmed: false,
 };
 
 const readFileAsDataUrl = (file) =>
@@ -96,6 +97,7 @@ export default function AdminEntityCreatePage() {
           responsiblePhoto: entity.responsible?.photoUrl || '',
           responsibleProof: entity.responsible?.proofUrl || '',
           responsibleAffiliationProof: entity.responsible?.affiliationProofUrl || '',
+          privacyConsentConfirmed: false,
         });
         setUploadInfo({
           photo: entity.responsible?.photoUrl ? 'Foto já carregada' : '',
@@ -135,6 +137,7 @@ export default function AdminEntityCreatePage() {
     if (!form.responsiblePhoto) return 'Selecione a foto do responsável.';
     if (!form.responsibleProof) return 'Selecione o comprovante do responsável.';
     if (!form.responsibleAffiliationProof) return 'Selecione o comprovante de vínculo com o órgão.';
+    if (!form.privacyConsentConfirmed) return 'Leia e confirme o termo de ciência sobre o tratamento de dados.';
     return '';
   };
 
@@ -164,6 +167,7 @@ export default function AdminEntityCreatePage() {
           proofUrl: form.responsibleProof,
           affiliationProofUrl: form.responsibleAffiliationProof,
         },
+        privacyConsentConfirmed: form.privacyConsentConfirmed,
       };
 
       if (editId) {
@@ -230,7 +234,10 @@ export default function AdminEntityCreatePage() {
               {success && (
                 <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>
               )}
-              <PrivacyNotice />
+              <PrivacyNotice
+                checked={form.privacyConsentConfirmed}
+                onChange={(privacyConsentConfirmed) => setForm((current) => ({ ...current, privacyConsentConfirmed }))}
+              />
               <Grid container spacing={2}>
                 <Grid item xs={12} md={4}>
                   <TextField fullWidth label="Nome do órgão" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />

@@ -48,6 +48,7 @@ const emptyForm = {
   hasSpecialCondition: false,
   specialConditionDetails: '',
   fitnessDeclarationConfirmed: false,
+  privacyConsentConfirmed: false,
   matricula: 'Gerada automaticamente',
 };
 
@@ -143,6 +144,7 @@ export default function AdminAthleteCreatePage() {
             allergyDetails: athlete.allergyDetails || '',
             hasSpecialCondition: Boolean(athlete.hasSpecialCondition),
             specialConditionDetails: athlete.specialConditionDetails || '',
+            privacyConsentConfirmed: false,
             matricula: athlete.matricula || 'Gerada automaticamente',
           });
           setUploadInfo({
@@ -189,6 +191,7 @@ export default function AdminAthleteCreatePage() {
     if (!form.proofUrl) return 'Selecione o comprovante do atleta.';
     if (!form.affiliationProofUrl) return 'Selecione o comprovante de vínculo com o órgão.';
     if (!form.medicalCertificateUrl) return 'Selecione o atestado médico do atleta.';
+    if (!form.privacyConsentConfirmed) return 'Leia e confirme o termo de ciência sobre o tratamento de dados.';
     if (!editId && !form.fitnessDeclarationConfirmed) return 'Confirme que o atleta declarou estar apto para participar das atividades.';
     return '';
   };
@@ -223,6 +226,7 @@ export default function AdminAthleteCreatePage() {
         naipe: form.modalityRegistrations[0].naipe,
         gender: form.modalityRegistrations[0].naipe,
         fitnessDeclarationConfirmed: form.fitnessDeclarationConfirmed,
+        privacyConsentConfirmed: form.privacyConsentConfirmed,
         isPcd: form.isPcd,
         hasAllergy: form.hasAllergy,
         allergyDetails: form.allergyDetails,
@@ -285,7 +289,10 @@ export default function AdminAthleteCreatePage() {
                 <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
               )}
               {!raceRegistrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>As inscrições para a corrida foram encerradas: limite de 3.000 corredores atingido.</Alert>}
-              <PrivacyNotice />
+              <PrivacyNotice
+                checked={form.privacyConsentConfirmed}
+                onChange={(privacyConsentConfirmed) => setForm((current) => ({ ...current, privacyConsentConfirmed }))}
+              />
               <Alert severity="info" sx={{ mb: 2 }}>
                 As inscrições para os torneios de Beach Tennis dos Jogos dos Servidores 2026 são feitas exclusivamente em{' '}
                 <a href="https://beachtennisgovce.com.br" target="_blank" rel="noreferrer">beachtennisgovce.com.br</a>.

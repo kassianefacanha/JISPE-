@@ -12,6 +12,12 @@ const athleteSchema = new mongoose.Schema(
   {
     entityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Entity', required: true },
     fitnessDeclaration: { type: fitnessDeclarationSchema, default: undefined },
+    privacyConsent: {
+      acceptedAt: Date,
+      acceptedBy: String,
+      acceptedByType: { type: String, enum: ['entity', 'admin', 'responsible'] },
+      version: String,
+    },
     cpf: { type: String, required: true },
     fullName: { type: String, required: true, trim: true },
     birthDate: { type: Date, required: true },

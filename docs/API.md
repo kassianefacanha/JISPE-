@@ -17,6 +17,9 @@
 
 - POST /api/entities/register
   - Cadastro de entidade pública
+  - Requer `privacyConsentConfirmed: true`; a confirmação é registrada com data, declarante e versão do termo
+- POST /api/entities e PUT /api/entities/:id
+  - Cadastro e atualização administrativa; também requerem `privacyConsentConfirmed: true`
 - GET /api/entities
   - Lista entidades para admin
 - PATCH /api/entities/:id/approve
@@ -29,6 +32,9 @@
 - POST /api/athletes
   - Cadastro de atleta por entidade autenticada
   - Requer RG/CNH, comprovante de vínculo e atestado médico em JPG, PNG, WebP ou PDF (até 3 MiB cada)
+  - Requer `privacyConsentConfirmed: true`; a confirmação é registrada com data, declarante e versão do termo
+- PUT /api/athletes/:id
+  - Atualização de atleta; também requer `privacyConsentConfirmed: true`
 - POST /api/athletes/:id/registrations
   - Inscreve atleta em modalidade
 

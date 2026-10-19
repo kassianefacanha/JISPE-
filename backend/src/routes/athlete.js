@@ -19,6 +19,7 @@ const { validateUploadedAsset } = require('../utils/uploadValidation');
 const { deleteAsset, deleteReplacedAsset, getAssetBuffer, getAssetUrl, isR2Value, isSameStoredAsset, storeAsset } = require('../services/r2Storage');
 const { sendAthleteRegistrationEmail } = require('../services/passwordResetEmail');
 const { raceAliases, releaseRaceRegistration, reserveRaceRegistration } = require('../services/raceRegistration');
+const { createPrivacyConsent } = require('../utils/privacyConsent');
 
 const maxBadgePhotoBytes = 5 * 1024 * 1024;
 const dataImagePattern = /^data:image\/(?:png|jpe?g|webp);base64,([A-Za-z0-9+/]+={0,2})$/i;
@@ -69,6 +70,7 @@ const fetchImageBuffer = async (value) => {
 
 const serializeAthlete = async (athlete) => {
   const payload = athlete.toObject();
+  delete payload.privacyConsent;
   payload.modalities = payload.modalities?.length ? payload.modalities : [payload.modality].filter(Boolean);
   payload.photoUrl = await getAssetUrl(payload.photoUrl);
   payload.proofUrl = await getAssetUrl(payload.proofUrl, { download: true });
@@ -134,6 +136,9 @@ router.post('/', auth, async (req, res, next) => {
 
     const { entityId, cpf, fullName, birthDate, phone, email, gender, naipe, modality, modalities, modalityRegistrations, photoUrl, proofUrl, affiliationProofUrl, medicalCertificateUrl, fitnessDeclarationConfirmed, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
     const resolvedEntityId = req.user.type === 'entity' ? req.user.id : entityId;
+    if (req.body?.privacyConsentConfirmed !== true) {
+      return res.status(400).json({ success: false, message: 'Leia e confirme o termo de ciência sobre o tratamento de dados.' });
+    }
     if (fitnessDeclarationConfirmed !== true) {
       return res.status(400).json({ success: false, message: 'Confirme que o atleta declarou estar apto para participar das atividades.' });
     }
@@ -228,6 +233,7 @@ router.post('/', auth, async (req, res, next) => {
         acknowledgedAt: new Date(),
         entityId: resolvedEntityId,
       },
+      privacyConsent: createPrivacyConsent(req.user.id, req.user.type),
       cpf,
       fullName,
       birthDate,
@@ -297,6 +303,9 @@ router.put('/:id', auth, async (req, res, next) => {
     }
 
     const { entityId, cpf, fullName, birthDate, photoUrl, phone, email, gender, naipe, modality, modalities, modalityRegistrations, proofUrl, affiliationProofUrl, medicalCertificateUrl, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
+    if (req.body?.privacyConsentConfirmed !== true) {
+      return res.status(400).json({ success: false, message: 'Leia e confirme o termo de ciência sobre o tratamento de dados.' });
+    }
     const submittedMedicalCertificate = medicalCertificateUrl || athlete.medicalCertificateUrl;
     const medicalCertificateError = athlete.medicalCertificateUrl
       && isSameStoredAsset(submittedMedicalCertificate, athlete.medicalCertificateUrl)
@@ -360,6 +369,7 @@ router.put('/:id', auth, async (req, res, next) => {
         modality: definition.name,
         naipe: requestedRegistrationEntries[index].naipe,
       })),
+      privacyConsent: createPrivacyConsent(req.user.id, req.user.type),
       ...(isPcd !== undefined ? { isPcd: Boolean(isPcd) } : {}),
       ...(hasAllergy !== undefined ? { hasAllergy: Boolean(hasAllergy), allergyDetails: hasAllergy ? allergyDetails || '' : '' } : {}),
       ...(allergyDetails !== undefined && hasAllergy === undefined ? { allergyDetails } : {}),

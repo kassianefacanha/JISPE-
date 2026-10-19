@@ -10,6 +10,7 @@ const { isValidCPF } = require('../utils/cpfValidator');
 const { validateUploadedAsset } = require('../utils/uploadValidation');
 const { deleteAsset, deleteReplacedAsset, getAssetUrl, isSameStoredAsset, storeAsset } = require('../services/r2Storage');
 const { sendEntityDecisionEmail, sendEntityRegistrationEmail } = require('../services/passwordResetEmail');
+const { createPrivacyConsent } = require('../utils/privacyConsent');
 
 const router = express.Router();
 const registrationLimiter = rateLimit({
@@ -23,6 +24,7 @@ const registrationLimiter = rateLimit({
 const serializeEntity = async (entity) => {
   const payload = entity.toObject();
   delete payload.password;
+  delete payload.privacyConsent;
   payload.responsible.photoUrl = await getAssetUrl(payload.responsible.photoUrl);
   payload.responsible.proofUrl = await getAssetUrl(payload.responsible.proofUrl, { download: true });
   payload.responsible.affiliationProofUrl = await getAssetUrl(payload.responsible.affiliationProofUrl, { download: true });
@@ -50,6 +52,10 @@ const normalizeEntityPayload = (payload = {}) => {
 
 router.post('/register', registrationLimiter, async (req, res, next) => {
   try {
+    if (req.body?.privacyConsentConfirmed !== true) {
+      return res.status(400).json({ success: false, message: 'Leia e confirme o termo de ciência sobre o tratamento de dados.' });
+    }
+
     const controls = await RegistrationControls.findById('global').lean();
     if (controls?.entityRegistrationOpen === false) {
       return res.status(403).json({ success: false, message: 'O cadastro de novos órgãos está temporariamente fechado.' });
@@ -83,6 +89,7 @@ router.post('/register', registrationLimiter, async (req, res, next) => {
       phone: payload.phone,
       responsible: payload.responsible,
       status: 'pending',
+      privacyConsent: createPrivacyConsent(payload.responsible.email, 'responsible'),
     });
     entity.responsible.photoUrl = await storeAsset(payload.responsible.photoUrl, `entities/${entity._id}/responsible/photo`);
     entity.responsible.proofUrl = await storeAsset(payload.responsible.proofUrl, `entities/${entity._id}/responsible/proof`);
@@ -98,6 +105,10 @@ router.post('/register', registrationLimiter, async (req, res, next) => {
 
 router.post('/', auth, adminEditorOnly, async (req, res, next) => {
   try {
+    if (req.body?.privacyConsentConfirmed !== true) {
+      return res.status(400).json({ success: false, message: 'Leia e confirme o termo de ciência sobre o tratamento de dados.' });
+    }
+
     const payload = normalizeEntityPayload(req.body);
 
     if (!payload.name || !payload.email || !payload.password || !payload.phone || !payload.responsible.fullName || !payload.responsible.cpf || !payload.responsible.email || !payload.responsible.affiliationProofUrl) {
@@ -126,6 +137,7 @@ router.post('/', auth, adminEditorOnly, async (req, res, next) => {
       phone: payload.phone,
       responsible: payload.responsible,
       status: req.body.status === 'pending' ? 'pending' : 'approved',
+      privacyConsent: createPrivacyConsent(req.user.id, 'admin'),
     });
     if (payload.responsible.photoUrl) {
       entity.responsible.photoUrl = await storeAsset(payload.responsible.photoUrl, `entities/${entity._id}/responsible/photo`);
@@ -166,6 +178,10 @@ router.get('/:id', auth, adminViewerOnly, async (req, res, next) => {
 
 router.put('/:id', auth, adminEditorOnly, async (req, res, next) => {
   try {
+    if (req.body?.privacyConsentConfirmed !== true) {
+      return res.status(400).json({ success: false, message: 'Leia e confirme o termo de ciência sobre o tratamento de dados.' });
+    }
+
     const currentEntity = await Entity.findById(req.params.id);
     if (!currentEntity) {
       return res.status(404).json({ success: false, message: 'Órgão não encontrado.' });
@@ -204,6 +220,7 @@ router.put('/:id', auth, adminEditorOnly, async (req, res, next) => {
         proofUrl: await storeAsset(payload.responsible.proofUrl, `entities/${currentEntity._id}/responsible/proof`, currentEntity.responsible.proofUrl),
         affiliationProofUrl: await storeAsset(payload.responsible.affiliationProofUrl, `entities/${currentEntity._id}/responsible/affiliation-proof`, currentEntity.responsible.affiliationProofUrl),
       },
+      privacyConsent: createPrivacyConsent(req.user.id, 'admin'),
     };
 
     if (payload.password) {
