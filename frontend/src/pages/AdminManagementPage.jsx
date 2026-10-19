@@ -125,9 +125,9 @@ export default function AdminManagementPage() {
       setEntityForm(initialEntityForm);
       setEditingEntityId(null);
       await loadData();
-      notify(wasEditing ? 'Entidade atualizada com sucesso.' : 'Entidade cadastrada com sucesso.', 'success');
+      notify(wasEditing ? 'Órgão atualizado com sucesso.' : 'Órgão cadastrado com sucesso.', 'success');
     } catch (error) {
-      notify(getApiErrorMessage(error, 'Erro ao salvar entidade.'));
+      notify(getApiErrorMessage(error, 'Erro ao salvar órgão.'));
     }
   };
 
@@ -150,7 +150,7 @@ export default function AdminManagementPage() {
         await api.put(`/athletes/${editingAthleteId}`, payload);
       } else {
         if (!payload.entityId) {
-          notify('Selecione a entidade do atleta.', 'warning');
+          notify('Selecione o órgão do atleta.', 'warning');
           return;
         }
         await api.post('/athletes', payload);
@@ -175,7 +175,7 @@ export default function AdminManagementPage() {
           ? 'Status atualizado. O envio do e-mail foi iniciado em segundo plano.'
           : response.data.emailSent === false
             ? 'Status atualizado, mas o e-mail não foi enviado. Verifique a configuração SMTP.'
-          : 'Status da entidade atualizado com sucesso.',
+          : 'Status do órgão atualizado com sucesso.',
         response.data.emailStatus === 'pending' ? 'info' : response.data.emailSent === false ? 'warning' : 'success'
       );
     } catch (error) {
@@ -188,13 +188,13 @@ export default function AdminManagementPage() {
     const associatedAthletes = athletes.filter((athlete) => athlete.entityId === id).map((athlete) => athlete.fullName).filter(Boolean);
 
     if (associatedAthletes.length > 0) {
-      notify(`Não é possível excluir a entidade "${entity?.name || 'selecionada'}" porque há atletas associados: ${associatedAthletes.join(', ')}.`, 'warning');
+      notify(`Não é possível excluir o órgão "${entity?.name || 'selecionado'}" porque há atletas associados: ${associatedAthletes.join(', ')}.`, 'warning');
       return;
     }
 
     const confirmed = await confirm({
-      title: 'Excluir entidade',
-      message: `Deseja excluir a entidade "${entity?.name || 'selecionada'}"?`,
+      title: 'Excluir órgão',
+      message: `Deseja excluir o órgão "${entity?.name || 'selecionado'}"?`,
       confirmLabel: 'Excluir',
       severity: 'error',
     });
@@ -202,14 +202,14 @@ export default function AdminManagementPage() {
     try {
       await api.delete(`/entities/${id}`);
       await loadData();
-      notify('Entidade excluída com sucesso.', 'success');
+      notify('Órgão excluído com sucesso.', 'success');
     } catch (error) {
       const serverNames = error.response?.data?.athletes || [];
       if (serverNames.length > 0) {
-        notify(`Não é possível excluir a entidade porque há atletas associados: ${serverNames.join(', ')}.`, 'warning');
+        notify(`Não é possível excluir o órgão porque há atletas associados: ${serverNames.join(', ')}.`, 'warning');
         return;
       }
-      notify(getApiErrorMessage(error, 'Erro ao excluir entidade.'));
+      notify(getApiErrorMessage(error, 'Erro ao excluir órgão.'));
     }
   };
 
@@ -311,7 +311,7 @@ export default function AdminManagementPage() {
         <div className="grid gap-6 xl:grid-cols-2">
           <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-800">Entidades</h2>
+              <h2 className="text-lg font-semibold text-slate-800">Órgãos</h2>
               <button
                 type="button"
                 onClick={() => {
@@ -325,7 +325,7 @@ export default function AdminManagementPage() {
             </div>
 
             <form onSubmit={handleEntitySave} className="mb-6 grid gap-3 md:grid-cols-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <input value={entityForm.name} onChange={(e) => setEntityForm({ ...entityForm, name: e.target.value })} className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Nome da entidade" />
+              <input value={entityForm.name} onChange={(e) => setEntityForm({ ...entityForm, name: e.target.value })} className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Nome do órgão" />
               <input type="email" value={entityForm.email} onChange={(e) => setEntityForm({ ...entityForm, email: e.target.value })} className="rounded-xl border border-slate-300 px-3 py-2" placeholder="E-mail" />
               <input type="password" value={entityForm.password} onChange={(e) => setEntityForm({ ...entityForm, password: e.target.value })} className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Senha (opcional para edição)" />
               <input value={entityForm.phone} onChange={(e) => setEntityForm({ ...entityForm, phone: e.target.value })} className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Telefone" />
@@ -334,7 +334,7 @@ export default function AdminManagementPage() {
               <input type="email" value={entityForm.responsibleEmail} onChange={(e) => setEntityForm({ ...entityForm, responsibleEmail: e.target.value })} className="rounded-xl border border-slate-300 px-3 py-2 md:col-span-2" placeholder="E-mail do responsável" />
               <div className="md:col-span-2 flex gap-2">
                 <button type="submit" className="rounded-xl bg-jispe-green px-4 py-2 font-semibold text-white">
-                  {editingEntityId ? 'Salvar entidade' : 'Cadastrar entidade'}
+                  {editingEntityId ? 'Salvar órgão' : 'Cadastrar órgão'}
                 </button>
                 {editingEntityId && (
                   <button
@@ -364,7 +364,7 @@ export default function AdminManagementPage() {
                 <tbody>
                   {entities.length === 0 ? (
                     <tr>
-                      <td colSpan="4" className="px-3 py-4 text-slate-500">Nenhuma entidade cadastrada.</td>
+                      <td colSpan="4" className="px-3 py-4 text-slate-500">Nenhum órgão cadastrado.</td>
                     </tr>
                   ) : (
                     entities.map((entity) => (
@@ -419,7 +419,7 @@ export default function AdminManagementPage() {
 
             <form onSubmit={handleAthleteSave} className="mb-6 grid gap-3 md:grid-cols-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <select value={athleteForm.entityId} onChange={(e) => setAthleteForm({ ...athleteForm, entityId: e.target.value })} className="rounded-xl border border-slate-300 px-3 py-2 md:col-span-2">
-                <option value="">Selecione uma entidade aprovada</option>
+                <option value="">Selecione um órgão aprovado</option>
                 {entities.filter((entity) => entity.status === 'approved').map((entity) => (
                   <option key={entity._id} value={entity._id}>{entity.name}</option>
                 ))}
@@ -457,7 +457,7 @@ export default function AdminManagementPage() {
                 <thead className="bg-slate-50 text-slate-600">
                   <tr>
                     <th className="px-3 py-2 font-semibold">Nome</th>
-                    <th className="px-3 py-2 font-semibold">Entidade</th>
+                    <th className="px-3 py-2 font-semibold">Órgão</th>
                     <th className="px-3 py-2 font-semibold">Matrícula</th>
                     <th className="px-3 py-2 font-semibold">Ações</th>
                   </tr>

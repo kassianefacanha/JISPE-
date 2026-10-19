@@ -233,7 +233,7 @@ export default function EntityAthleteCreatePage() {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 }, minWidth: 0 }}>
               <Box component="img" src="/logo.png" alt="JISPE 2026" sx={{ display: 'block', width: { xs: 72, sm: 104 }, maxWidth: '35vw', height: 'auto', flexShrink: 0 }} />
               <Box sx={{ minWidth: 0 }}>
-                <Typography variant="overline" color="primary.main" sx={{ letterSpacing: 3, fontWeight: 800 }}>Entidade</Typography>
+                <Typography variant="overline" color="primary.main" sx={{ letterSpacing: 3, fontWeight: 800 }}>Órgão</Typography>
                 <Typography variant="h4" fontWeight={800} sx={{ fontSize: { xs: 22, sm: 34 }, lineHeight: 1.15 }}>{isEditing ? 'Editar atleta' : 'Cadastrar atleta'}</Typography>
               </Box>
             </Box>

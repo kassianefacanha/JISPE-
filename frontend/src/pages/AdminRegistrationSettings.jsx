@@ -80,7 +80,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
         if (mounted) setRules(response.data.rules || []);
       })
       .catch((loadError) => {
-        if (mounted) setError(getApiErrorMessage(loadError, 'Não foi possível carregar as modalidades da entidade.'));
+        if (mounted) setError(getApiErrorMessage(loadError, 'Não foi possível carregar as modalidades do órgão.'));
       })
       .finally(() => {
         if (mounted) setLoadingRules(false);
@@ -139,22 +139,22 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} divider={<Box sx={{ borderColor: 'divider' }} />}>
           <FormControlLabel
             control={<Switch checked={controls.entityRegistrationOpen} disabled={loadingControls || readOnly} onChange={(event) => updateGlobalControl('entityRegistrationOpen', event.target.checked)} />}
-            label={<Box><Typography fontWeight={700}>Cadastro de entidades</Typography><Typography variant="body2" color="text.secondary">{controls.entityRegistrationOpen ? 'Recebendo novas solicitações' : 'Bloqueado para novos cadastros'}</Typography></Box>}
+            label={<Box><Typography fontWeight={700}>Cadastro de órgãos</Typography><Typography variant="body2" color="text.secondary">{controls.entityRegistrationOpen ? 'Recebendo novas solicitações' : 'Bloqueado para novos cadastros'}</Typography></Box>}
           />
           <FormControlLabel
             control={<Switch checked={controls.athleteRegistrationOpen} disabled={loadingControls || readOnly} onChange={(event) => updateGlobalControl('athleteRegistrationOpen', event.target.checked)} />}
-            label={<Box><Typography fontWeight={700}>Cadastro de atletas</Typography><Typography variant="body2" color="text.secondary">{controls.athleteRegistrationOpen ? 'Entidades podem cadastrar atletas' : 'Bloqueado para entidades'}</Typography></Box>}
+            label={<Box><Typography fontWeight={700}>Cadastro de atletas</Typography><Typography variant="body2" color="text.secondary">{controls.athleteRegistrationOpen ? 'Órgãos podem cadastrar atletas' : 'Bloqueado para órgãos'}</Typography></Box>}
           />
         </Stack>
       </Paper>
 
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
-        <Typography variant="h6" fontWeight={700}>Limites por modalidade e entidade</Typography>
+        <Typography variant="h6" fontWeight={700}>Limites por modalidade e órgão</Typography>
         <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 300 } }}>
-          <InputLabel id="modality-rules-entity-label">Entidade aprovada</InputLabel>
+          <InputLabel id="modality-rules-entity-label">Órgão aprovado</InputLabel>
           <Select
             labelId="modality-rules-entity-label"
-            label="Entidade aprovada"
+            label="Órgão aprovado"
             value={selectedEntityId}
             onChange={(event) => setSelectedEntityId(event.target.value)}
             disabled={!approvedEntities.length}
@@ -165,7 +165,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
       </Stack>
 
       {!approvedEntities.length ? (
-        <Alert severity="info">Não há entidades aprovadas para configurar.</Alert>
+        <Alert severity="info">Não há órgãos aprovados para configurar.</Alert>
       ) : (
         <TableContainer component={Paper} variant="outlined">
           <Table size="small" aria-label="Limites de cadastro por modalidade">
@@ -175,7 +175,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
                 <TableCell>Categorias</TableCell>
                 <TableCell align="center">Atletas cadastrados</TableCell>
                 <TableCell align="center">Cadastro</TableCell>
-                <TableCell align="center">Vagas por entidade</TableCell>
+                <TableCell align="center">Vagas por órgão</TableCell>
                 <TableCell align="center">Situação</TableCell>
               </TableRow>
             </TableHead>

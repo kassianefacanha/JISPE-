@@ -1,10 +1,10 @@
-# Manual da Entidade
+# Manual do Órgão
 
 ## Primeiro acesso
 
-1. Cadastre a entidade com os dados do órgão e do responsável, anexando o RG ou CNH do responsável e o comprovante de vínculo com o órgão.
+1. Cadastre o órgão com os dados do responsável, anexando o RG ou CNH do responsável e o comprovante de vínculo com o órgão.
 2. Aguardar aprovação do administrador.
-3. Após aprovação, efetue login com e-mail e senha da entidade.
+3. Após aprovação, efetue login com o e-mail e a senha cadastrados para o órgão.
 
 ## Cadastro de atletas
 
@@ -12,7 +12,7 @@
 - Anexe o RG ou CNH do atleta, um comprovante de vínculo com o órgão e o atestado médico (obrigatório).
 - Informe se o atleta é PCD e registre alergias ou condições especiais, quando houver.
 - O sistema valida o CPF e gera a matrícula automaticamente.
-- A entidade pode cadastrar vários atletas desde que o CPF seja único dentro da mesma entidade.
+- O órgão pode cadastrar vários atletas desde que o CPF seja único dentro do próprio órgão.
 
 O comprovante de vínculo pode ser declaração do RH, contrato, carteira de identificação ou crachá. Envie os documentos em JPG, PNG, WebP ou PDF, com até 3 MiB por arquivo.
 
@@ -26,4 +26,4 @@ As inscrições para os torneios de Beach Tennis dos Jogos dos Servidores 2026 d
 ## Validação
 
 - A carteirinha poderá ser consultada publicamente pela matrícula.
-- O responsável pela entidade deve manter os documentos e dados atualizados.
+- O responsável pelo órgão deve manter os documentos e dados atualizados.

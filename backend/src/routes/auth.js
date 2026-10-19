@@ -148,7 +148,7 @@ router.post('/login', loginLimiter, async (req, res, next) => {
     const entity = await Entity.findOne({ email: email.toLowerCase() }).select('+password +sessionVersion');
     if (entity && (await bcrypt.compare(password, entity.password))) {
       if (entity.status !== 'approved') {
-        return res.status(403).json({ success: false, message: 'Entidade ainda não foi aprovada' });
+        return res.status(403).json({ success: false, message: 'O cadastro do órgão ainda não foi aprovado.' });
       }
 
       const token = jwt.sign({ id: entity._id, role: 'entity', type: 'entity', sessionVersion: entity.sessionVersion || 0 }, jwtSecret, { expiresIn: '1d' });

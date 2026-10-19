@@ -34,7 +34,7 @@ import { useFeedback } from '../contexts/FeedbackContext';
 
 const athleteExportColumns = [
   { key: 'fullName', label: 'Nome' },
-  { key: 'entityName', label: 'Entidade' },
+  { key: 'entityName', label: 'Órgão' },
   { key: 'matricula', label: 'Matrícula' },
   { key: 'cpf', label: 'CPF' },
   { key: 'email', label: 'E-mail' },
@@ -157,7 +157,7 @@ export default function EntityDashboard() {
 
   const exportAthletes = () => {
     const columns = athleteExportColumns.filter((column) => exportDialog.selectedColumns.includes(column.key));
-    const filename = 'atletas-entidade';
+    const filename = 'atletas-orgao';
 
     if (exportDialog.type === 'csv') {
       const lines = [
@@ -204,7 +204,7 @@ export default function EntityDashboard() {
 
   const athleteColumns = [
     { field: 'fullName', headerName: 'Nome', flex: 1.5, minWidth: 180 },
-    { field: 'entityName', headerName: 'Entidade', flex: 1, minWidth: 150 },
+    { field: 'entityName', headerName: 'Órgão', flex: 1, minWidth: 150 },
     { field: 'matricula', headerName: 'Matrícula', flex: 1, minWidth: 120 },
     { field: 'cpf', headerName: 'CPF', flex: 1, minWidth: 120 },
     { field: 'email', headerName: 'E-mail', flex: 1.2, minWidth: 160 },
@@ -260,10 +260,10 @@ export default function EntityDashboard() {
             <Box component="img" src="/logo.png" alt="JISPE 2026" sx={{ display: 'block', width: { xs: 72, sm: 104 }, maxWidth: '35vw', height: 'auto', flexShrink: 0 }} />
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="overline" color="primary.main" sx={{ letterSpacing: 3, fontWeight: 800 }}>
-                Entidade
+                Órgão
               </Typography>
               <Typography variant="h4" fontWeight={800} sx={{ fontSize: { xs: 22, sm: 34 }, lineHeight: 1.15 }}>
-                Painel da entidade
+                Painel do órgão
               </Typography>
             </Box>
           </Box>
@@ -278,8 +278,8 @@ export default function EntityDashboard() {
         <Paper sx={{ p: { xs: 2, md: 3 }, border: '1px solid #e2e8f0' }}>
           <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} md={8}>
-              <Typography variant="caption" color="text.secondary">Entidade</Typography>
-              <Typography variant="h6" fontWeight={700}>{user?.name || 'Entidade'}</Typography>
+              <Typography variant="caption" color="text.secondary">Órgão</Typography>
+              <Typography variant="h6" fontWeight={700}>{user?.name || 'Órgão'}</Typography>
             </Grid>
             <Grid item xs={12} md={4}>
               <Typography variant="caption" color="text.secondary">Atletas cadastrados</Typography>

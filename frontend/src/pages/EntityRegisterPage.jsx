@@ -100,7 +100,7 @@ export default function EntityRegisterPage() {
       setUploadInfo({ photo: '', proof: '', affiliationProof: '' });
       setTimeout(() => navigate('/login'), 1400);
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Não foi possível cadastrar a entidade.'));
+      setError(getApiErrorMessage(err, 'Não foi possível cadastrar o órgão.'));
     } finally {
       setSubmitting(false);
     }
@@ -114,10 +114,10 @@ export default function EntityRegisterPage() {
             <Box component="img" src="/logo.png" alt="JISPE 2026" sx={{ display: 'block', width: { xs: 72, sm: 104 }, maxWidth: '35vw', height: 'auto', flexShrink: 0 }} />
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="overline" color="primary.main" sx={{ letterSpacing: 3, fontWeight: 800 }}>
-                Entidade
+                Órgão
               </Typography>
               <Typography variant="h4" fontWeight={800} color="text.primary" sx={{ fontSize: { xs: 22, sm: 34 }, lineHeight: 1.15 }}>
-                Cadastro de entidade
+                Cadastro do órgão
               </Typography>
             </Box>
           </Box>
@@ -128,18 +128,18 @@ export default function EntityRegisterPage() {
 
         <Paper elevation={0} sx={{ borderRadius: 4, p: { xs: 2, md: 4 }, border: '1px solid #e2e8f0' }}>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            Preencha os dados abaixo para solicitar o cadastro da sua entidade. O acesso será liberado somente após aprovação do administrador.
+            Preencha os dados abaixo para solicitar o cadastro do seu órgão. O acesso será liberado somente após aprovação do administrador.
           </Typography>
-          {!registrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>O cadastro de novas entidades está temporariamente fechado.</Alert>}
+          {!registrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>O cadastro de novos órgãos está temporariamente fechado.</Alert>}
           <PrivacyNotice />
 
           <Box component="form" onSubmit={handleSubmit} noValidate>
             <Grid container spacing={2}>
               <Grid item xs={12} md={4}>
-                <TextField fullWidth required label="Nome da entidade" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                <TextField fullWidth required label="Nome do órgão" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               </Grid>
               <Grid item xs={12} md={4}>
-                <TextField fullWidth required type="email" label="E-mail da entidade" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                <TextField fullWidth required type="email" label="E-mail do órgão" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </Grid>
               <Grid item xs={12} md={4}>
                 <TextField fullWidth required type="password" label="Senha" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
@@ -230,7 +230,7 @@ export default function EntityRegisterPage() {
               {message && <Alert severity="success">{message}</Alert>}
 
               <Button type="submit" variant="contained" size="large" disabled={submitting || !registrationOpen}>
-                {submitting ? 'Enviando...' : registrationOpen ? 'Cadastrar entidade' : 'Cadastro fechado'}
+                {submitting ? 'Enviando...' : registrationOpen ? 'Cadastrar órgão' : 'Cadastro fechado'}
               </Button>
             </Stack>
           </Box>

@@ -47,6 +47,7 @@ const emptyForm = {
   allergyDetails: '',
   hasSpecialCondition: false,
   specialConditionDetails: '',
+  fitnessDeclarationConfirmed: false,
   matricula: 'Gerada automaticamente',
 };
 
@@ -175,7 +176,7 @@ export default function AdminAthleteCreatePage() {
   };
 
   const validateForm = () => {
-    if (!form.entityId) return 'Selecione a entidade do atleta.';
+    if (!form.entityId) return 'Selecione o órgão do atleta.';
     if (!form.cpf || !isValidCPF(form.cpf)) return 'CPF do atleta inválido.';
     if (!form.fullName.trim()) return 'Informe o nome completo do atleta.';
     if (!form.birthDate) return 'Informe a data de nascimento.';
@@ -188,6 +189,7 @@ export default function AdminAthleteCreatePage() {
     if (!form.proofUrl) return 'Selecione o comprovante do atleta.';
     if (!form.affiliationProofUrl) return 'Selecione o comprovante de vínculo com o órgão.';
     if (!form.medicalCertificateUrl) return 'Selecione o atestado médico do atleta.';
+    if (!editId && !form.fitnessDeclarationConfirmed) return 'Confirme que o atleta declarou estar apto para participar das atividades.';
     return '';
   };
 
@@ -220,6 +222,7 @@ export default function AdminAthleteCreatePage() {
         modalityRegistrations: form.modalityRegistrations,
         naipe: form.modalityRegistrations[0].naipe,
         gender: form.modalityRegistrations[0].naipe,
+        fitnessDeclarationConfirmed: form.fitnessDeclarationConfirmed,
         isPcd: form.isPcd,
         hasAllergy: form.hasAllergy,
         allergyDetails: form.allergyDetails,
@@ -293,9 +296,9 @@ export default function AdminAthleteCreatePage() {
                 </Grid>
                 <Grid item xs={12} md={4}>
                   <FormControl fullWidth>
-                    <InputLabel>Entidade</InputLabel>
-                    <Select label="Entidade" value={form.entityId} onChange={(e) => setForm({ ...form, entityId: e.target.value })}>
-                      <MenuItem value="">Selecione uma entidade aprovada</MenuItem>
+                    <InputLabel>Órgão</InputLabel>
+                    <Select label="Órgão" value={form.entityId} onChange={(e) => setForm({ ...form, entityId: e.target.value })}>
+                      <MenuItem value="">Selecione um órgão aprovado</MenuItem>
                       {approvedEntities.map((entity) => (
                         <MenuItem key={entity._id} value={entity._id}>{entity.name}</MenuItem>
                       ))}
@@ -344,6 +347,24 @@ export default function AdminAthleteCreatePage() {
                   <FormControlLabel control={<Checkbox checked={form.hasSpecialCondition} onChange={(event) => setForm({ ...form, hasSpecialCondition: event.target.checked, specialConditionDetails: event.target.checked ? form.specialConditionDetails : '' })} />} label="Possui condição especial" />
                 </Grid>
                 {form.hasSpecialCondition && <Grid item xs={12} md={8}><TextField fullWidth label="Descreva a condição especial" value={form.specialConditionDetails} onChange={(event) => setForm({ ...form, specialConditionDetails: event.target.value })} /></Grid>}
+
+                {!editId && (
+                  <Grid item xs={12}>
+                    <FormControlLabel
+                      control={(
+                        <Checkbox
+                          required
+                          checked={form.fitnessDeclarationConfirmed}
+                          onChange={(event) => setForm((current) => ({
+                            ...current,
+                            fitnessDeclarationConfirmed: event.target.checked,
+                          }))}
+                        />
+                      )}
+                      label="Atesto que o(a) atleta declarou estar apto(a) a participar das atividades físicas e esportivas dos Jogos da Integração do Servidor Público Estadual (JISPE), ciente das exigências físicas envolvidas e de suas condições de saúde para a prática das modalidades escolhidas."
+                    />
+                  </Grid>
+                )}
 
                 <Grid item xs={12}>
                   <Divider sx={{ my: 1 }} />

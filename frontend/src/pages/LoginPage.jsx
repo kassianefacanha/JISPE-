@@ -86,7 +86,7 @@ export default function LoginPage() {
                   {loading ? 'Entrando...' : 'Entrar'}
                 </Button>
                 <Button component={Link} to="/recuperar-senha" variant="text" sx={{ alignSelf: 'center' }}>
-                  Esqueceu a senha da entidade?
+                  Esqueceu a senha do órgão?
                 </Button>
               </Stack>
             </Box>
@@ -100,7 +100,7 @@ export default function LoginPage() {
                 size="large"
                 sx={{ borderRadius: 2, fontWeight: 700, flex: 1 }}
               >
-                Cadastrar entidade
+                Cadastrar órgão
               </Button>
               <Button
                 component={Link}

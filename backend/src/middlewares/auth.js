@@ -26,7 +26,7 @@ const auth = async (req, res, next) => {
     const account = await Account.findById(decoded.id).select('status +sessionVersion').lean();
     if (!account) return res.status(401).json({ success: false, message: 'Token inválido ou expirado' });
     if (decoded.type === 'entity' && account.status !== 'approved') {
-      return res.status(403).json({ success: false, message: 'Acesso da entidade não está aprovado.' });
+      return res.status(403).json({ success: false, message: 'O acesso do órgão ainda não foi aprovado.' });
     }
     if (Number(decoded.sessionVersion || 0) !== Number(account.sessionVersion || 0)) {
       return res.status(401).json({ success: false, message: 'Sessão expirada. Entre novamente.' });

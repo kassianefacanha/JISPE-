@@ -129,12 +129,12 @@ router.get('/:id', auth, async (req, res, next) => {
 router.post('/', auth, async (req, res, next) => {
   try {
     if (req.user.type !== 'entity' && !isAdminEditor(req.user)) {
-      return res.status(403).json({ success: false, message: 'Acesso restrito à entidade ou ao administrador' });
+      return res.status(403).json({ success: false, message: 'Acesso restrito ao órgão ou ao administrador.' });
     }
 
     const { entityId, cpf, fullName, birthDate, phone, email, gender, naipe, modality, modalities, modalityRegistrations, photoUrl, proofUrl, affiliationProofUrl, medicalCertificateUrl, fitnessDeclarationConfirmed, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
     const resolvedEntityId = req.user.type === 'entity' ? req.user.id : entityId;
-    if (req.user.type === 'entity' && fitnessDeclarationConfirmed !== true) {
+    if (fitnessDeclarationConfirmed !== true) {
       return res.status(400).json({ success: false, message: 'Confirme que o atleta declarou estar apto para participar das atividades.' });
     }
     const legacyNaipe = naipe || gender || 'masculino';
@@ -192,7 +192,7 @@ router.post('/', auth, async (req, res, next) => {
           modalitySlug: modalityDefinition.slug,
         }).lean();
         if (modalityRule?.enabled === false) {
-          return res.status(403).json({ success: false, message: `O cadastro de atletas em ${modalityDefinition.name} está bloqueado para sua entidade.` });
+          return res.status(403).json({ success: false, message: `O cadastro de atletas em ${modalityDefinition.name} está bloqueado para o seu órgão.` });
         }
 
         const officialLimit = modalityDefinition.maxTeamsPerEntity && modalityDefinition.maxAthletesPerTeam
@@ -207,7 +207,7 @@ router.post('/', auth, async (req, res, next) => {
         if (modalityLimit != null && registeredCount >= modalityLimit) {
           return res.status(403).json({
             success: false,
-            message: `Sua entidade atingiu o limite de ${modalityLimit} atletas para ${modalityDefinition.name}.`,
+            message: `Seu órgão atingiu o limite de ${modalityLimit} atletas para ${modalityDefinition.name}.`,
           });
         }
       }
@@ -215,7 +215,7 @@ router.post('/', auth, async (req, res, next) => {
 
     const existing = await Athlete.findOne({ entityId: resolvedEntityId, cpf });
     if (existing) {
-      return res.status(409).json({ success: false, message: 'CPF já cadastrado para esta entidade' });
+      return res.status(409).json({ success: false, message: 'CPF já cadastrado para este órgão.' });
     }
 
     const matricula = await generateMatricula();
@@ -224,12 +224,10 @@ router.post('/', auth, async (req, res, next) => {
     const category = getAgeCategory(birthDate, primaryModality.name, primaryModality.categories || []);
     const athlete = new Athlete({
       entityId: resolvedEntityId,
-      ...(req.user.type === 'entity' ? {
-        fitnessDeclaration: {
-          acknowledgedAt: new Date(),
-          entityId: req.user.id,
-        },
-      } : {}),
+      fitnessDeclaration: {
+        acknowledgedAt: new Date(),
+        entityId: resolvedEntityId,
+      },
       cpf,
       fullName,
       birthDate,
@@ -373,7 +371,7 @@ router.put('/:id', auth, async (req, res, next) => {
     if (isAdminEditor(req.user) && entityId && String(entityId) !== String(athlete.entityId)) {
       const approvedEntity = await Entity.findOne({ _id: entityId, status: 'approved' }).select('_id');
       if (!approvedEntity) {
-        return res.status(400).json({ success: false, message: 'Selecione uma entidade aprovada para o atleta.' });
+        return res.status(400).json({ success: false, message: 'Selecione um órgão aprovado para o atleta.' });
       }
       payload.entityId = approvedEntity._id;
     }
@@ -389,7 +387,7 @@ router.put('/:id', auth, async (req, res, next) => {
     if (cpf && req.user.type === 'entity') {
       const existing = await Athlete.findOne({ entityId: req.user.id, cpf, _id: { $ne: athlete._id } });
       if (existing) {
-        return res.status(409).json({ success: false, message: 'CPF já cadastrado para esta entidade' });
+        return res.status(409).json({ success: false, message: 'CPF já cadastrado para este órgão.' });
       }
     }
 
@@ -469,7 +467,7 @@ router.get('/:id/badge', auth, async (req, res, next) => {
     }
 
     const entity = await Entity.findById(athlete.entityId).select('name');
-    const entityName = entity?.name || 'Sem entidade';
+    const entityName = entity?.name || 'Sem órgão';
     const normalizedMatricula = athlete.matricula.replace(/\s+/g, '');
     const photoBuffer = await fetchImageBuffer(athlete.photoUrl);
 
@@ -559,13 +557,13 @@ router.get('/:id/badge', auth, async (req, res, next) => {
 router.post('/:id/registrations', auth, async (req, res, next) => {
   try {
     if (req.user.type !== 'entity') {
-      return res.status(403).json({ success: false, message: 'Acesso restrito à entidade' });
+      return res.status(403).json({ success: false, message: 'Acesso restrito ao órgão.' });
     }
 
     const { modality, gender } = req.body;
     const athlete = await Athlete.findOne({ _id: req.params.id, entityId: req.user.id });
     if (!athlete) {
-      return res.status(404).json({ success: false, message: 'Atleta não encontrado para esta entidade' });
+      return res.status(404).json({ success: false, message: 'Atleta não encontrado para este órgão.' });
     }
 
     if (!hasCompletedMinimumAge(athlete.birthDate)) {

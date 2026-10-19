@@ -62,7 +62,7 @@ router.patch('/registration-controls', auth, adminEditorOnly, async (req, res, n
 router.get('/entities/:entityId/modality-rules', auth, adminViewerOnly, async (req, res, next) => {
   try {
     const entity = await Entity.findById(req.params.entityId).select('name status');
-    if (!entity) return res.status(404).json({ success: false, message: 'Entidade não encontrada.' });
+    if (!entity) return res.status(404).json({ success: false, message: 'Órgão não encontrado.' });
 
     const [storedModalities, savedRules, athletes] = await Promise.all([
       Modality.find({ active: true }).lean(),
@@ -99,7 +99,7 @@ router.get('/entities/:entityId/modality-rules', auth, adminViewerOnly, async (r
 router.put('/entities/:entityId/modality-rules', auth, adminEditorOnly, async (req, res, next) => {
   try {
     const entity = await Entity.findById(req.params.entityId).select('_id');
-    if (!entity) return res.status(404).json({ success: false, message: 'Entidade não encontrada.' });
+    if (!entity) return res.status(404).json({ success: false, message: 'Órgão não encontrado.' });
     if (!Array.isArray(req.body.rules)) {
       return res.status(400).json({ success: false, message: 'Informe a lista de regras por modalidade.' });
     }

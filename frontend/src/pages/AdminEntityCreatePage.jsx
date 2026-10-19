@@ -103,7 +103,7 @@ export default function AdminEntityCreatePage() {
           affiliationProof: entity.responsible?.affiliationProofUrl ? 'Comprovante de vínculo já carregado' : '',
         });
       } catch (error) {
-        notify(getApiErrorMessage(error, 'Erro ao carregar entidade.'));
+        notify(getApiErrorMessage(error, 'Erro ao carregar órgão.'));
         navigate('/admin');
       }
     };
@@ -125,9 +125,9 @@ export default function AdminEntityCreatePage() {
   };
 
   const validateForm = () => {
-    if (!form.name.trim()) return 'Informe o nome da entidade.';
-    if (!form.email || !isValidEmail(form.email)) return 'Informe um e-mail válido da entidade.';
-    if (!editId && !form.password.trim()) return 'Informe a senha da entidade.';
+    if (!form.name.trim()) return 'Informe o nome do órgão.';
+    if (!form.email || !isValidEmail(form.email)) return 'Informe um e-mail válido do órgão.';
+    if (!editId && !form.password.trim()) return 'Informe a senha do órgão.';
     if (!isValidPhone(form.phone)) return 'Informe um telefone válido com DDD (10 ou 11 dígitos).';
     if (!form.responsibleFullName.trim()) return 'Informe o nome do responsável.';
     if (!form.responsibleCpf || !isValidCPF(form.responsibleCpf)) return 'CPF do responsável inválido.';
@@ -168,7 +168,7 @@ export default function AdminEntityCreatePage() {
 
       if (editId) {
         await api.put(`/entities/${editId}`, payload);
-        const successMessage = 'Entidade atualizada com sucesso.';
+        const successMessage = 'Órgão atualizado com sucesso.';
         setSuccess(successMessage);
         notify(successMessage, 'success');
       } else {
@@ -177,7 +177,7 @@ export default function AdminEntityCreatePage() {
           password: form.password,
           status: 'pending',
         });
-        const successMessage = 'Entidade cadastrada com sucesso. Ela ficará pendente até aprovação.';
+        const successMessage = 'Órgão cadastrado com sucesso. Ele ficará pendente até aprovação.';
         setSuccess(successMessage);
         notify(successMessage, 'success');
       }
@@ -185,7 +185,7 @@ export default function AdminEntityCreatePage() {
       setForm(emptyForm);
       navigate('/admin');
     } catch (error) {
-      const message = getApiErrorMessage(error, 'Erro ao salvar entidade.');
+      const message = getApiErrorMessage(error, 'Erro ao salvar órgão.');
       setError(message);
     } finally {
       setCreating(false);
@@ -204,7 +204,7 @@ export default function AdminEntityCreatePage() {
                   Admin
                 </Typography>
                 <Typography variant="h4" fontWeight={800} sx={{ fontSize: { xs: 22, sm: 34 }, lineHeight: 1.15 }}>
-                  {editId ? 'Editar entidade' : 'Novo cadastro de entidade'}
+                  {editId ? 'Editar órgão' : 'Novo cadastro de órgão'}
                 </Typography>
               </Box>
             </Box>
@@ -220,7 +220,7 @@ export default function AdminEntityCreatePage() {
         <Card>
           <CardContent sx={{ p: { xs: 2, md: 4 } }}>
             <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
-              Dados da entidade
+              Dados do órgão
             </Typography>
 
             <Box component="form" onSubmit={handleSubmit} noValidate>
@@ -233,7 +233,7 @@ export default function AdminEntityCreatePage() {
               <PrivacyNotice />
               <Grid container spacing={2}>
                 <Grid item xs={12} md={4}>
-                  <TextField fullWidth label="Nome da entidade" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                  <TextField fullWidth label="Nome do órgão" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
                 </Grid>
                 <Grid item xs={12} md={4}>
                   <TextField fullWidth type="email" label="E-mail de acesso" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} error={Boolean(error && !isValidEmail(form.email))} helperText={error && !isValidEmail(form.email) ? 'Informe um endereço de e-mail válido.' : ''} />
@@ -246,7 +246,7 @@ export default function AdminEntityCreatePage() {
                     value={editId ? '' : form.password}
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
                     disabled={Boolean(editId)}
-                    helperText={editId ? 'A senha não pode ser alterada neste formulário.' : 'Preencha a senha ao cadastrar a entidade.'}
+                    helperText={editId ? 'A senha não pode ser alterada neste formulário.' : 'Preencha a senha ao cadastrar o órgão.'}
                   />
                 </Grid>
                 <Grid item xs={12} md={4}>
@@ -340,7 +340,7 @@ export default function AdminEntityCreatePage() {
                       Cancelar
                     </Button>
                     <Button type="submit" variant="contained" disabled={creating}>
-                      {creating ? (editId ? 'Salvando...' : 'Cadastrando...') : (editId ? 'Salvar entidade' : 'Cadastrar entidade')}
+                      {creating ? (editId ? 'Salvando...' : 'Cadastrando...') : (editId ? 'Salvar órgão' : 'Cadastrar órgão')}
                     </Button>
                   </Stack>
                 </Grid>

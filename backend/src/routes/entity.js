@@ -52,7 +52,7 @@ router.post('/register', registrationLimiter, async (req, res, next) => {
   try {
     const controls = await RegistrationControls.findById('global').lean();
     if (controls?.entityRegistrationOpen === false) {
-      return res.status(403).json({ success: false, message: 'O cadastro de novas entidades está temporariamente fechado.' });
+      return res.status(403).json({ success: false, message: 'O cadastro de novos órgãos está temporariamente fechado.' });
     }
 
     const payload = normalizeEntityPayload(req.body);
@@ -155,7 +155,7 @@ router.get('/:id', auth, adminViewerOnly, async (req, res, next) => {
   try {
     const entity = await Entity.findById(req.params.id);
     if (!entity) {
-      return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
+      return res.status(404).json({ success: false, message: 'Órgão não encontrado.' });
     }
 
     res.json({ success: true, entity: await serializeEntity(entity) });
@@ -168,7 +168,7 @@ router.put('/:id', auth, adminEditorOnly, async (req, res, next) => {
   try {
     const currentEntity = await Entity.findById(req.params.id);
     if (!currentEntity) {
-      return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
+      return res.status(404).json({ success: false, message: 'Órgão não encontrado.' });
     }
 
     const payload = normalizeEntityPayload(req.body);
@@ -212,7 +212,7 @@ router.put('/:id', auth, adminEditorOnly, async (req, res, next) => {
 
     const entity = await Entity.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!entity) {
-      return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
+      return res.status(404).json({ success: false, message: 'Órgão não encontrado.' });
     }
 
     await Promise.all([
@@ -232,14 +232,14 @@ router.delete('/:id', auth, adminEditorOnly, async (req, res, next) => {
     if (associatedAthletes.length > 0) {
       return res.status(400).json({
         success: false,
-        message: 'Não é possível excluir esta entidade porque ela possui atletas associados.',
+        message: 'Não é possível excluir este órgão porque há atletas associados.',
         athletes: associatedAthletes.map((athlete) => athlete.fullName),
       });
     }
 
     const entity = await Entity.findByIdAndDelete(req.params.id);
     if (!entity) {
-      return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
+      return res.status(404).json({ success: false, message: 'Órgão não encontrado.' });
     }
 
     await Promise.all([
@@ -247,7 +247,7 @@ router.delete('/:id', auth, adminEditorOnly, async (req, res, next) => {
       deleteAsset(entity.responsible.proofUrl),
       deleteAsset(entity.responsible.affiliationProofUrl),
     ]);
-    res.json({ success: true, message: 'Entidade excluída com sucesso' });
+    res.json({ success: true, message: 'Órgão excluído com sucesso.' });
   } catch (error) {
     next(error);
   }
@@ -257,7 +257,7 @@ router.patch('/:id/approve', auth, adminEditorOnly, async (req, res, next) => {
   try {
     const entity = await Entity.findByIdAndUpdate(req.params.id, { status: 'approved' }, { new: true });
     if (!entity) {
-      return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
+      return res.status(404).json({ success: false, message: 'Órgão não encontrado.' });
     }
 
     void sendEntityDecisionEmail(entity, 'approved');
@@ -271,7 +271,7 @@ router.patch('/:id/reject', auth, adminEditorOnly, async (req, res, next) => {
   try {
     const entity = await Entity.findByIdAndUpdate(req.params.id, { status: 'rejected' }, { new: true });
     if (!entity) {
-      return res.status(404).json({ success: false, message: 'Entidade não encontrada' });
+      return res.status(404).json({ success: false, message: 'Órgão não encontrado.' });
     }
 
     void sendEntityDecisionEmail(entity, 'rejected');

@@ -64,15 +64,15 @@ const sendNotification = async (eventName, message) => {
 const sendPasswordResetEmail = (email, resetUrl) => sendNotification('password-reset', {
   to: email,
   subject: 'Solicitação de redefinição de senha | JISPE 2026',
-  text: `Prezada entidade,\n\nRecebemos uma solicitação para redefinir a senha de acesso ao sistema JISPE 2026. Para cadastrar uma nova senha, acesse o link abaixo em até 30 minutos:\n\n${resetUrl}\n\nSe não reconhece esta solicitação, desconsidere esta mensagem. Por segurança, nunca informe sua senha por e-mail.\n\nAtenciosamente,\nEquipe JISPE 2026`,
-  html: `<p>Prezada entidade,</p><p>Recebemos uma solicitação para redefinir a senha de acesso ao sistema JISPE 2026.</p><p>Para cadastrar uma nova senha, acesse o link abaixo em até 30 minutos:</p><p><a href="${escapeHtml(resetUrl)}">Redefinir senha</a></p><p>Se não reconhece esta solicitação, desconsidere esta mensagem. Por segurança, nunca informe sua senha por e-mail.</p><p>Atenciosamente,<br>Equipe JISPE 2026</p>`,
+  text: `Olá,\n\nRecebemos uma solicitação para redefinir a senha de acesso ao sistema JISPE 2026 para o seu órgão. Para cadastrar uma nova senha, acesse o link abaixo em até 30 minutos:\n\n${resetUrl}\n\nSe não reconhece esta solicitação, desconsidere esta mensagem. Por segurança, nunca informe sua senha por e-mail.\n\nAtenciosamente,\nEquipe JISPE 2026`,
+  html: `<p>Olá,</p><p>Recebemos uma solicitação para redefinir a senha de acesso ao sistema JISPE 2026 para o seu órgão.</p><p>Para cadastrar uma nova senha, acesse o link abaixo em até 30 minutos:</p><p><a href="${escapeHtml(resetUrl)}">Redefinir senha</a></p><p>Se não reconhece esta solicitação, desconsidere esta mensagem. Por segurança, nunca informe sua senha por e-mail.</p><p>Atenciosamente,<br>Equipe JISPE 2026</p>`,
 });
 
 const sendEntityRegistrationEmail = (entity) => sendNotification('entity-registration', {
   to: entity.email,
-  subject: 'Recebimento do cadastro da entidade | JISPE 2026',
-  text: `Prezada ${entity.name},\n\nConfirmamos o recebimento do cadastro da sua entidade no sistema JISPE 2026. A solicitação será analisada pela equipe responsável. O acesso será liberado após a aprovação.\n\nAtenciosamente,\nEquipe JISPE 2026`,
-  html: `<p>Prezada ${escapeHtml(entity.name)},</p><p>Confirmamos o recebimento do cadastro da sua entidade no sistema JISPE 2026.</p><p>A solicitação será analisada pela equipe responsável. O acesso será liberado após a aprovação.</p><p>Atenciosamente,<br>Equipe JISPE 2026</p>`,
+  subject: 'Recebimento do cadastro do órgão | JISPE 2026',
+  text: `Olá, ${entity.name}.\n\nConfirmamos o recebimento do cadastro do seu órgão no sistema JISPE 2026. A solicitação será analisada pela equipe responsável. O acesso será liberado após a aprovação.\n\nAtenciosamente,\nEquipe JISPE 2026`,
+  html: `<p>Olá, ${escapeHtml(entity.name)}.</p><p>Confirmamos o recebimento do cadastro do seu órgão no sistema JISPE 2026.</p><p>A solicitação será analisada pela equipe responsável. O acesso será liberado após a aprovação.</p><p>Atenciosamente,<br>Equipe JISPE 2026</p>`,
 });
 
 const sendAthleteRegistrationEmail = (entity, athlete) => sendNotification('athlete-registration', {
@@ -91,10 +91,10 @@ const sendPasswordChangedEmail = (account) => sendNotification('password-changed
 
 const sendEntityDecisionEmail = (entity, status) => {
   const approved = status === 'approved';
-  const subject = approved ? 'Cadastro da entidade aprovado | JISPE 2026' : 'Atualização do cadastro da entidade | JISPE 2026';
+  const subject = approved ? 'Cadastro do órgão aprovado | JISPE 2026' : 'Atualização do cadastro do órgão | JISPE 2026';
   const decision = approved
-    ? 'Informamos que o cadastro da sua entidade foi aprovado. Você já pode acessar o sistema com suas credenciais.'
-    : 'Informamos que, após análise, o cadastro da sua entidade não foi aprovado neste momento. Para obter orientações, entre em contato com a equipe responsável.';
+    ? 'Informamos que o cadastro do seu órgão foi aprovado. Você já pode acessar o sistema com suas credenciais.'
+    : 'Informamos que, após análise, o cadastro do seu órgão não foi aprovado neste momento. Para obter orientações, entre em contato com a equipe responsável.';
 
   return sendNotification('entity-decision', {
     to: entity.email,

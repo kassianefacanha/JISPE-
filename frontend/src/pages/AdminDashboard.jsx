@@ -257,12 +257,12 @@ export default function AdminDashboard() {
 
     if (activeTab === 'entidades') {
       return [
-        { title: 'Total de entidades', value: entities.length, color: 'slate' },
+        { title: 'Total de órgãos', value: entities.length, color: 'slate' },
         { title: 'Pendentes de aprovação', value: entities.filter((entity) => entity.status === 'pending').length, color: 'orange' },
-        { title: 'Aprovadas', value: entities.filter((entity) => entity.status === 'approved').length, color: 'green' },
-        { title: 'Rejeitadas', value: entities.filter((entity) => entity.status === 'rejected').length, color: 'red' },
-        { title: 'Atletas vinculados', value: athletes.length, color: 'blue' },
-        { title: 'Aprovadas sem atletas', value: entities.filter((entity) => entity.status === 'approved' && !representedEntities.has(String(entity._id))).length, color: 'purple' },
+        { title: 'Aprovados', value: entities.filter((entity) => entity.status === 'approved').length, color: 'green' },
+        { title: 'Reprovados', value: entities.filter((entity) => entity.status === 'rejected').length, color: 'red' },
+        { title: 'Atletas vinculados aos órgãos', value: athletes.length, color: 'blue' },
+        { title: 'Aprovados sem atletas', value: entities.filter((entity) => entity.status === 'approved' && !representedEntities.has(String(entity._id))).length, color: 'purple' },
       ];
     }
 
@@ -281,7 +281,7 @@ export default function AdminDashboard() {
       { title: 'Masculino', value: athletes.filter((athlete) => (athlete.naipe || athlete.gender) === 'masculino').length, color: 'blue' },
       { title: 'Feminino', value: athletes.filter((athlete) => (athlete.naipe || athlete.gender) === 'feminino').length, color: 'pink' },
       { title: 'Misto', value: athletes.filter((athlete) => (athlete.naipe || athlete.gender) === 'misto').length, color: 'purple' },
-      { title: 'Entidades participantes', value: representedEntities.size, color: 'green' },
+      { title: 'Órgãos participantes', value: representedEntities.size, color: 'green' },
       { title: 'Modalidades representadas', value: representedModalities, color: 'orange' },
       { title: 'Fotos pendentes', value: athletes.filter((athlete) => !athlete.photoUrl).length, color: 'red' },
       { title: 'Comprovantes pendentes', value: athletes.filter((athlete) => !athlete.proofUrl).length, color: 'orange' },
@@ -316,7 +316,7 @@ export default function AdminDashboard() {
           ? 'Status atualizado. O envio do e-mail foi iniciado em segundo plano.'
           : response.data.emailSent === false
             ? 'Status atualizado, mas o e-mail não foi enviado. Verifique a configuração SMTP.'
-          : 'Status da entidade atualizado com sucesso.',
+          : 'Status do órgão atualizado com sucesso.',
         response.data.emailStatus === 'pending' ? 'info' : response.data.emailSent === false ? 'warning' : 'success'
       );
     } catch (error) {
@@ -329,13 +329,13 @@ export default function AdminDashboard() {
     const associatedAthletes = athletes.filter((athlete) => athlete.entityId === id).map((athlete) => athlete.fullName).filter(Boolean);
 
     if (associatedAthletes.length > 0) {
-      notify(`Não é possível excluir a entidade "${entity?.name || 'selecionada'}" porque há atletas associados: ${associatedAthletes.join(', ')}.`, 'warning');
+      notify(`Não é possível excluir o órgão "${entity?.name || 'selecionado'}" porque há atletas associados: ${associatedAthletes.join(', ')}.`, 'warning');
       return;
     }
 
     const confirmed = await confirm({
-      title: 'Excluir entidade',
-      message: `Deseja excluir a entidade "${entity?.name || 'selecionada'}"?`,
+      title: 'Excluir órgão',
+      message: `Deseja excluir o órgão "${entity?.name || 'selecionado'}"?`,
       confirmLabel: 'Excluir',
       severity: 'error',
     });
@@ -343,14 +343,14 @@ export default function AdminDashboard() {
     try {
       await api.delete(`/entities/${id}`);
       await loadData();
-      notify('Entidade excluída com sucesso.', 'success');
+      notify('Órgão excluído com sucesso.', 'success');
     } catch (error) {
       const serverNames = error.response?.data?.athletes || [];
       if (serverNames.length > 0) {
-        notify(`Não é possível excluir a entidade porque há atletas associados: ${serverNames.join(', ')}.`, 'warning');
+        notify(`Não é possível excluir o órgão porque há atletas associados: ${serverNames.join(', ')}.`, 'warning');
         return;
       }
-      notify(getApiErrorMessage(error, 'Erro ao excluir entidade.'));
+      notify(getApiErrorMessage(error, 'Erro ao excluir órgão.'));
     }
   };
 
@@ -382,7 +382,7 @@ export default function AdminDashboard() {
 
   const athleteColumns = [
     { key: 'fullName', label: 'Nome' },
-    { key: 'entityName', label: 'Entidade' },
+    { key: 'entityName', label: 'Órgão' },
     { key: 'matricula', label: 'Matrícula' },
     { key: 'cpf', label: 'CPF' },
     { key: 'email', label: 'E-mail' },
@@ -505,8 +505,8 @@ export default function AdminDashboard() {
             const status = params.value || 'pending';
             const statusLabel = {
               pending: 'Pendente',
-              approved: 'Aprovada',
-              rejected: 'Rejeitada',
+              approved: 'Aprovado',
+              rejected: 'Reprovado',
             }[status] || 'Pendente';
 
             return (
@@ -620,7 +620,7 @@ export default function AdminDashboard() {
       return;
     }
 
-    const filenamePrefix = exportDialog.tab === 'entidades' ? 'entidades' : 'atletas';
+    const filenamePrefix = exportDialog.tab === 'entidades' ? 'orgaos' : 'atletas';
     try {
       if (exportDialog.type === 'csv') {
         exportCsv(currentRows, selectedColumns, `${filenamePrefix}.csv`);
@@ -687,7 +687,7 @@ export default function AdminDashboard() {
               '& .MuiTab-root': { minWidth: { xs: 118, sm: 160 }, whiteSpace: 'nowrap' },
             }}
           >
-            <Tab value="entidades" label="Entidades" />
+            <Tab value="entidades" label="Órgãos" />
             <Tab value="atletas" label="Atletas" />
             <Tab value="modalidades" label="Modalidades" />
           </Tabs>
@@ -698,12 +698,12 @@ export default function AdminDashboard() {
                 <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
                   <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ flex: 1 }}>
                     <Typography variant="h6" fontWeight={700} sx={{ alignSelf: 'center' }}>
-                      Entidades cadastradas
+                      Órgãos cadastrados
                     </Typography>
                     <TextField
                       value={entityFilter.search}
                       onChange={(event) => setEntityFilter((current) => ({ ...current, search: event.target.value }))}
-                      placeholder="Buscar entidade"
+                      placeholder="Buscar órgão"
                       size="small"
                       sx={{ minWidth: { xs: '100%', md: 220 } }}
                     />
@@ -717,8 +717,8 @@ export default function AdminDashboard() {
                       >
                         <MenuItem value="all">Todos os status</MenuItem>
                         <MenuItem value="pending">Pendentes</MenuItem>
-                        <MenuItem value="approved">Aprovadas</MenuItem>
-                        <MenuItem value="rejected">Rejeitadas</MenuItem>
+                        <MenuItem value="approved">Aprovados</MenuItem>
+                        <MenuItem value="rejected">Reprovados</MenuItem>
                       </Select>
                     </FormControl>
                   </Stack>
@@ -805,7 +805,7 @@ export default function AdminDashboard() {
                     }}
                     localeText={{
                       ...ptBR.components.MuiDataGrid.defaultProps.localeText,
-                      noRowsLabel: 'Nenhuma entidade cadastrada com esse filtro.',
+                      noRowsLabel: 'Nenhum órgão cadastrado com esse filtro.',
                     }}
                   />
                 </Paper>
@@ -825,14 +825,14 @@ export default function AdminDashboard() {
                       sx={{ minWidth: { xs: '100%', md: 220 } }}
                     />
                     <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 200 } }}>
-                      <InputLabel id="athlete-entity-label">Entidade</InputLabel>
+                      <InputLabel id="athlete-entity-label">Órgão</InputLabel>
                       <Select
                         labelId="athlete-entity-label"
                         value={athleteFilter.entity}
-                        label="Entidade"
+                        label="Órgão"
                         onChange={(event) => setAthleteFilter((current) => ({ ...current, entity: event.target.value }))}
                       >
-                        <MenuItem value="all">Todas as entidades</MenuItem>
+                        <MenuItem value="all">Todos os órgãos</MenuItem>
                         {entities.map((entity) => (
                           <MenuItem key={entity._id} value={entity._id}>{entity.name}</MenuItem>
                         ))}
@@ -950,7 +950,7 @@ function DetailDialog({ detailDialog, setDetailDialog }) {
         ['Nome', data.name],
         ['E-mail', data.email],
         ['Telefone', data.phone],
-        ['Status', ({ approved: 'Aprovada', pending: 'Pendente', rejected: 'Rejeitada' })[data.status] || data.status],
+        ['Status', ({ approved: 'Aprovado', pending: 'Pendente', rejected: 'Reprovado' })[data.status] || data.status],
         ['Nome do responsável', data.responsible?.fullName],
         ['CPF do responsável', data.responsible?.cpf],
         ['E-mail do responsável', data.responsible?.email],
@@ -964,7 +964,7 @@ function DetailDialog({ detailDialog, setDetailDialog }) {
         ['Naipe', data.naipe],
         ['Data de nascimento', data.birthDate || '—'],
         ['Matrícula', data.matricula],
-        ['Entidade', data.entityName || data.entityId],
+        ['Órgão', data.entityName || data.entityId],
         ['PCD', data.isPcd ? 'Sim' : 'Não'],
         ['Alergia', data.hasAllergy ? data.allergyDetails || 'Sim, sem detalhes informados' : 'Não'],
         ['Condição especial', data.hasSpecialCondition ? data.specialConditionDetails || 'Sim, sem detalhes informados' : 'Não'],
@@ -987,7 +987,7 @@ function DetailDialog({ detailDialog, setDetailDialog }) {
   return (
     <Dialog open={detailDialog.open} onClose={closeDialog} maxWidth="md" fullWidth>
       <DialogTitle sx={{ pb: 1, px: 2 }}>
-        {isEntity ? 'Detalhes da entidade' : 'Detalhes do atleta'}
+        {isEntity ? 'Detalhes do órgão' : 'Detalhes do atleta'}
       </DialogTitle>
       <DialogContent dividers sx={{ px: 2, py: 1.5 }}>
         <Grid container spacing={1.25}>
@@ -1080,7 +1080,7 @@ function ExportSelectionDialog({ exportDialog, setExportDialog, onConfirm }) {
       ]
     : [
         { key: 'fullName', label: 'Nome' },
-        { key: 'entityName', label: 'Entidade' },
+        { key: 'entityName', label: 'Órgão' },
         { key: 'matricula', label: 'Matrícula' },
         { key: 'cpf', label: 'CPF' },
         { key: 'email', label: 'E-mail' },

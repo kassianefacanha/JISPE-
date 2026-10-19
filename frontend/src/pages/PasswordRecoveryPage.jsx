@@ -60,7 +60,7 @@ export default function PasswordRecoveryPage() {
             <Box textAlign="center">
               <Box component="img" src="/logo.png" alt="JISPE 2026" sx={{ display: 'block', width: 180, maxWidth: '100%', height: 'auto', mx: 'auto', mb: 2 }} />
               <Typography variant="h4" fontWeight={800}>
-                {isReset ? 'Definir nova senha' : 'Recuperar senha da entidade'}
+                {isReset ? 'Definir nova senha' : 'Recuperar senha do órgão'}
               </Typography>
             </Box>
             {success ? (
@@ -96,13 +96,13 @@ export default function PasswordRecoveryPage() {
                   ) : (
                     <>
                       <Typography color="text.secondary">
-                        Informe o e-mail cadastrado. Se houver uma conta de entidade, enviaremos um link válido por 30 minutos.
+                        Informe o e-mail cadastrado. Se houver uma conta de órgão, enviaremos um link válido por 30 minutos.
                       </Typography>
                       <TextField
                         required
                         fullWidth
                         type="email"
-                        label="E-mail da entidade"
+                        label="E-mail do órgão"
                         autoComplete="email"
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
