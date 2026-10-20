@@ -10,6 +10,15 @@ const fitnessDeclarationSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const participationTermAcceptanceSchema = new mongoose.Schema(
+  {
+    acceptedAt: { type: Date, required: true },
+    acceptedBy: { type: String, default: '' },
+    acceptedByType: { type: String, enum: ['entity', 'admin', 'athlete'], default: 'entity' },
+  },
+  { _id: false }
+);
+
 const athleteSchema = new mongoose.Schema(
   {
     entityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Entity', required: true },
@@ -17,6 +26,7 @@ const athleteSchema = new mongoose.Schema(
     approvedAt: { type: Date, default: null },
     approvedBy: { type: String, default: '' },
     fitnessDeclaration: { type: fitnessDeclarationSchema, default: undefined },
+    participationTermAcceptance: { type: participationTermAcceptanceSchema, default: undefined },
     privacyConsent: {
       acceptedAt: Date,
       acceptedBy: String,

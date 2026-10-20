@@ -154,6 +154,9 @@ const createAthlete = async (req, res, next) => {
     if (req.body?.privacyConsentConfirmed !== true) {
       return res.status(400).json({ success: false, message: 'Leia e confirme o termo de ciência sobre o tratamento de dados.' });
     }
+    if (req.body?.participationTermAccepted !== true) {
+      return res.status(400).json({ success: false, message: 'Leia e aceite o Termo de Ciência JISPE 2026.' });
+    }
     if (fitnessDeclarationConfirmed !== true) {
       return res.status(400).json({ success: false, message: 'Confirme que o atleta declarou estar apto para participar das atividades.' });
     }
@@ -166,7 +169,7 @@ const createAthlete = async (req, res, next) => {
     const resolvedNaipe = requestedRegistrationEntries[0]?.naipe || legacyNaipe;
     const modalityDefinitions = await Promise.all(requestedModalities.map(getModalityDefinition));
 
-    if (!resolvedEntityId || !cpf || !fullName || !birthDate || !phone || !email || !modalityDefinitions.length || !resolvedNaipe || !photoUrl || !proofUrl || !affiliationProofUrl || !medicalCertificateUrl) {
+    if (!resolvedEntityId || !cpf || !fullName || !birthDate || !phone || !email || !modalityDefinitions.length || !resolvedNaipe || !photoUrl || !proofUrl || !affiliationProofUrl) {
       return res.status(400).json({ success: false, message: 'Todos os campos do atleta são obrigatórios' });
     }
     if (requestedModalities.some((value) => !value) || requestedRegistrationEntries.some((entry) => !entry?.naipe)) {
@@ -179,7 +182,7 @@ const createAthlete = async (req, res, next) => {
     const assetError = validateUploadedAsset(photoUrl, 'photo')
       || validateUploadedAsset(proofUrl, 'proof')
       || validateUploadedAsset(affiliationProofUrl, 'proof')
-      || validateUploadedAsset(medicalCertificateUrl, 'medicalCertificate');
+      || (medicalCertificateUrl && validateUploadedAsset(medicalCertificateUrl, 'medicalCertificate'));
     if (assetError) return res.status(400).json({ success: false, message: assetError });
 
     if (!isValidCPF(cpf)) {
@@ -264,6 +267,11 @@ const createAthlete = async (req, res, next) => {
         selfRegistration ? email : req.user.id,
         selfRegistration ? 'athlete' : req.user.type
       ),
+      participationTermAcceptance: {
+        acceptedAt: new Date(),
+        acceptedBy: selfRegistration ? email : String(req.user.id),
+        acceptedByType: selfRegistration ? 'athlete' : req.user.type,
+      },
       cpf,
       fullName,
       birthDate,
@@ -272,7 +280,7 @@ const createAthlete = async (req, res, next) => {
       email,
       proofUrl,
       affiliationProofUrl,
-      medicalCertificateUrl,
+      medicalCertificateUrl: medicalCertificateUrl || '',
       modalityRegistrations: modalityDefinitions.map((definition, index) => ({
         modality: definition.name,
         naipe: requestedRegistrationEntries[index].naipe,
@@ -425,11 +433,13 @@ router.put('/:id', auth, async (req, res, next) => {
     if (req.body?.privacyConsentConfirmed !== true) {
       return res.status(400).json({ success: false, message: 'Leia e confirme o termo de ciência sobre o tratamento de dados.' });
     }
-    const submittedMedicalCertificate = medicalCertificateUrl || athlete.medicalCertificateUrl;
-    const medicalCertificateError = athlete.medicalCertificateUrl
-      && isSameStoredAsset(submittedMedicalCertificate, athlete.medicalCertificateUrl)
-      ? null
-      : validateUploadedAsset(submittedMedicalCertificate, 'medicalCertificate');
+    if (req.body?.participationTermAccepted !== true) {
+      return res.status(400).json({ success: false, message: 'Leia e aceite o Termo de Ciência JISPE 2026.' });
+    }
+    const medicalCertificateError = medicalCertificateUrl
+      && !isSameStoredAsset(medicalCertificateUrl, athlete.medicalCertificateUrl)
+      ? validateUploadedAsset(medicalCertificateUrl, 'medicalCertificate')
+      : null;
     const assetError = (photoUrl !== undefined && !isSameStoredAsset(photoUrl, athlete.photoUrl) && validateUploadedAsset(photoUrl, 'photo'))
       || (proofUrl !== undefined && !isSameStoredAsset(proofUrl, athlete.proofUrl) && validateUploadedAsset(proofUrl, 'proof'))
       || (affiliationProofUrl !== undefined && !isSameStoredAsset(affiliationProofUrl, athlete.affiliationProofUrl) && validateUploadedAsset(affiliationProofUrl, 'proof'))
@@ -489,6 +499,11 @@ router.put('/:id', auth, async (req, res, next) => {
         naipe: requestedRegistrationEntries[index].naipe,
       })),
       privacyConsent: createPrivacyConsent(req.user.id, req.user.type),
+      participationTermAcceptance: {
+        acceptedAt: new Date(),
+        acceptedBy: String(req.user.id),
+        acceptedByType: req.user.type,
+      },
       ...(isPcd !== undefined ? { isPcd: Boolean(isPcd) } : {}),
       ...(hasAllergy !== undefined ? { hasAllergy: Boolean(hasAllergy), allergyDetails: hasAllergy ? allergyDetails || '' : '' } : {}),
       ...(allergyDetails !== undefined && hasAllergy === undefined ? { allergyDetails } : {}),
