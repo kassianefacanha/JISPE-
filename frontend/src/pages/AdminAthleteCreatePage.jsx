@@ -339,20 +339,62 @@ export default function AdminAthleteCreatePage() {
                   <TextField fullWidth label="Matrícula" value={form.matricula} disabled helperText="A matrícula é gerada automaticamente e não pode ser alterada." />
                 </Grid>
                 <Grid item xs={12}>
-                  <Divider sx={{ my: 1 }} />
-                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>Informações adicionais</Typography>
+                  <Box sx={{ p: { xs: 1.5, sm: 2 }, border: '1px solid', borderColor: 'divider', borderRadius: 2, backgroundColor: '#fafafa' }}>
+                    <Typography variant="subtitle1" fontWeight={700}>Saúde e acessibilidade</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 2 }}>
+                      Informe essas condições quando necessário para garantir acessibilidade e segurança.
+                    </Typography>
+                    <Grid container spacing={1.5}>
+                      <Grid item xs={12} md={4}>
+                        <Box sx={{ height: '100%', p: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 1, backgroundColor: 'background.paper' }}>
+                          <FormControlLabel
+                            sx={{ m: 0, alignItems: 'flex-start' }}
+                            control={<Checkbox checked={form.isPcd} onChange={(event) => setForm({ ...form, isPcd: event.target.checked })} />}
+                            label={<Typography variant="body2" sx={{ pt: 1 }}>Atleta é PCD</Typography>}
+                          />
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12} md={4}>
+                        <Box sx={{ p: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 1, backgroundColor: 'background.paper' }}>
+                          <FormControlLabel
+                            sx={{ m: 0, alignItems: 'flex-start' }}
+                            control={<Checkbox checked={form.hasAllergy} onChange={(event) => setForm({ ...form, hasAllergy: event.target.checked, allergyDetails: event.target.checked ? form.allergyDetails : '' })} />}
+                            label={<Typography variant="body2" sx={{ pt: 1 }}>Possui alergia</Typography>}
+                          />
+                          {form.hasAllergy && (
+                            <TextField
+                              fullWidth
+                              size="small"
+                              sx={{ mt: 1 }}
+                              label="Quais alergias?"
+                              value={form.allergyDetails}
+                              onChange={(event) => setForm({ ...form, allergyDetails: event.target.value })}
+                            />
+                          )}
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12} md={4}>
+                        <Box sx={{ p: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 1, backgroundColor: 'background.paper' }}>
+                          <FormControlLabel
+                            sx={{ m: 0, alignItems: 'flex-start' }}
+                            control={<Checkbox checked={form.hasSpecialCondition} onChange={(event) => setForm({ ...form, hasSpecialCondition: event.target.checked, specialConditionDetails: event.target.checked ? form.specialConditionDetails : '' })} />}
+                            label={<Typography variant="body2" sx={{ pt: 1 }}>Possui condição especial</Typography>}
+                          />
+                          {form.hasSpecialCondition && (
+                            <TextField
+                              fullWidth
+                              size="small"
+                              sx={{ mt: 1 }}
+                              label="Descreva a condição especial"
+                              value={form.specialConditionDetails}
+                              onChange={(event) => setForm({ ...form, specialConditionDetails: event.target.value })}
+                            />
+                          )}
+                        </Box>
+                      </Grid>
+                    </Grid>
+                  </Box>
                 </Grid>
-                <Grid item xs={12} md={4}>
-                  <FormControlLabel control={<Checkbox checked={form.isPcd} onChange={(event) => setForm({ ...form, isPcd: event.target.checked })} />} label="Atleta é PCD" />
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <FormControlLabel control={<Checkbox checked={form.hasAllergy} onChange={(event) => setForm({ ...form, hasAllergy: event.target.checked, allergyDetails: event.target.checked ? form.allergyDetails : '' })} />} label="Possui alergia" />
-                </Grid>
-                {form.hasAllergy && <Grid item xs={12} md={8}><TextField fullWidth label="Quais alergias?" value={form.allergyDetails} onChange={(event) => setForm({ ...form, allergyDetails: event.target.value })} /></Grid>}
-                <Grid item xs={12} md={4}>
-                  <FormControlLabel control={<Checkbox checked={form.hasSpecialCondition} onChange={(event) => setForm({ ...form, hasSpecialCondition: event.target.checked, specialConditionDetails: event.target.checked ? form.specialConditionDetails : '' })} />} label="Possui condição especial" />
-                </Grid>
-                {form.hasSpecialCondition && <Grid item xs={12} md={8}><TextField fullWidth label="Descreva a condição especial" value={form.specialConditionDetails} onChange={(event) => setForm({ ...form, specialConditionDetails: event.target.value })} /></Grid>}
 
                 {!editId && (
                   <Grid item xs={12}>
