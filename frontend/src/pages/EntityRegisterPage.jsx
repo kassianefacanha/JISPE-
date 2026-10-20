@@ -168,66 +168,66 @@ export default function EntityRegisterPage() {
               <Grid item xs={12}>
                 <Divider sx={{ my: 1 }} />
                 <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
-                  Foto e documento do responsável
+                  Documentos do responsável
                 </Typography>
               </Grid>
-              <Grid item xs={12} md={6}>
-                <Box sx={{ minHeight: 150, display: 'flex', alignItems: 'center', gap: 2, p: 2, border: '1px dashed #94a3b8', borderRadius: 1, backgroundColor: '#f8fafc' }}>
+              <Grid item xs={12} md={4}>
+                <Box sx={{ minHeight: 168, display: 'flex', alignItems: 'flex-start', gap: 1.5, p: 2, border: '1px dashed #94a3b8', borderRadius: 1, backgroundColor: '#f8fafc' }}>
                   {form.responsiblePhoto ? (
-                    <Box component="img" src={form.responsiblePhoto} alt="Prévia da foto do responsável" sx={{ width: 76, height: 100, flexShrink: 0, objectFit: 'cover', borderRadius: 1, border: '1px solid #cbd5e1' }} />
+                    <Box component="img" src={form.responsiblePhoto} alt="Prévia da foto do responsável" sx={{ width: 56, height: 72, flexShrink: 0, objectFit: 'cover', borderRadius: 1, border: '1px solid #cbd5e1' }} />
                   ) : (
-                    <Box sx={{ width: 76, height: 100, flexShrink: 0, display: 'grid', placeItems: 'center', borderRadius: 1, backgroundColor: '#e2e8f0', color: '#64748b' }}>
+                    <Box sx={{ width: 56, height: 72, flexShrink: 0, display: 'grid', placeItems: 'center', borderRadius: 1, backgroundColor: '#e2e8f0', color: '#64748b' }}>
                       <ImageOutlinedIcon />
                     </Box>
                   )}
-                  <Stack spacing={1} sx={{ minWidth: 0, alignItems: 'flex-start' }}>
+                  <Stack spacing={1} sx={{ minWidth: 0, flex: 1, alignItems: 'flex-start' }}>
                     <Box>
                       <Typography variant="subtitle2" fontWeight={700}>Foto do responsável</Typography>
                       <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
-                <Grid item xs={12}>
-                  <Box sx={{ minHeight: 150, display: 'flex', alignItems: 'center', gap: 2, p: 2, border: '1px dashed #94a3b8', borderRadius: 1, backgroundColor: '#f8fafc' }}>
-                    <Box sx={{ width: 76, height: 100, flexShrink: 0, display: 'grid', placeItems: 'center', borderRadius: 1, backgroundColor: '#e2e8f0', color: '#64748b' }}>
-                      <DescriptionOutlinedIcon />
-                    </Box>
-                    <Stack spacing={1} sx={{ minWidth: 0, alignItems: 'flex-start' }}>
-                      <Box>
-                        <Typography variant="subtitle2" fontWeight={700}>Comprovante de vínculo com o órgão</Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
-                          {uploadInfo.affiliationProof || 'Declaração do RH, contrato, carteira de identificação ou crachá'}
-                        </Typography>
-                      </Box>
-                      <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />}>
-                        {form.responsibleAffiliationProof ? 'Trocar comprovante' : 'Selecionar comprovante'}
-                        <input hidden type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(event) => handleFileField(event, 'responsibleAffiliationProof')} />
-                      </Button>
-                    </Stack>
-                  </Box>
-                </Grid>
                         {uploadInfo.photo || 'Nenhuma foto selecionada'}
                       </Typography>
                     </Box>
-                    <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />}>
+                    <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />} sx={{ whiteSpace: 'normal', textAlign: 'left' }}>
                       {form.responsiblePhoto ? 'Trocar foto' : 'Selecionar foto'}
                       <input hidden type="file" accept=".jpg,.jpeg,.png,.webp" onChange={(event) => handleFileField(event, 'responsiblePhoto')} />
                     </Button>
                   </Stack>
                 </Box>
               </Grid>
-              <Grid item xs={12} md={6}>
-                <Box sx={{ minHeight: 150, display: 'flex', alignItems: 'center', gap: 2, p: 2, border: '1px dashed #94a3b8', borderRadius: 1, backgroundColor: '#f8fafc' }}>
-                  <Box sx={{ width: 76, height: 100, flexShrink: 0, display: 'grid', placeItems: 'center', borderRadius: 1, backgroundColor: '#e2e8f0', color: '#64748b' }}>
+              <Grid item xs={12} md={4}>
+                <Box sx={{ minHeight: 168, display: 'flex', alignItems: 'flex-start', gap: 1.5, p: 2, border: '1px dashed #94a3b8', borderRadius: 1, backgroundColor: '#f8fafc' }}>
+                  <Box sx={{ width: 56, height: 72, flexShrink: 0, display: 'grid', placeItems: 'center', borderRadius: 1, backgroundColor: '#e2e8f0', color: '#64748b' }}>
                     <DescriptionOutlinedIcon />
                   </Box>
-                  <Stack spacing={1} sx={{ minWidth: 0, alignItems: 'flex-start' }}>
+                  <Stack spacing={1} sx={{ minWidth: 0, flex: 1, alignItems: 'flex-start' }}>
                     <Box>
                       <Typography variant="subtitle2" fontWeight={700}>Documento do responsável (RG ou CNH)</Typography>
                       <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
                         {uploadInfo.proof || 'Nenhum documento selecionado'}
                       </Typography>
                     </Box>
-                    <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />}>
+                    <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />} sx={{ whiteSpace: 'normal', textAlign: 'left' }}>
                       {form.responsibleProof ? 'Trocar documento' : 'Selecionar documento'}
                       <input hidden type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(event) => handleFileField(event, 'responsibleProof')} />
+                    </Button>
+                  </Stack>
+                </Box>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Box sx={{ minHeight: 168, display: 'flex', alignItems: 'flex-start', gap: 1.5, p: 2, border: '1px dashed #94a3b8', borderRadius: 1, backgroundColor: '#f8fafc' }}>
+                  <Box sx={{ width: 56, height: 72, flexShrink: 0, display: 'grid', placeItems: 'center', borderRadius: 1, backgroundColor: '#e2e8f0', color: '#64748b' }}>
+                    <DescriptionOutlinedIcon />
+                  </Box>
+                  <Stack spacing={1} sx={{ minWidth: 0, flex: 1, alignItems: 'flex-start' }}>
+                    <Box>
+                      <Typography variant="subtitle2" fontWeight={700}>Comprovante de vínculo com o órgão</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+                        {uploadInfo.affiliationProof || 'Declaração do RH, contrato, carteira de identificação ou crachá'}
+                      </Typography>
+                    </Box>
+                    <Button component="label" variant="outlined" size="small" startIcon={<CloudUploadOutlinedIcon />} sx={{ whiteSpace: 'normal', textAlign: 'left' }}>
+                      {form.responsibleAffiliationProof ? 'Trocar comprovante' : 'Selecionar comprovante'}
+                      <input hidden type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(event) => handleFileField(event, 'responsibleAffiliationProof')} />
                     </Button>
                   </Stack>
                 </Box>
