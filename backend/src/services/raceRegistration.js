@@ -56,6 +56,21 @@ const reserveRaceRegistration = async (athleteId) => {
   return reservation ? { reserved: true, alreadyCounted: false } : { reserved: false, full: true };
 };
 
+const releaseRaceRegistrationReservation = async (athleteId) => {
+  const athlete = await Athlete.findById(athleteId).select('modality modalities').lean();
+  if (!athlete || !hasRaceModality(athlete)) return false;
+
+  const existingRegistration = await Registration.exists({ athleteId, modality: { $in: raceAliases } });
+  if (existingRegistration) return false;
+
+  await ensureCounter();
+  const result = await RegistrationControls.updateOne(
+    { _id: 'global', raceRegistrationCount: { $gt: 0 } },
+    { $inc: { raceRegistrationCount: -1 } }
+  );
+  return result.modifiedCount > 0;
+};
+
 const releaseRaceRegistration = async (athleteId) => {
   const [athlete, registration] = await Promise.all([
     Athlete.findById(athleteId).select('modality modalities').lean(),
@@ -72,6 +87,7 @@ module.exports = {
   getRaceRegistrationCount,
   raceAliases,
   raceRegistrationLimit,
+  releaseRaceRegistrationReservation,
   releaseRaceRegistration,
   reserveRaceRegistration,
 };

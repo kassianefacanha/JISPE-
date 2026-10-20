@@ -21,6 +21,7 @@ import {
   Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -130,6 +131,24 @@ export default function EntityDashboard() {
       );
     } catch (error) {
       notify(getApiErrorMessage(error, 'Não foi possível aprovar o cadastro do atleta.'));
+    }
+  };
+
+  const cancelAthleteApproval = async (athlete) => {
+    const confirmed = await confirm({
+      title: 'Cancelar aprovação',
+      message: `Deseja cancelar a aprovação de "${athlete.fullName || 'atleta'}"? O cadastro voltará a aguardar aprovação.`,
+      confirmLabel: 'Cancelar aprovação',
+      severity: 'warning',
+    });
+    if (!confirmed) return;
+
+    try {
+      await api.patch(`/athletes/${athlete._id}/cancel-approval`);
+      await loadAthletes();
+      notify('Aprovação do atleta cancelada. O cadastro voltou a aguardar aprovação.', 'success');
+    } catch (error) {
+      notify(getApiErrorMessage(error, 'Não foi possível cancelar a aprovação do atleta.'));
     }
   };
 
@@ -272,6 +291,11 @@ export default function EntityDashboard() {
             <CheckCircleOutlineIcon fontSize="small" />
           </IconButton>
         )}
+        {params.row.approvalStatus === 'approved' && (
+          <IconButton color="error" size="small" onClick={() => cancelAthleteApproval(params.row)} title="Cancelar aprovação">
+            <CancelOutlinedIcon fontSize="small" />
+          </IconButton>
+        )}
         <IconButton color="info" size="small" onClick={() => setDetailAthlete(params.row)} title="Ver detalhes">
           <VisibilityIcon fontSize="small" />
         </IconButton>
@@ -336,7 +360,7 @@ export default function EntityDashboard() {
 
         <Alert severity="info" sx={{ mt: 2 }}>
           As inscrições para os torneios de Beach Tennis dos Jogos dos Servidores 2026 devem ser realizadas exclusivamente pelo site{' '}
-          <a href="https://beachtennisgovce.com.br" target="_blank" rel="noreferrer">beachtennisgovce.com.br</a>.
+          <a href="https://www.beachtennisgovce.com.br/" target="_blank" rel="noreferrer">beachtennisgovce.com.br</a>.
         </Alert>
         {pendingAthletesCount > 0 && (
           <Alert severity="warning" sx={{ mt: 2 }}>

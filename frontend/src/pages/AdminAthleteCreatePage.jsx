@@ -295,7 +295,7 @@ export default function AdminAthleteCreatePage() {
               />
               <Alert severity="info" sx={{ mb: 2 }}>
                 As inscrições para os torneios de Beach Tennis dos Jogos dos Servidores 2026 são feitas exclusivamente em{' '}
-                <a href="https://beachtennisgovce.com.br" target="_blank" rel="noreferrer">beachtennisgovce.com.br</a>.
+                <a href="https://www.beachtennisgovce.com.br/" target="_blank" rel="noreferrer">beachtennisgovce.com.br</a>.
               </Alert>
               <Grid container spacing={2}>
                 <Grid item xs={12} md={4}>

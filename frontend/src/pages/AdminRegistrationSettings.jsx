@@ -142,7 +142,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
       {error && <Alert severity="error">{error}</Alert>}
       <Alert severity="info">
         As inscrições para os torneios de Beach Tennis dos Jogos dos Servidores 2026 são feitas exclusivamente em{' '}
-        <a href="https://beachtennisgovce.com.br" target="_blank" rel="noreferrer">beachtennisgovce.com.br</a>.
+        <a href="https://www.beachtennisgovce.com.br/" target="_blank" rel="noreferrer">beachtennisgovce.com.br</a>.
       </Alert>
       <Paper variant="outlined" sx={{ p: { xs: 2, md: 2.5 } }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} useFlexGap flexWrap="wrap">

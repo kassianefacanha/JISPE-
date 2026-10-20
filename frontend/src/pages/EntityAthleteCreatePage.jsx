@@ -288,7 +288,7 @@ export default function EntityAthleteCreatePage({ selfRegistration = false }) {
               />
               <Alert severity="info" sx={{ mb: 2 }}>
                 As inscrições para os torneios de Beach Tennis dos Jogos dos Servidores 2026 devem ser realizadas exclusivamente pelo site{' '}
-                <a href="https://beachtennisgovce.com.br" target="_blank" rel="noreferrer">beachtennisgovce.com.br</a>.
+                <a href="https://www.beachtennisgovce.com.br/" target="_blank" rel="noreferrer">beachtennisgovce.com.br</a>.
               </Alert>
 
               <Grid container spacing={2.5}>

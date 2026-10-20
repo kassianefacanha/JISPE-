@@ -19,7 +19,7 @@ const { defaultModalities, isExternalRegistrationModality } = require('../config
 const { validateUploadedAsset } = require('../utils/uploadValidation');
 const { deleteAsset, deleteReplacedAsset, getAssetBuffer, getAssetUrl, isR2Value, isSameStoredAsset, storeAsset } = require('../services/r2Storage');
 const { sendAthleteApprovalEmail, sendAthleteRegistrationEmail } = require('../services/passwordResetEmail');
-const { raceAliases, releaseRaceRegistration, reserveRaceRegistration } = require('../services/raceRegistration');
+const { raceAliases, releaseRaceRegistration, releaseRaceRegistrationReservation, reserveRaceRegistration } = require('../services/raceRegistration');
 const { createPrivacyConsent } = require('../utils/privacyConsent');
 
 const maxBadgePhotoBytes = 5 * 1024 * 1024;
@@ -194,7 +194,7 @@ const createAthlete = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Selecione uma modalidade válida.' });
     }
     if (requestedModalities.some(isExternalRegistrationModality) || modalityDefinitions.some(isExternalRegistrationModality)) {
-      return res.status(400).json({ success: false, message: 'Beach Tennis deve ser inscrito exclusivamente em beachtennisgovce.com.br.' });
+      return res.status(400).json({ success: false, message: 'Beach Tennis deve ser inscrito exclusivamente em https://www.beachtennisgovce.com.br/.' });
     }
     if (modalityDefinitions.some((definition, index) => !definition.genders?.includes(requestedRegistrationEntries[index].naipe))) {
       return res.status(400).json({ success: false, message: 'O naipe selecionado não é permitido na modalidade correspondente.' });
@@ -370,6 +370,42 @@ router.patch('/:id/approve', auth, async (req, res, next) => {
   }
 });
 
+router.patch('/:id/cancel-approval', auth, async (req, res, next) => {
+  try {
+    if (req.user.type !== 'entity') {
+      return res.status(403).json({ success: false, message: 'A aprovação deve ser cancelada pelo órgão responsável.' });
+    }
+
+    const athlete = await Athlete.findOne({ _id: req.params.id, entityId: req.user.id });
+    if (!athlete) {
+      return res.status(404).json({ success: false, message: 'Atleta não encontrado para este órgão.' });
+    }
+    if (athlete.approvalStatus !== 'approved') {
+      return res.status(409).json({ success: false, message: 'Este cadastro não está aprovado.' });
+    }
+
+    const raceReservationReleased = await releaseRaceRegistrationReservation(athlete._id);
+    athlete.approvalStatus = 'pending';
+    athlete.approvedAt = null;
+    athlete.approvedBy = '';
+    try {
+      await athlete.save();
+    } catch (error) {
+      if (raceReservationReleased) {
+        await RegistrationControls.updateOne(
+          { _id: 'global' },
+          { $inc: { raceRegistrationCount: 1 } }
+        );
+      }
+      throw error;
+    }
+
+    return res.json({ success: true, athlete: await serializeAthlete(athlete) });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 router.put('/:id', auth, async (req, res, next) => {
   try {
     if (!isAdminEditor(req.user) && req.user.type !== 'entity') {
@@ -431,7 +467,7 @@ router.put('/:id', auth, async (req, res, next) => {
     const existingModalityNames = [athlete.modality, ...(athlete.modalities || [])];
     if (resolvedModalityDefinitions.some((definition) => isExternalRegistrationModality(definition)
       && !existingModalityNames.some(isExternalRegistrationModality))) {
-      return res.status(400).json({ success: false, message: 'Beach Tennis deve ser inscrito exclusivamente em beachtennisgovce.com.br.' });
+      return res.status(400).json({ success: false, message: 'Beach Tennis deve ser inscrito exclusivamente em https://www.beachtennisgovce.com.br/.' });
     }
     if (resolvedModalityDefinitions.some((definition, index) => !definition.genders?.includes(requestedRegistrationEntries[index].naipe))) {
       return res.status(400).json({ success: false, message: 'O naipe selecionado não é permitido na modalidade correspondente.' });
@@ -675,7 +711,7 @@ router.post('/:id/registrations', auth, async (req, res, next) => {
     const modalityDefinition = await getModalityDefinition(modality);
     if (!modalityDefinition) return res.status(400).json({ success: false, message: 'Selecione uma modalidade válida.' });
     if (isExternalRegistrationModality(modalityDefinition) || isExternalRegistrationModality(modality)) {
-      return res.status(400).json({ success: false, message: 'Beach Tennis deve ser inscrito exclusivamente em beachtennisgovce.com.br.' });
+      return res.status(400).json({ success: false, message: 'Beach Tennis deve ser inscrito exclusivamente em https://www.beachtennisgovce.com.br/.' });
     }
     const existingRegistrations = await Registration.find({ athleteId: athlete._id }).select('gender').lean();
     const existingNaipeEntries = [
