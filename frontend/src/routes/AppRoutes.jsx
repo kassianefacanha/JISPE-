@@ -14,6 +14,7 @@ import LoginPage from '../pages/LoginPage';
 import PasswordRecoveryPage from '../pages/PasswordRecoveryPage';
 import ProfilePage from '../pages/ProfilePage';
 import PublicBadgeValidationPage from '../pages/PublicBadgeValidationPage';
+import PublicRegistrationStatusPage from '../pages/PublicRegistrationStatusPage';
 
 function ProtectedRoute({ children, role }) {
   const { user, loading } = useAuth();
@@ -37,6 +38,7 @@ export default function AppRoutes() {
         <Route path="/cadastro-entidade" element={<EntityRegisterPage />} />
         <Route path="/cadastro-atleta" element={<EntityAthleteCreatePage selfRegistration />} />
         <Route path="/validar-carteirinha" element={<PublicBadgeValidationPage />} />
+        <Route path="/consultar-inscricao" element={<PublicRegistrationStatusPage />} />
         <Route path="/perfil" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
         <Route

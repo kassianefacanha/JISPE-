@@ -55,8 +55,15 @@
 
 ### Carteirinha pública
 
+- POST /api/public/registration-status
+  - Body: { email, cpf }
+  - Consulta o status da inscrição e exige e-mail e CPF do atleta
+- POST /api/public/registration-status/badge
+  - Body: { email, cpf }
+  - Gera a carteirinha apenas para inscrição aprovada
 - GET /api/public/validate/:matricula
   - Validação da carteirinha por matrícula
+  - Cadastros legados sem `approvalStatus` são tratados como aprovados; `pending` e `rejected` não validam nem geram carteirinha
 
 ### Relatórios
 

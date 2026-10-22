@@ -4,6 +4,10 @@ const Athlete = require('../models/Athlete');
 const Entity = require('../models/Entity');
 const RegistrationControls = require('../models/RegistrationControls');
 const { getRaceRegistrationCount, raceRegistrationLimit } = require('../services/raceRegistration');
+const { generateMatricula } = require('../utils/matriculaGenerator');
+const { isValidCPF } = require('../utils/cpfValidator');
+const { isAthleteApproved } = require('../services/athleteApproval');
+const { generateAthleteBadge } = require('../services/athleteBadge');
 const { getAssetUrl } = require('../services/r2Storage');
 
 const router = express.Router();
@@ -14,6 +18,29 @@ const badgeLookupLimiter = rateLimit({
   legacyHeaders: false,
   message: { success: false, message: 'Muitas tentativas de validação. Tente novamente em 15 minutos.' },
 });
+const registrationLookupLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Muitas tentativas de consulta. Tente novamente em 15 minutos.' },
+});
+
+const findAthleteByEmailAndCpf = async (emailValue, cpfValue) => {
+  const email = String(emailValue || '').trim().toLowerCase();
+  const cpf = String(cpfValue || '').replace(/\D/g, '');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !isValidCPF(cpf)) {
+    return { error: 'Informe um e-mail e um CPF válidos.' };
+  }
+
+  const athletes = await Athlete.find({ email })
+    .select('fullName email cpf approvalStatus matricula photoUrl ageCategory modality modalities naipe entityId')
+    .exec();
+  const matches = athletes.filter((athlete) => String(athlete.cpf || '').replace(/\D/g, '') === cpf);
+  if (!matches.length) return { error: 'Não foi possível localizar uma inscrição com os dados informados.', notFound: true };
+  if (matches.length > 1) return { error: 'Há mais de uma inscrição com esses dados. Entre em contato com o suporte.', conflict: true };
+  return { athlete: matches[0] };
+};
 
 router.get('/registration-status', async (req, res, next) => {
   try {
@@ -45,6 +72,57 @@ router.get('/entities', async (req, res, next) => {
   }
 });
 
+router.post('/registration-status', registrationLookupLimiter, async (req, res, next) => {
+  try {
+    const result = await findAthleteByEmailAndCpf(req.body?.email, req.body?.cpf);
+    if (result.error) {
+      const status = result.notFound ? 404 : result.conflict ? 409 : 400;
+      return res.status(status).json({ success: false, message: result.error });
+    }
+
+    const { athlete } = result;
+    const approved = isAthleteApproved(athlete);
+    return res.json({
+      success: true,
+      athlete: {
+        fullName: athlete.fullName,
+        approvalStatus: approved ? 'approved' : athlete.approvalStatus,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/registration-status/badge', registrationLookupLimiter, async (req, res, next) => {
+  try {
+    const result = await findAthleteByEmailAndCpf(req.body?.email, req.body?.cpf);
+    if (result.error) {
+      const status = result.notFound ? 404 : result.conflict ? 409 : 400;
+      return res.status(status).json({ success: false, message: result.error });
+    }
+
+    const { athlete } = result;
+    if (!isAthleteApproved(athlete)) {
+      return res.status(403).json({ success: false, message: 'A carteirinha ficará disponível após a aprovação do cadastro pelo órgão.' });
+    }
+
+    if (!athlete.matricula) {
+      athlete.matricula = await generateMatricula();
+      await athlete.save();
+    }
+
+    const entity = await Entity.findById(athlete.entityId).select('name');
+    const pdf = await generateAthleteBadge(athlete, entity?.name || 'Sem órgão');
+    const normalizedMatricula = athlete.matricula.replace(/\s+/g, '');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=carteirinha-${normalizedMatricula}.pdf`);
+    return res.send(pdf);
+  } catch (error) {
+    return next(error);
+  }
+});
+
 router.get('/validate/:matricula', badgeLookupLimiter, async (req, res, next) => {
   try {
     const rawMatricula = String(req.params.matricula || '').trim();
@@ -57,7 +135,7 @@ router.get('/validate/:matricula', badgeLookupLimiter, async (req, res, next) =>
       .populate('entityId', 'name')
       .lean();
 
-    if (!athlete || (athlete.approvalStatus && athlete.approvalStatus !== 'approved')) {
+    if (!athlete || !isAthleteApproved(athlete)) {
       return res.status(404).json({ success: false, message: 'Carteirinha não localizada' });
     }
 
