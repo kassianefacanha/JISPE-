@@ -149,7 +149,7 @@ const createAthlete = async (req, res, next) => {
       }
     }
 
-    const { entityId, cpf, fullName, birthDate, phone, email, gender, naipe, modality, modalities, modalityRegistrations, photoUrl, proofUrl, affiliationProofUrl, medicalCertificateUrl, fitnessDeclarationConfirmed, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
+    const { entityId, cpf, fullName, birthDate, phone, email, gender, naipe, modality, modalities, modalityRegistrations, photoUrl, proofUrl, affiliationProofUrl, medicalCertificateUrl, fitnessDeclarationConfirmed, isPcd, isExternalServant, linkedEntityName, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
     const resolvedEntityId = !selfRegistration && req.user.type === 'entity' ? req.user.id : entityId;
     if (req.body?.privacyConsentConfirmed !== true) {
       return res.status(400).json({ success: false, message: 'Leia e confirme o termo de ciência sobre o tratamento de dados.' });
@@ -292,6 +292,8 @@ const createAthlete = async (req, res, next) => {
       ageCategory: category,
       matricula,
       isPcd: Boolean(isPcd),
+      isExternalServant: Boolean(isExternalServant),
+      linkedEntityName: isExternalServant ? String(linkedEntityName || '').trim() : '',
       hasAllergy: Boolean(hasAllergy),
       allergyDetails: hasAllergy ? allergyDetails || '' : '',
       hasSpecialCondition: Boolean(hasSpecialCondition),
@@ -429,7 +431,7 @@ router.put('/:id', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Atleta não encontrado' });
     }
 
-    const { entityId, cpf, fullName, birthDate, photoUrl, phone, email, gender, naipe, modality, modalities, modalityRegistrations, proofUrl, affiliationProofUrl, medicalCertificateUrl, isPcd, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
+    const { entityId, cpf, fullName, birthDate, photoUrl, phone, email, gender, naipe, modality, modalities, modalityRegistrations, proofUrl, affiliationProofUrl, medicalCertificateUrl, isPcd, isExternalServant, linkedEntityName, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
     if (req.body?.privacyConsentConfirmed !== true) {
       return res.status(400).json({ success: false, message: 'Leia e confirme o termo de ciência sobre o tratamento de dados.' });
     }
@@ -505,6 +507,10 @@ router.put('/:id', auth, async (req, res, next) => {
         acceptedByType: req.user.type,
       },
       ...(isPcd !== undefined ? { isPcd: Boolean(isPcd) } : {}),
+      ...(isExternalServant !== undefined ? {
+        isExternalServant: Boolean(isExternalServant),
+        linkedEntityName: isExternalServant ? String(linkedEntityName || '').trim() : '',
+      } : {}),
       ...(hasAllergy !== undefined ? { hasAllergy: Boolean(hasAllergy), allergyDetails: hasAllergy ? allergyDetails || '' : '' } : {}),
       ...(allergyDetails !== undefined && hasAllergy === undefined ? { allergyDetails } : {}),
       ...(hasSpecialCondition !== undefined ? { hasSpecialCondition: Boolean(hasSpecialCondition), specialConditionDetails: hasSpecialCondition ? specialConditionDetails || '' : '' } : {}),

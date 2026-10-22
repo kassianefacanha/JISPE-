@@ -46,6 +46,8 @@ const athleteExportColumns = [
   { key: 'naipe', label: 'Naipe' },
   { key: 'approvalStatusLabel', label: 'Status do cadastro' },
   { key: 'birthDate', label: 'Data de nascimento' },
+  { key: 'externalServantLabel', label: 'Servidor(a) de outro órgão' },
+  { key: 'linkedEntityName', label: 'Órgão vinculado' },
 ];
 
 const downloadFile = (filename, content, type) => {
@@ -116,6 +118,8 @@ export default function EntityDashboard() {
       rejected: 'Reprovado',
     })[athlete.approvalStatus || 'approved'],
     birthDate: formatBirthDate(athlete.birthDate),
+    externalServantLabel: athlete.isExternalServant ? 'Sim' : 'Não',
+    linkedEntityName: athlete.linkedEntityName || '—',
   }));
   const pendingAthletesCount = athletes.filter((athlete) => athlete.approvalStatus === 'pending').length;
 
@@ -455,6 +459,8 @@ export default function EntityDashboard() {
               ['Categoria', detailAthlete?.ageCategory],
               ['Data de nascimento', formatBirthDate(detailAthlete?.birthDate)],
               ['PCD', detailAthlete?.isPcd ? 'Sim' : 'Não'],
+              ['Servidor(a) de outro órgão', detailAthlete?.isExternalServant ? 'Sim' : 'Não'],
+              ['Órgão ao qual está vinculado', detailAthlete?.isExternalServant ? detailAthlete.linkedEntityName || 'Não informado' : '—'],
               ['Alergia', detailAthlete?.hasAllergy ? detailAthlete.allergyDetails || 'Sim, sem detalhes informados' : 'Não'],
               ['Condição especial', detailAthlete?.hasSpecialCondition ? detailAthlete.specialConditionDetails || 'Sim, sem detalhes informados' : 'Não'],
             ].map(([label, value]) => (

@@ -40,6 +40,8 @@ const emptyForm = {
   affiliationProofUrl: '',
   modalityRegistrations: [{ modality: '', naipe: '' }],
   isPcd: false,
+  isExternalServant: false,
+  linkedEntityName: '',
   hasAllergy: false,
   allergyDetails: '',
   hasSpecialCondition: false,
@@ -147,6 +149,8 @@ export default function EntityAthleteCreatePage({ selfRegistration = false }) {
           affiliationProofUrl: athlete.affiliationProofUrl || '',
           modalityRegistrations: getAthleteModalityRegistrations(athlete, modalities),
           isPcd: Boolean(athlete.isPcd),
+          isExternalServant: Boolean(athlete.isExternalServant),
+          linkedEntityName: athlete.linkedEntityName || '',
           hasAllergy: Boolean(athlete.hasAllergy),
           allergyDetails: athlete.allergyDetails || '',
           hasSpecialCondition: Boolean(athlete.hasSpecialCondition),
@@ -399,6 +403,25 @@ export default function EntityAthleteCreatePage({ selfRegistration = false }) {
                       </Grid>
                     </Grid>
                   </Box>
+                </Grid>
+                <Grid item xs={12}>
+                  <FormControlLabel
+                    control={<Checkbox checked={form.isExternalServant} onChange={(event) => setForm((current) => ({
+                      ...current,
+                      isExternalServant: event.target.checked,
+                      linkedEntityName: event.target.checked ? current.linkedEntityName : '',
+                    }))} />}
+                    label="É servidor(a) de outro órgão?"
+                  />
+                  {form.isExternalServant && (
+                    <TextField
+                      fullWidth
+                      sx={{ mt: 1 }}
+                      label="Órgão ao qual está vinculado (opcional)"
+                      value={form.linkedEntityName}
+                      onChange={(event) => setForm((current) => ({ ...current, linkedEntityName: event.target.value }))}
+                    />
+                  )}
                 </Grid>
                 {!isEditing && (
                   <Grid item xs={12}>

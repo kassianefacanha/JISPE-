@@ -69,6 +69,14 @@ O teste cria um objeto temporário, lê e compara o conteúdo, e o apaga ao term
 
 Para e-mails transacionais, configure `RESEND_API_KEY` e `RESEND_FROM` localmente e no Render. O remetente deve usar um domínio verificado no Resend. O sistema envia confirmações de cadastro da entidade e do atleta, avisos de aprovação/rejeição e alertas de alteração de senha. A redefinição está disponível para entidades, usa token de uso único válido por 30 minutos e revoga sessões antigas. Os envios usam a API HTTPS do Resend e ocorrem em segundo plano; falhas são registradas sem desfazer o cadastro, alteração ou decisão já concluída.
 
+Para analisar e, se necessário, reenviar e-mails com status `failed` em uma exportação CSV do Resend, use localmente o comando abaixo. Informe a data no fuso de Fortaleza; a execução padrão apenas simula e lista as falhas dessa data:
+
+```bash
+npm --prefix backend run resend:failed-emails -- --csv "C:\caminho\emails-sent.csv" --date 2026-10-21
+```
+
+Revise a lista e acrescente `--send` para solicitar o reenvio. O comando exige confirmação digitada e verifica se cada registro original ainda está como `failed` no Resend. Ele reenvia cada linha elegível, inclusive quando há várias falhas para o mesmo destinatário, mas não reenvia mensagens `bounced` ou `suppressed`. A exportação CSV não informa a causa de `failed`; valide os registros antes de confirmar. O comando usa `RESEND_API_KEY` e `RESEND_FROM` de `backend/.env` ou do `.env` da raiz (prioriza `backend/.env` se ambos existirem) e não deve ser executado no Render.
+
 O script de migração roda primeiro em simulação:
 
 ```bash

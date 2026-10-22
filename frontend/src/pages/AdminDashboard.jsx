@@ -966,6 +966,8 @@ function DetailDialog({ detailDialog, setDetailDialog }) {
         ['Matrícula', data.matricula],
         ['Órgão', data.entityName || data.entityId],
         ['PCD', data.isPcd ? 'Sim' : 'Não'],
+        ['Servidor(a) de outro órgão', data.isExternalServant ? 'Sim' : 'Não'],
+        ['Órgão ao qual está vinculado', data.isExternalServant ? data.linkedEntityName || 'Não informado' : '—'],
         ['Alergia', data.hasAllergy ? data.allergyDetails || 'Sim, sem detalhes informados' : 'Não'],
         ['Condição especial', data.hasSpecialCondition ? data.specialConditionDetails || 'Sim, sem detalhes informados' : 'Não'],
       ];

@@ -43,6 +43,8 @@ const emptyForm = {
   affiliationProofUrl: '',
   modalityRegistrations: [{ modality: '', naipe: '' }],
   isPcd: false,
+  isExternalServant: false,
+  linkedEntityName: '',
   hasAllergy: false,
   allergyDetails: '',
   hasSpecialCondition: false,
@@ -140,6 +142,8 @@ export default function AdminAthleteCreatePage() {
             affiliationProofUrl: athlete.affiliationProofUrl || '',
             modalityRegistrations: athleteModalityRegistrations,
             isPcd: Boolean(athlete.isPcd),
+            isExternalServant: Boolean(athlete.isExternalServant),
+            linkedEntityName: athlete.linkedEntityName || '',
             hasAllergy: Boolean(athlete.hasAllergy),
             allergyDetails: athlete.allergyDetails || '',
             hasSpecialCondition: Boolean(athlete.hasSpecialCondition),
@@ -227,6 +231,8 @@ export default function AdminAthleteCreatePage() {
         participationTermAccepted: form.participationTermAccepted,
         privacyConsentConfirmed: form.privacyConsentConfirmed,
         isPcd: form.isPcd,
+        isExternalServant: form.isExternalServant,
+        linkedEntityName: form.linkedEntityName,
         hasAllergy: form.hasAllergy,
         allergyDetails: form.allergyDetails,
         hasSpecialCondition: form.hasSpecialCondition,
@@ -396,6 +402,26 @@ export default function AdminAthleteCreatePage() {
                   </Box>
                 </Grid>
 
+                <Grid item xs={12}>
+                  <FormControlLabel
+                    control={<Checkbox checked={form.isExternalServant} onChange={(event) => setForm((current) => ({
+                      ...current,
+                      isExternalServant: event.target.checked,
+                      linkedEntityName: event.target.checked ? current.linkedEntityName : '',
+                    }))} />}
+                    label="É servidor(a) de outro órgão?"
+                  />
+                  {form.isExternalServant && (
+                    <TextField
+                      fullWidth
+                      size="small"
+                      sx={{ mt: 1 }}
+                      label="Órgão ao qual está vinculado (opcional)"
+                      value={form.linkedEntityName}
+                      onChange={(event) => setForm((current) => ({ ...current, linkedEntityName: event.target.value }))}
+                    />
+                  )}
+                </Grid>
                 {!editId && (
                   <Grid item xs={12}>
                     <FormControlLabel

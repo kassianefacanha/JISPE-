@@ -53,6 +53,8 @@ const athleteSchema = new mongoose.Schema(
     ageCategory: { type: String, default: 'adulto' },
     gender: { type: String, enum: ['masculino', 'feminino', 'misto'], required: true, default: 'masculino' },
     isPcd: { type: Boolean, default: false },
+    isExternalServant: { type: Boolean, default: false },
+    linkedEntityName: { type: String, trim: true, default: '' },
     hasAllergy: { type: Boolean, default: false },
     allergyDetails: { type: String, trim: true, default: '' },
     hasSpecialCondition: { type: Boolean, default: false },
