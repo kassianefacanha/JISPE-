@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Button } from '@mui/material';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
 import { useAuth } from '../contexts/AuthContext';
 import AdminAthleteCreatePage from '../pages/AdminAthleteCreatePage';
 import AdminDashboard from '../pages/AdminDashboard';
@@ -114,6 +115,29 @@ export default function AppRoutes() {
         }}
       >
         Suporte: (85) 99674-4204
+      </Button>
+      <Button
+        component="a"
+        href="/Regulamento_JISPE_2026.pdf"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Abrir Regulamento JISPE 2026 em PDF"
+        startIcon={<MenuBookIcon />}
+        sx={{
+          position: 'fixed',
+          right: { xs: 12, sm: 24 },
+          bottom: { xs: 72, sm: 84 },
+          zIndex: 1300,
+          borderRadius: 99,
+          px: 2,
+          py: 1.25,
+          color: '#fff',
+          backgroundColor: '#1e40af',
+          boxShadow: 4,
+          '&:hover': { backgroundColor: '#1e3a8a' },
+        }}
+      >
+        Regulamento
       </Button>
     </>
   );
