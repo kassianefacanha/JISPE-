@@ -36,9 +36,12 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
 import EditIcon from '@mui/icons-material/Edit';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import GridLoadingOverlay from '../components/GridLoadingOverlay';
 import { useAuth } from '../contexts/AuthContext';
 import { useFeedback } from '../contexts/FeedbackContext';
 import AdminRegistrationSettings from './AdminRegistrationSettings';
@@ -198,8 +201,10 @@ export default function AdminDashboard() {
   const isReadOnly = user?.role === 'gerencia';
   const { notify, confirm } = useFeedback();
   const [activeTab, setActiveTab] = useState('entidades');
+  const [showAllStats, setShowAllStats] = useState(false);
   const [entities, setEntities] = useState([]);
   const [athletes, setAthletes] = useState([]);
+  const [loadingData, setLoadingData] = useState(true);
   const [entityFilter, setEntityFilter] = useState({ search: '', status: 'all' });
   const [athleteFilter, setAthleteFilter] = useState({ search: '', entity: 'all' });
   const [entityColumnMenuAnchor, setEntityColumnMenuAnchor] = useState(null);
@@ -290,6 +295,7 @@ export default function AdminDashboard() {
   }, [activeTab, athletes, entities]);
 
   const loadData = async () => {
+    setLoadingData(true);
     try {
       const [entitiesResponse, athletesResponse] = await Promise.all([
         api.get('/entities'),
@@ -299,6 +305,8 @@ export default function AdminDashboard() {
       setAthletes(athletesResponse.data.athletes || []);
     } catch (error) {
       notify(getApiErrorMessage(error, 'Não foi possível carregar os dados do painel.'));
+    } finally {
+      setLoadingData(false);
     }
   };
 
@@ -389,6 +397,7 @@ export default function AdminDashboard() {
     { key: 'phone', label: 'Telefone' },
     { key: 'modality', label: 'Modalidade' },
     { key: 'naipe', label: 'Naipe' },
+    { key: 'approvalStatusLabel', label: 'Status de aprovação' },
     { key: 'birthDate', label: 'Data de nascimento' },
   ];
 
@@ -485,6 +494,12 @@ export default function AdminDashboard() {
     phone: athlete.phone || '—',
     modality: (athlete.modalities?.length ? athlete.modalities : [athlete.modality]).filter(Boolean).join(', ') || '—',
     naipe: athlete.naipe || '—',
+    approvalStatus: athlete.approvalStatus || 'approved',
+    approvalStatusLabel: ({
+      pending: 'Aguardando aprovação',
+      approved: 'Aprovado',
+      rejected: 'Reprovado',
+    })[athlete.approvalStatus || 'approved'],
     birthDate: formatBirthDate(athlete.birthDate),
   }));
 
@@ -577,6 +592,18 @@ export default function AdminDashboard() {
             return <Box sx={{ fontWeight: 700, display: 'flex', alignItems: 'center' }}>{params.value ?? '—'}</Box>;
           }
 
+          if (field === 'approvalStatusLabel') {
+            const status = params.row.approvalStatus;
+            return (
+              <Chip
+                label={params.value}
+                size="small"
+                color={status === 'approved' ? 'success' : status === 'rejected' ? 'error' : 'warning'}
+                sx={{ fontWeight: 700 }}
+              />
+            );
+          }
+
           return <Box sx={{ display: 'flex', alignItems: 'center', minHeight: '100%' }}>{params.value ?? '—'}</Box>;
         },
       };
@@ -666,13 +693,25 @@ export default function AdminDashboard() {
         </Stack>
 
         {stats.length > 0 && (
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            {stats.map((card) => (
-              <Grid item xs={12} sm={6} md={3} key={card.title}>
-                <StatCard title={card.title} value={card.value} color={card.color} />
-              </Grid>
-            ))}
-          </Grid>
+          <Box sx={{ mb: 4 }}>
+            <Grid container spacing={3}>
+              {(showAllStats ? stats : stats.slice(0, 4)).map((card) => (
+                <Grid item xs={12} sm={6} md={3} key={card.title}>
+                  <StatCard title={card.title} value={card.value} color={card.color} />
+                </Grid>
+              ))}
+            </Grid>
+            {stats.length > 4 && (
+              <Button
+                onClick={() => setShowAllStats((current) => !current)}
+                endIcon={showAllStats ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                aria-expanded={showAllStats}
+                sx={{ display: 'flex', mx: 'auto', mt: 1, textTransform: 'none' }}
+              >
+                {showAllStats ? 'Ver menos' : `Ver mais (${stats.length - 4})`}
+              </Button>
+            )}
+          </Box>
         )}
 
         <Paper sx={{ border: '1px solid #e2e8f0', overflow: 'hidden' }}>
@@ -791,11 +830,13 @@ export default function AdminDashboard() {
                   <DataGrid
                     rows={prepareEntityRows.map((row) => ({ ...row, id: row._id }))}
                     columns={entityGridColumns}
+                    loading={loadingData}
+                    components={{ LoadingOverlay: GridLoadingOverlay }}
                     autoHeight
                     disableRowSelectionOnClick
                     disableColumnMenu
                     pageSizeOptions={[5, 10, 25, 50, 100]}
-                    initialState={{ pagination: { paginationModel: { pageSize: 100 } } }}
+                    initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
                     columnVisibilityModel={entityColumnVisibilityModel}
                     onColumnVisibilityModelChange={(model) => setEntityColumnVisibilityModel(model)}
                     sx={{
@@ -908,11 +949,13 @@ export default function AdminDashboard() {
                   <DataGrid
                     rows={prepareAthleteRows.map((row) => ({ ...row, id: row._id }))}
                     columns={athleteGridColumns}
+                    loading={loadingData}
+                    components={{ LoadingOverlay: GridLoadingOverlay }}
                     autoHeight
                     disableRowSelectionOnClick
                     disableColumnMenu
                     pageSizeOptions={[5, 10, 25, 50, 100]}
-                    initialState={{ pagination: { paginationModel: { pageSize: 100 } } }}
+                    initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
                     columnVisibilityModel={athleteColumnVisibilityModel}
                     onColumnVisibilityModelChange={(model) => setAthleteColumnVisibilityModel(model)}
                     sx={{

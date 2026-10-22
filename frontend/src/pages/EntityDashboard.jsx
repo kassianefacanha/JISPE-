@@ -31,6 +31,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import { DataGrid, ptBR } from '@mui/x-data-grid';
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
+import GridLoadingOverlay from '../components/GridLoadingOverlay';
 import api, { getApiErrorMessage } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useFeedback } from '../contexts/FeedbackContext';
@@ -77,6 +78,7 @@ export default function EntityDashboard() {
   const { user, logout } = useAuth();
   const { notify, confirm } = useFeedback();
   const [athletes, setAthletes] = useState([]);
+  const [loadingAthletes, setLoadingAthletes] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [columnMenuAnchor, setColumnMenuAnchor] = useState(null);
   const [exportMenuAnchor, setExportMenuAnchor] = useState(null);
@@ -85,11 +87,14 @@ export default function EntityDashboard() {
   const [exportDialog, setExportDialog] = useState({ open: false, type: 'csv', selectedColumns: [] });
 
   const loadAthletes = async () => {
+    setLoadingAthletes(true);
     try {
       const athletesResponse = await api.get('/athletes');
       setAthletes(athletesResponse.data.athletes || []);
     } catch (error) {
       notify(getApiErrorMessage(error, 'Não foi possível carregar os atletas.'));
+    } finally {
+      setLoadingAthletes(false);
     }
   };
 
@@ -423,11 +428,13 @@ export default function EntityDashboard() {
             <DataGrid
               rows={athleteRows.map((row) => ({ ...row, id: row._id }))}
               columns={athleteColumns}
+              loading={loadingAthletes}
+              components={{ LoadingOverlay: GridLoadingOverlay }}
               autoHeight
               disableRowSelectionOnClick
               disableColumnMenu
               pageSizeOptions={[5, 10, 25, 50, 100]}
-              initialState={{ pagination: { paginationModel: { pageSize: 100 } } }}
+              initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
               columnVisibilityModel={columnVisibilityModel}
               onColumnVisibilityModelChange={setColumnVisibilityModel}
               sx={{

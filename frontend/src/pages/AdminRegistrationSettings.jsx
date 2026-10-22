@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   FormControl,
   FormControlLabel,
   InputLabel,
@@ -83,6 +84,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
 
     let mounted = true;
     setLoadingRules(true);
+    setRules([]);
     setError('');
     api.get(`/admin/entities/${selectedEntityId}/modality-rules`)
       .then((response) => {
@@ -193,6 +195,18 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
               </TableRow>
             </TableHead>
             <TableBody>
+              {loadingRules && (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    <Stack direction="row" spacing={1} alignItems="center" justifyContent="center" sx={{ py: 1 }}>
+                      <CircularProgress size={20} />
+                      <Typography variant="body2" color="text.secondary" role="status" aria-live="polite">
+                        Carregando modalidades...
+                      </Typography>
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              )}
               {rules.map((rule) => {
                 const full = rule.maxAthletes != null && rule.registeredCount >= rule.maxAthletes;
                 return (
@@ -221,7 +235,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
                   </TableRow>
                 );
               })}
-              {!rules.length && !loadingRules && <TableRow><TableCell colSpan={6} align="center">Nenhuma modalidade disponível.</TableCell></TableRow>}
+              {!rules.length && !loadingRules && !error && <TableRow><TableCell colSpan={6} align="center">Nenhuma modalidade disponível.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </TableContainer>
