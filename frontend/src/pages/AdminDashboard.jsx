@@ -760,7 +760,7 @@ export default function AdminDashboard() {
               <Box>
                 <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
                   <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ flex: 1 }}>
-                    <Typography variant="h6" fontWeight={700} sx={{ alignSelf: 'center' }}>
+                    <Typography variant="body1" fontWeight={700} sx={{ alignSelf: 'center', whiteSpace: 'nowrap', flexShrink: 0 }}>
                       Órgãos cadastrados
                     </Typography>
                     <TextField
@@ -895,7 +895,7 @@ export default function AdminDashboard() {
               <Box>
                 <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
                   <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ flex: 1 }}>
-                    <Typography variant="h6" fontWeight={700} sx={{ alignSelf: 'center' }}>
+                    <Typography variant="body1" fontWeight={700} sx={{ alignSelf: 'center', whiteSpace: 'nowrap', flexShrink: 0 }}>
                       Atletas cadastrados
                     </Typography>
                     <TextField

@@ -388,7 +388,7 @@ export default function EntityDashboard() {
 
         <Paper sx={{ mt: 4, p: { xs: 2, md: 3 }, borderRadius: 4, border: '1px solid #e2e8f0' }}>
           <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} spacing={2} sx={{ mb: 2 }}>
-            <Typography variant="h6" fontWeight={700}>
+            <Typography variant="body1" fontWeight={700} sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
               Atletas cadastrados
             </Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'stretch', sm: 'center' }}>
