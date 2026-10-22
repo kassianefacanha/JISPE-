@@ -11,11 +11,14 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
   Grid,
   IconButton,
+  InputLabel,
   Menu,
   MenuItem,
   Paper,
+  Select,
   Stack,
   TextField,
   Typography,
@@ -80,6 +83,7 @@ export default function EntityDashboard() {
   const [athletes, setAthletes] = useState([]);
   const [loadingAthletes, setLoadingAthletes] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchField, setSearchField] = useState('all');
   const [columnMenuAnchor, setColumnMenuAnchor] = useState(null);
   const [exportMenuAnchor, setExportMenuAnchor] = useState(null);
   const [columnVisibilityModel, setColumnVisibilityModel] = useState({});
@@ -104,7 +108,10 @@ export default function EntityDashboard() {
 
   const searchValue = searchTerm.trim().toLocaleLowerCase('pt-BR');
   const filteredAthletes = athletes.filter((athlete) => (
-    !searchValue || [athlete.fullName, athlete.matricula, athlete.cpf, athlete.email, athlete.phone, athlete.modality, ...(athlete.modalities || [])]
+    !searchValue || (searchField === 'all'
+      ? [athlete.fullName, athlete.matricula, athlete.cpf, athlete.email, athlete.phone, athlete.modality, ...(athlete.modalities || [])]
+      : [searchField === 'modality' ? [athlete.modality, ...(athlete.modalities || [])] : athlete[searchField]])
+      .flat()
       .some((value) => String(value || '').toLocaleLowerCase('pt-BR').includes(searchValue))
   ));
 
@@ -389,10 +396,27 @@ export default function EntityDashboard() {
                 size="small"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Buscar atleta"
-                inputProps={{ 'aria-label': 'Buscar atleta' }}
+                placeholder="Digite para buscar"
+                inputProps={{ 'aria-label': 'Digite para buscar atleta' }}
                 sx={{ width: { xs: '100%', sm: 220 } }}
               />
+              <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 180 } }}>
+                <InputLabel id="entity-athlete-search-field-label">Buscar em</InputLabel>
+                <Select
+                  labelId="entity-athlete-search-field-label"
+                  value={searchField}
+                  label="Buscar em"
+                  onChange={(event) => setSearchField(event.target.value)}
+                >
+                  <MenuItem value="all">Todas as colunas</MenuItem>
+                  <MenuItem value="fullName">Nome</MenuItem>
+                  <MenuItem value="matricula">Matrícula</MenuItem>
+                  <MenuItem value="cpf">CPF</MenuItem>
+                  <MenuItem value="email">E-mail</MenuItem>
+                  <MenuItem value="phone">Telefone</MenuItem>
+                  <MenuItem value="modality">Modalidade</MenuItem>
+                </Select>
+              </FormControl>
               <Stack direction="row" spacing={1} flexWrap="wrap">
                 <Button variant="outlined" size="small" sx={{ textTransform: 'none', minWidth: 100 }} onClick={(event) => setColumnMenuAnchor(event.currentTarget)}>
                   Colunas

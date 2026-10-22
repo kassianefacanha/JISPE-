@@ -205,8 +205,8 @@ export default function AdminDashboard() {
   const [entities, setEntities] = useState([]);
   const [athletes, setAthletes] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
-  const [entityFilter, setEntityFilter] = useState({ search: '', status: 'all' });
-  const [athleteFilter, setAthleteFilter] = useState({ search: '', entity: 'all' });
+  const [entityFilter, setEntityFilter] = useState({ search: '', searchField: 'all', status: 'all' });
+  const [athleteFilter, setAthleteFilter] = useState({ search: '', searchField: 'all', entity: 'all' });
   const [entityColumnMenuAnchor, setEntityColumnMenuAnchor] = useState(null);
   const [athleteColumnMenuAnchor, setAthleteColumnMenuAnchor] = useState(null);
   const [entityExportMenuAnchor, setEntityExportMenuAnchor] = useState(null);
@@ -223,9 +223,19 @@ export default function AdminDashboard() {
 
   const filteredEntities = useMemo(() => {
     const searchValue = entityFilter.search.trim().toLowerCase();
+    const searchableFields = entityFilter.searchField === 'all'
+      ? ['name', 'email', 'responsibleName', 'responsibleCpf', 'status']
+      : [entityFilter.searchField];
 
     return entities.filter((entity) => {
-      const matchesSearch = !searchValue || [entity.name, entity.email, entity.responsible?.fullName, entity.responsible?.cpf].some((value) => String(value || '').toLowerCase().includes(searchValue));
+      const searchableValues = {
+        name: entity.name,
+        email: entity.email,
+        responsibleName: entity.responsible?.fullName,
+        responsibleCpf: entity.responsible?.cpf,
+        status: entity.status,
+      };
+      const matchesSearch = !searchValue || searchableFields.some((field) => String(searchableValues[field] || '').toLowerCase().includes(searchValue));
       const matchesStatus = entityFilter.status === 'all' || entity.status === entityFilter.status;
       return matchesSearch && matchesStatus;
     });
@@ -233,11 +243,25 @@ export default function AdminDashboard() {
 
   const filteredAthletes = useMemo(() => {
     const searchValue = athleteFilter.search.trim().toLowerCase();
+    const searchableFields = athleteFilter.searchField === 'all'
+      ? ['fullName', 'cpf', 'email', 'matricula', 'entityName', 'phone', 'modality', 'naipe', 'approvalStatus']
+      : [athleteFilter.searchField];
 
     return athletes.filter((athlete) => {
       const entityStatus = entityMap[athlete.entityId]?.status;
       const entityName = entityMap[athlete.entityId]?.name || '';
-      const matchesSearch = !searchValue || [athlete.fullName, athlete.cpf, athlete.email, athlete.matricula, entityName].some((value) => String(value || '').toLowerCase().includes(searchValue));
+      const searchableValues = {
+        fullName: athlete.fullName,
+        cpf: athlete.cpf,
+        email: athlete.email,
+        matricula: athlete.matricula,
+        entityName,
+        phone: athlete.phone,
+        modality: (athlete.modalities?.length ? athlete.modalities : [athlete.modality]).filter(Boolean).join(', '),
+        naipe: athlete.naipe || athlete.gender,
+        approvalStatus: ({ pending: 'Aguardando aprovação', approved: 'Aprovado', rejected: 'Reprovado' })[athlete.approvalStatus || 'approved'],
+      };
+      const matchesSearch = !searchValue || searchableFields.some((field) => String(searchableValues[field] || '').toLowerCase().includes(searchValue));
       const matchesEntity = athleteFilter.entity === 'all' || athlete.entityId === athleteFilter.entity;
       const matchesStatus = entityFilter.status === 'all' || entityStatus === entityFilter.status;
       return matchesSearch && matchesEntity && matchesStatus;
@@ -742,10 +766,26 @@ export default function AdminDashboard() {
                     <TextField
                       value={entityFilter.search}
                       onChange={(event) => setEntityFilter((current) => ({ ...current, search: event.target.value }))}
-                      placeholder="Buscar órgão"
+                      placeholder="Digite para buscar"
                       size="small"
                       sx={{ minWidth: { xs: '100%', md: 220 } }}
                     />
+                    <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 190 } }}>
+                      <InputLabel id="entity-search-field-label">Buscar em</InputLabel>
+                      <Select
+                        labelId="entity-search-field-label"
+                        value={entityFilter.searchField}
+                        label="Buscar em"
+                        onChange={(event) => setEntityFilter((current) => ({ ...current, searchField: event.target.value }))}
+                      >
+                        <MenuItem value="all">Todas as colunas</MenuItem>
+                        <MenuItem value="name">Nome do órgão</MenuItem>
+                        <MenuItem value="email">E-mail</MenuItem>
+                        <MenuItem value="responsibleName">Responsável</MenuItem>
+                        <MenuItem value="responsibleCpf">CPF do responsável</MenuItem>
+                        <MenuItem value="status">Status</MenuItem>
+                      </Select>
+                    </FormControl>
                     <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 180 } }}>
                       <InputLabel id="entity-status-label">Status</InputLabel>
                       <Select
@@ -861,10 +901,30 @@ export default function AdminDashboard() {
                     <TextField
                       value={athleteFilter.search}
                       onChange={(event) => setAthleteFilter((current) => ({ ...current, search: event.target.value }))}
-                      placeholder="Buscar atleta"
+                      placeholder="Digite para buscar"
                       size="small"
                       sx={{ minWidth: { xs: '100%', md: 220 } }}
                     />
+                    <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 190 } }}>
+                      <InputLabel id="athlete-search-field-label">Buscar em</InputLabel>
+                      <Select
+                        labelId="athlete-search-field-label"
+                        value={athleteFilter.searchField}
+                        label="Buscar em"
+                        onChange={(event) => setAthleteFilter((current) => ({ ...current, searchField: event.target.value }))}
+                      >
+                        <MenuItem value="all">Todas as colunas</MenuItem>
+                        <MenuItem value="fullName">Nome</MenuItem>
+                        <MenuItem value="entityName">Órgão</MenuItem>
+                        <MenuItem value="matricula">Matrícula</MenuItem>
+                        <MenuItem value="cpf">CPF</MenuItem>
+                        <MenuItem value="email">E-mail</MenuItem>
+                        <MenuItem value="phone">Telefone</MenuItem>
+                        <MenuItem value="modality">Modalidade</MenuItem>
+                        <MenuItem value="naipe">Naipe</MenuItem>
+                        <MenuItem value="approvalStatus">Status de aprovação</MenuItem>
+                      </Select>
+                    </FormControl>
                     <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 200 } }}>
                       <InputLabel id="athlete-entity-label">Órgão</InputLabel>
                       <Select
