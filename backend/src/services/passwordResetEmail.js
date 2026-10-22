@@ -17,6 +17,9 @@ const escapeHtml = (value = '') => String(value).replace(/[&<>"']/g, (character)
   "'": '&#39;',
 }[character]));
 
+const supportContactText = '\n\nSuporte JISPE 2026 (WhatsApp): (85) 99674-4204';
+const supportContactHtml = '<p>Precisa de ajuda? Fale com o suporte JISPE 2026 pelo WhatsApp: <a href="https://wa.me/5585996744204">(85) 99674-4204</a>.</p>';
+
 const sendEmail = async ({ to, subject, text, html }) => {
   assertEmailConfigured();
   const response = await fetch('https://api.resend.com/emails', {
@@ -29,8 +32,8 @@ const sendEmail = async ({ to, subject, text, html }) => {
       from: process.env.RESEND_FROM,
       to: [to],
       subject,
-      text,
-      html,
+      text: `${text}${supportContactText}`,
+      html: `${html}${supportContactHtml}`,
     }),
     signal: AbortSignal.timeout(15_000),
   });
