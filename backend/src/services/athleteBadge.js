@@ -8,11 +8,26 @@ const maxBadgePhotoBytes = 5 * 1024 * 1024;
 const dataImagePattern = /^data:image\/(?:png|jpe?g|webp);base64,([A-Za-z0-9+/]+={0,2})$/i;
 const allowedImageHosts = new Set(['images.unsplash.com', 'res.cloudinary.com']);
 
+const normalizeBadgePhoto = async (imageBuffer) => {
+  if (!imageBuffer || imageBuffer.length > maxBadgePhotoBytes) return null;
+
+  try {
+    return await sharp(imageBuffer, { limitInputPixels: 40000000 })
+      .rotate()
+      .resize({ width: 640, height: 640, fit: 'inside', withoutEnlargement: true })
+      .png()
+      .toBuffer();
+  } catch (error) {
+    console.warn(`A foto do atleta não pôde ser processada para a carteirinha: ${error.message}`);
+    return null;
+  }
+};
+
 const fetchImageBuffer = async (value) => {
   if (!value || typeof value !== 'string') return null;
   if (isR2Value(value)) {
     try {
-      return await getAssetBuffer(value);
+      return await normalizeBadgePhoto(await getAssetBuffer(value));
     } catch (error) {
       return null;
     }
@@ -21,7 +36,7 @@ const fetchImageBuffer = async (value) => {
   const dataImage = value.match(dataImagePattern);
   if (dataImage) {
     const imageBuffer = Buffer.from(dataImage[1], 'base64');
-    return imageBuffer.length <= maxBadgePhotoBytes ? imageBuffer : null;
+    return normalizeBadgePhoto(imageBuffer);
   }
 
   let imageUrl;
@@ -43,7 +58,7 @@ const fetchImageBuffer = async (value) => {
     const contentLength = Number(response.headers.get('content-length') || 0);
     if (contentLength > maxBadgePhotoBytes) return null;
     const imageBuffer = Buffer.from(await response.arrayBuffer());
-    return imageBuffer.length <= maxBadgePhotoBytes ? imageBuffer : null;
+    return normalizeBadgePhoto(imageBuffer);
   } catch (error) {
     return null;
   } finally {
