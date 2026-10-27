@@ -57,7 +57,10 @@
 
 - POST /api/public/registration-status
   - Body: { email, cpf }
-  - Consulta o status da inscrição e exige e-mail e CPF do atleta
+  - Consulta o status, as modalidades e a foto da inscrição; exige e-mail e CPF do atleta
+- POST /api/public/registration-status/update
+  - Body: { email, cpf, modalityRegistrations: [{ modality, naipe }], photoUrl? }
+  - Permite atualizar modalidades/naipes e, opcionalmente, enviar uma nova foto em data URL; exige e-mail e CPF do atleta e inscrição aprovada
 - POST /api/public/registration-status/badge
   - Body: { email, cpf }
   - Gera a carteirinha apenas para inscrição aprovada
