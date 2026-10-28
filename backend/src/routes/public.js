@@ -166,10 +166,15 @@ router.post('/registration-status/update', registrationLookupLimiter, async (req
       return res.status(400).json({ success: false, message: 'O naipe selecionado não é permitido na modalidade correspondente.' });
     }
 
-    const modalityNames = modalityDefinitions.map((definition) => definition.name);
-    if (new Set(modalityNames).size !== modalityNames.length) {
-      return res.status(400).json({ success: false, message: 'Não é possível repetir uma modalidade.' });
+    const modalityEntries = modalityDefinitions.map((definition, index) => ({
+      modality: definition.slug,
+      naipe: requestedEntries[index].naipe,
+    }));
+    const modalityEntryKeys = modalityEntries.map(({ modality, naipe }) => `${modality}:${naipe}`);
+    if (new Set(modalityEntryKeys).size !== modalityEntryKeys.length) {
+      return res.status(400).json({ success: false, message: 'Não é possível repetir a mesma modalidade e o mesmo naipe.' });
     }
+    const modalityNames = [...new Set(modalityDefinitions.map((definition) => definition.name))];
 
     const previousModalities = [athlete.modality, ...(athlete.modalities || [])];
     const newlySelectedModalities = modalityDefinitions.filter((definition) => (
