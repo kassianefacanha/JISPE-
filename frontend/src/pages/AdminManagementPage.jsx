@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Box, Paper, Tab, Tabs } from '@mui/material';
 import api, { getApiErrorMessage } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useFeedback } from '../contexts/FeedbackContext';
@@ -49,6 +50,7 @@ export default function AdminManagementPage() {
   const [managerForm, setManagerForm] = useState(initialManagerForm);
   const [editingEntityId, setEditingEntityId] = useState(null);
   const [editingAthleteId, setEditingAthleteId] = useState(null);
+  const [activeTab, setActiveTab] = useState('entities');
   const [entityPasswordTarget, setEntityPasswordTarget] = useState(null);
   const [entityPasswordForm, setEntityPasswordForm] = useState(initialEntityPasswordForm);
   const [savingEntityPassword, setSavingEntityPassword] = useState(false);
@@ -356,7 +358,24 @@ export default function AdminManagementPage() {
           </div>
         </section>
 
-        <div className="grid gap-6 xl:grid-cols-2">
+        <Paper sx={{ overflow: 'hidden' }}>
+          <Tabs
+            value={activeTab}
+            onChange={(_, value) => setActiveTab(value)}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
+            aria-label="Seções da gestão geral"
+            sx={{
+              borderBottom: '1px solid #e2e8f0',
+              '& .MuiTab-root': { minWidth: { xs: 140, sm: 180 }, whiteSpace: 'nowrap' },
+            }}
+          >
+            <Tab value="entities" label={`Órgãos (${entities.length})`} />
+            <Tab value="athletes" label={`Atletas (${athletes.length})`} />
+          </Tabs>
+          <Box sx={{ p: { xs: 2, md: 3 } }}>
+          {activeTab === 'entities' && (
           <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-slate-800">Órgãos</h2>
@@ -521,7 +540,9 @@ export default function AdminManagementPage() {
               </table>
             </div>
           </section>
+          )}
 
+          {activeTab === 'athletes' && (
           <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-slate-800">Atletas</h2>
@@ -612,7 +633,9 @@ export default function AdminManagementPage() {
               </table>
             </div>
           </section>
-        </div>
+          )}
+          </Box>
+        </Paper>
       </div>
     </div>
   );
