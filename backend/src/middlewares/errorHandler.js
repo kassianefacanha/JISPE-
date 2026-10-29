@@ -17,6 +17,11 @@ const isDatabaseUnavailable = (error) => {
 const errorHandler = (err, req, res, next) => {
   if (res.headersSent) return next(err);
 
+  if (req.aborted || err.type === 'request.aborted' || err.code === 'ECONNABORTED') {
+    console.warn(`Request canceled by client: ${req.method} ${req.originalUrl} (${err.received || 0}/${err.expected || 0} bytes received).`);
+    return;
+  }
+
   let statusCode = Number(err.statusCode || err.status || 500);
   let message = err.message || 'Erro interno do servidor.';
 

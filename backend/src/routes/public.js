@@ -63,7 +63,7 @@ const hasConflictingBinaryNaipe = (entries) => {
 router.get('/registration-status', async (req, res, next) => {
   try {
     const controls = await RegistrationControls.findById('global').lean();
-    const raceRegistrationCount = await getRaceRegistrationCount();
+    const raceRegistrationCount = await getRaceRegistrationCount(controls);
     res.json({
       success: true,
       entityRegistrationOpen: controls?.entityRegistrationOpen !== false,

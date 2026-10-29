@@ -10,7 +10,7 @@ const raceAliases = [raceModality.name, raceModality.slug, ...(raceModality.lega
 const hasRaceModality = (athlete) => [athlete.modality, ...(athlete.modalities || [])]
   .some((modality) => raceAliases.some((alias) => String(modality || '').trim().toLowerCase() === alias.toLowerCase()));
 
-const getRaceRegistrationCount = async () => {
+const countRaceRegistrations = async () => {
   const [athleteIds, registrationAthleteIds] = await Promise.all([
     Athlete.distinct('_id', {
       $and: [
@@ -23,18 +23,28 @@ const getRaceRegistrationCount = async () => {
   return new Set([...athleteIds, ...registrationAthleteIds].map(String)).size;
 };
 
-const ensureCounter = async () => {
-  const count = await getRaceRegistrationCount();
-  await RegistrationControls.findOneAndUpdate(
+const ensureCounter = async (currentControls = null) => {
+  const controls = currentControls || await RegistrationControls.findOneAndUpdate(
     { _id: 'global' },
     { $setOnInsert: { entityRegistrationOpen: true, athleteRegistrationOpen: true, selfAthleteRegistrationOpen: true } },
     { new: true, upsert: true, setDefaultsOnInsert: true }
-  );
-  await RegistrationControls.updateOne(
+  ).lean();
+  if (Number.isFinite(controls.raceRegistrationCount)) return controls.raceRegistrationCount;
+
+  const count = await countRaceRegistrations();
+  const initializedControls = await RegistrationControls.findOneAndUpdate(
     { _id: 'global', raceRegistrationCount: { $exists: false } },
-    { $set: { raceRegistrationCount: count } }
-  );
+    { $set: { raceRegistrationCount: count } },
+    { new: true }
+  ).lean();
+  if (initializedControls) return initializedControls.raceRegistrationCount;
+
+  const latestControls = await RegistrationControls.findById('global').select('raceRegistrationCount').lean();
+  if (!latestControls) throw new Error('Não foi possível inicializar o contador de inscrições da corrida.');
+  return latestControls.raceRegistrationCount;
 };
+
+const getRaceRegistrationCount = async (controls) => ensureCounter(controls);
 
 const reserveRaceRegistration = async (athleteId) => {
   const existingAthlete = await Athlete.findById(athleteId).select('modality modalities approvalStatus').lean();
