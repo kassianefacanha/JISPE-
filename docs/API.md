@@ -12,6 +12,10 @@
 - POST /api/auth/login
   - Body: { email, password }
   - Retorna JWT para admin ou entidade aprovada
+- POST /api/auth/password-change-requests
+  - Restrito a órgãos autenticados; cria uma solicitação de troca de senha para a equipe administrativa, sem enviar e-mail
+- GET /api/auth/password-change-requests/me
+  - Consulta se o órgão autenticado tem uma solicitação pendente
 
 ### Entidades
 
@@ -22,6 +26,14 @@
   - Cadastro e atualização administrativa; também requerem `privacyConsentConfirmed: true`
 - GET /api/entities
   - Lista entidades para admin
+- PATCH /api/admin/entities/:entityId/password
+  - Restrito a administradores; body `{ password, passwordConfirmation }`, com pelo menos 12 caracteres
+  - Atualiza somente a senha, encerra as sessões anteriores e não retorna a senha
+- GET /api/admin/password-change-requests
+  - Restrito a administradores e superadministradores; lista solicitações e trocas concluídas
+- PATCH /api/admin/password-change-requests/:requestId/complete
+  - Restrito a administradores e superadministradores; body `{ password, passwordConfirmation }`
+  - Troca a senha do órgão solicitado, encerra as sessões anteriores e registra a conclusão sem salvar a senha em texto
 - PATCH /api/entities/:id/approve
   - Aprova entidade
 - PATCH /api/entities/:id/reject

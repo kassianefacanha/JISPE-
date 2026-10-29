@@ -8,6 +8,7 @@ const Athlete = require('../models/Athlete');
 const Modality = require('../models/Modality');
 const RegistrationControls = require('../models/RegistrationControls');
 const EntityModalityRule = require('../models/EntityModalityRule');
+const PasswordChangeRequest = require('../models/PasswordChangeRequest');
 const { getModalityCatalog } = require('../config/defaultModalities');
 
 const router = express.Router();
@@ -133,6 +134,116 @@ router.put('/entities/:entityId/modality-rules', auth, adminEditorOnly, async (r
 
     if (operations.length) await EntityModalityRule.bulkWrite(operations);
     res.json({ success: true, message: 'Limites de modalidade atualizados.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch('/entities/:entityId/password', auth, adminEditorOnly, async (req, res, next) => {
+  try {
+    const password = req.body?.password;
+    const passwordConfirmation = req.body?.passwordConfirmation;
+    if (typeof password !== 'string' || password.length < 12) {
+      return res.status(400).json({ success: false, message: 'A senha precisa ter pelo menos 12 caracteres.' });
+    }
+    if (password !== passwordConfirmation) {
+      return res.status(400).json({ success: false, message: 'As senhas informadas não coincidem.' });
+    }
+
+    const entity = await Entity.findById(req.params.entityId)
+      .select('+password +sessionVersion +passwordResetTokenHash +passwordResetExpiresAt');
+    if (!entity) return res.status(404).json({ success: false, message: 'Órgão não encontrado.' });
+    if (await bcrypt.compare(password, entity.password)) {
+      return res.status(400).json({ success: false, message: 'A nova senha deve ser diferente da senha atual.' });
+    }
+
+    entity.password = await bcrypt.hash(password, 12);
+    entity.sessionVersion = (entity.sessionVersion || 0) + 1;
+    entity.passwordResetTokenHash = undefined;
+    entity.passwordResetExpiresAt = undefined;
+    await entity.save();
+    await PasswordChangeRequest.findOneAndUpdate(
+      { entityId: entity._id, status: 'pending' },
+      { $set: { status: 'completed', resolvedAt: new Date(), resolvedBy: req.user.id } }
+    );
+
+    res.json({ success: true, message: 'Senha do órgão alterada. As sessões anteriores foram encerradas.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/password-change-requests', auth, adminEditorOnly, async (req, res, next) => {
+  try {
+    const [pendingRequests, completedRequests] = await Promise.all([
+      PasswordChangeRequest.find({ status: 'pending' }).sort({ requestedAt: -1 }),
+      PasswordChangeRequest.find({ status: 'completed' }).sort({ requestedAt: -1 }).limit(30),
+    ]);
+    const requests = await PasswordChangeRequest.populate(
+      [...pendingRequests, ...completedRequests].sort((first, second) => second.requestedAt - first.requestedAt),
+      [
+        { path: 'entityId', select: 'name email' },
+        { path: 'resolvedBy', select: 'name' },
+      ]
+    );
+    res.json({
+      success: true,
+      requests: requests.map((request) => ({
+        id: request._id,
+        status: request.status,
+        requestedAt: request.requestedAt,
+        resolvedAt: request.resolvedAt,
+        resolvedBy: request.resolvedBy?.name || '',
+        entity: request.entityId
+          ? { id: request.entityId._id, name: request.entityId.name, email: request.entityId.email }
+          : null,
+      })),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch('/password-change-requests/:requestId/complete', auth, adminEditorOnly, async (req, res, next) => {
+  try {
+    const password = req.body?.password;
+    const passwordConfirmation = req.body?.passwordConfirmation;
+    if (typeof password !== 'string' || password.length < 12) {
+      return res.status(400).json({ success: false, message: 'A senha precisa ter pelo menos 12 caracteres.' });
+    }
+    if (password !== passwordConfirmation) {
+      return res.status(400).json({ success: false, message: 'As senhas informadas não coincidem.' });
+    }
+
+    const request = await PasswordChangeRequest.findOne({
+      _id: req.params.requestId,
+      status: 'pending',
+    });
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Solicitação pendente não encontrada.' });
+    }
+
+    const entity = await Entity.findById(request.entityId)
+      .select('+password +sessionVersion +passwordResetTokenHash +passwordResetExpiresAt');
+    if (!entity) {
+      return res.status(404).json({ success: false, message: 'O órgão desta solicitação não foi encontrado.' });
+    }
+    if (await bcrypt.compare(password, entity.password)) {
+      return res.status(400).json({ success: false, message: 'A nova senha deve ser diferente da senha atual.' });
+    }
+
+    entity.password = await bcrypt.hash(password, 12);
+    entity.sessionVersion = (entity.sessionVersion || 0) + 1;
+    entity.passwordResetTokenHash = undefined;
+    entity.passwordResetExpiresAt = undefined;
+    await entity.save();
+
+    request.status = 'completed';
+    request.resolvedAt = new Date();
+    request.resolvedBy = req.user.id;
+    await request.save();
+
+    res.json({ success: true, message: 'Senha trocada. As sessões anteriores do órgão foram encerradas.' });
   } catch (error) {
     next(error);
   }

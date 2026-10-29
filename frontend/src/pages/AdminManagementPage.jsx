@@ -33,6 +33,11 @@ const initialManagerForm = {
   password: '',
 };
 
+const initialEntityPasswordForm = {
+  password: '',
+  passwordConfirmation: '',
+};
+
 export default function AdminManagementPage() {
   const { logout } = useAuth();
   const { notify, confirm } = useFeedback();
@@ -44,6 +49,9 @@ export default function AdminManagementPage() {
   const [managerForm, setManagerForm] = useState(initialManagerForm);
   const [editingEntityId, setEditingEntityId] = useState(null);
   const [editingAthleteId, setEditingAthleteId] = useState(null);
+  const [entityPasswordTarget, setEntityPasswordTarget] = useState(null);
+  const [entityPasswordForm, setEntityPasswordForm] = useState(initialEntityPasswordForm);
+  const [savingEntityPassword, setSavingEntityPassword] = useState(false);
 
   const entityMap = useMemo(
     () => Object.fromEntries(entities.map((entity) => [entity._id, entity])),
@@ -111,7 +119,7 @@ export default function AdminManagementPage() {
       const payload = {
         name: entityForm.name,
         email: entityForm.email,
-        password: entityForm.password,
+        ...(!editingEntityId ? { password: entityForm.password } : {}),
         phone: entityForm.phone,
         responsible: {
           fullName: entityForm.responsibleFullName,
@@ -136,6 +144,31 @@ export default function AdminManagementPage() {
       notify(wasEditing ? 'Órgão atualizado com sucesso.' : 'Órgão cadastrado com sucesso.', 'success');
     } catch (error) {
       notify(getApiErrorMessage(error, 'Erro ao salvar órgão.'));
+    }
+  };
+
+  const handleEntityPasswordReset = async (event) => {
+    event.preventDefault();
+    if (!entityPasswordTarget) return;
+    if (entityPasswordForm.password.length < 12) {
+      notify('A senha precisa ter pelo menos 12 caracteres.', 'warning');
+      return;
+    }
+    if (entityPasswordForm.password !== entityPasswordForm.passwordConfirmation) {
+      notify('As senhas informadas não coincidem.', 'warning');
+      return;
+    }
+
+    try {
+      setSavingEntityPassword(true);
+      await api.patch(`/admin/entities/${entityPasswordTarget._id}/password`, entityPasswordForm);
+      setEntityPasswordTarget(null);
+      setEntityPasswordForm(initialEntityPasswordForm);
+      notify('Senha do órgão alterada. As sessões anteriores foram encerradas.', 'success');
+    } catch (error) {
+      notify(getApiErrorMessage(error, 'Não foi possível alterar a senha do órgão.'));
+    } finally {
+      setSavingEntityPassword(false);
     }
   };
 
@@ -342,7 +375,9 @@ export default function AdminManagementPage() {
             <form onSubmit={handleEntitySave} className="mb-6 grid gap-3 md:grid-cols-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <input value={entityForm.name} onChange={(e) => setEntityForm({ ...entityForm, name: e.target.value })} className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Nome do órgão" />
               <input type="email" value={entityForm.email} onChange={(e) => setEntityForm({ ...entityForm, email: e.target.value })} className="rounded-xl border border-slate-300 px-3 py-2" placeholder="E-mail" />
-              <input type="password" value={entityForm.password} onChange={(e) => setEntityForm({ ...entityForm, password: e.target.value })} className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Senha (opcional para edição)" />
+              {!editingEntityId && (
+                <input type="password" value={entityForm.password} onChange={(e) => setEntityForm({ ...entityForm, password: e.target.value })} className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Senha do órgão" />
+              )}
               <input value={entityForm.phone} onChange={(e) => setEntityForm({ ...entityForm, phone: e.target.value })} className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Telefone" />
               <input value={entityForm.responsibleFullName} onChange={(e) => setEntityForm({ ...entityForm, responsibleFullName: e.target.value })} className="rounded-xl border border-slate-300 px-3 py-2" placeholder="Responsável" />
               <input value={entityForm.responsibleCpf} onChange={(e) => setEntityForm({ ...entityForm, responsibleCpf: e.target.value })} className="rounded-xl border border-slate-300 px-3 py-2" placeholder="CPF responsável" />
@@ -371,6 +406,60 @@ export default function AdminManagementPage() {
                 )}
               </div>
             </form>
+
+            {entityPasswordTarget && (
+              <form
+                onSubmit={handleEntityPasswordReset}
+                className="mb-5 grid gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 md:grid-cols-2"
+              >
+                <div className="md:col-span-2">
+                  <h3 className="font-semibold text-slate-800">Trocar senha: {entityPasswordTarget.name}</h3>
+                  <p className="mt-1 text-sm text-slate-600">
+                    A senha atual não é exibida. O órgão precisará entrar novamente após a troca.
+                  </p>
+                </div>
+                <input
+                  required
+                  type="password"
+                  minLength={12}
+                  autoComplete="new-password"
+                  value={entityPasswordForm.password}
+                  onChange={(event) => setEntityPasswordForm((current) => ({ ...current, password: event.target.value }))}
+                  className="rounded-xl border border-slate-300 px-3 py-2"
+                  placeholder="Nova senha (mínimo 12 caracteres)"
+                />
+                <input
+                  required
+                  type="password"
+                  minLength={12}
+                  autoComplete="new-password"
+                  value={entityPasswordForm.passwordConfirmation}
+                  onChange={(event) => setEntityPasswordForm((current) => ({ ...current, passwordConfirmation: event.target.value }))}
+                  className="rounded-xl border border-slate-300 px-3 py-2"
+                  placeholder="Confirme a nova senha"
+                />
+                <div className="flex gap-2 md:col-span-2">
+                  <button
+                    type="submit"
+                    disabled={savingEntityPassword}
+                    className="rounded-xl bg-jispe-green px-4 py-2 font-semibold text-white disabled:opacity-60"
+                  >
+                    {savingEntityPassword ? 'Salvando...' : 'Trocar senha'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={savingEntityPassword}
+                    onClick={() => {
+                      setEntityPasswordTarget(null);
+                      setEntityPasswordForm(initialEntityPasswordForm);
+                    }}
+                    className="rounded-xl border border-slate-300 px-4 py-2 text-slate-700"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            )}
 
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-sm">
@@ -412,6 +501,16 @@ export default function AdminManagementPage() {
                               <button type="button" onClick={() => updateEntityStatus(entity._id, 'rejected')} className="rounded-lg bg-red-600 px-2 py-1 text-xs font-medium text-white">Rejeitar</button>
                             )}
                             <button type="button" onClick={() => editEntity(entity)} className="rounded-lg bg-amber-500 px-2 py-1 text-xs font-medium text-white">Editar</button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEntityPasswordTarget(entity);
+                                setEntityPasswordForm(initialEntityPasswordForm);
+                              }}
+                              className="rounded-lg bg-blue-700 px-2 py-1 text-xs font-medium text-white"
+                            >
+                              Trocar senha
+                            </button>
                             <button type="button" onClick={() => deleteEntity(entity._id)} className="rounded-lg bg-slate-800 px-2 py-1 text-xs font-medium text-white">Excluir</button>
                           </div>
                         </td>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Alert,
@@ -22,7 +22,24 @@ export default function ProfilePage() {
   const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [passwordRequestPending, setPasswordRequestPending] = useState(false);
+  const [requestingPasswordHelp, setRequestingPasswordHelp] = useState(false);
   const homePath = ['admin', 'superadmin', 'gerencia'].includes(user?.role) ? '/admin' : '/entity';
+
+  useEffect(() => {
+    if (user?.role !== 'entity') return undefined;
+
+    let active = true;
+    api.get('/auth/password-change-requests/me')
+      .then((response) => {
+        if (active) setPasswordRequestPending(response.data.request?.status === 'pending');
+      })
+      .catch((requestError) => {
+        if (active) notify(getApiErrorMessage(requestError, 'Não foi possível verificar solicitações de senha.'));
+      });
+
+    return () => { active = false; };
+  }, [user?.role, notify]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -44,6 +61,19 @@ export default function ProfilePage() {
       setError(getApiErrorMessage(saveError, 'Não foi possível alterar a senha.'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const requestPasswordHelp = async () => {
+    try {
+      setRequestingPasswordHelp(true);
+      const response = await api.post('/auth/password-change-requests');
+      setPasswordRequestPending(true);
+      notify(response.data.message, 'success');
+    } catch (requestError) {
+      notify(getApiErrorMessage(requestError, 'Não foi possível solicitar a troca de senha.'));
+    } finally {
+      setRequestingPasswordHelp(false);
     }
   };
 
@@ -100,6 +130,30 @@ export default function ProfilePage() {
                 </Typography>
               </Stack>
             </Box>
+            {user?.role === 'entity' && (
+              <Box>
+                <Typography variant="subtitle1" fontWeight={700}>Não consegue receber o e-mail?</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 1.5 }}>
+                  Solicite ajuda ao administrador. A solicitação aparecerá no painel administrativo; não envie sua senha atual.
+                </Typography>
+                {passwordRequestPending && (
+                  <Alert severity="info" sx={{ mb: 1.5 }}>
+                    Sua solicitação está aguardando o administrador.
+                  </Alert>
+                )}
+                <Button
+                  variant="outlined"
+                  onClick={requestPasswordHelp}
+                  disabled={passwordRequestPending || requestingPasswordHelp}
+                >
+                  {requestingPasswordHelp
+                    ? 'Enviando solicitação...'
+                    : passwordRequestPending
+                      ? 'Solicitação enviada'
+                      : 'Solicitar troca de senha ao administrador'}
+                </Button>
+              </Box>
+            )}
           </Stack>
         </Paper>
       </Container>

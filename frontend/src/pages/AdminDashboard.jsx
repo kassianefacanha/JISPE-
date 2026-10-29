@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
 import {
+  Alert,
+  Badge,
   Box,
   Button,
   Card,
@@ -40,6 +42,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
+import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import GridLoadingOverlay from '../components/GridLoadingOverlay';
 import { useAuth } from '../contexts/AuthContext';
@@ -205,6 +208,12 @@ export default function AdminDashboard() {
   const [entities, setEntities] = useState([]);
   const [athletes, setAthletes] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [passwordChangeRequests, setPasswordChangeRequests] = useState([]);
+  const [passwordRequestsOpen, setPasswordRequestsOpen] = useState(false);
+  const [passwordRequestsLoading, setPasswordRequestsLoading] = useState(false);
+  const [selectedPasswordRequestId, setSelectedPasswordRequestId] = useState('');
+  const [passwordRequestForm, setPasswordRequestForm] = useState({ password: '', passwordConfirmation: '' });
+  const [savingPasswordRequest, setSavingPasswordRequest] = useState(false);
   const [entityFilter, setEntityFilter] = useState({ search: '', searchField: 'all', status: 'all' });
   const [athleteFilter, setAthleteFilter] = useState({ search: '', searchField: 'all', entity: 'all' });
   const [entityColumnMenuAnchor, setEntityColumnMenuAnchor] = useState(null);
@@ -334,9 +343,58 @@ export default function AdminDashboard() {
     }
   };
 
+  const loadPasswordChangeRequests = async (showError = true) => {
+    try {
+      setPasswordRequestsLoading(true);
+      const response = await api.get('/admin/password-change-requests');
+      setPasswordChangeRequests(response.data.requests || []);
+    } catch (error) {
+      if (showError) notify(getApiErrorMessage(error, 'Não foi possível carregar as solicitações de senha.'));
+    } finally {
+      setPasswordRequestsLoading(false);
+    }
+  };
+
+  const openPasswordRequests = () => {
+    setPasswordRequestsOpen(true);
+    loadPasswordChangeRequests();
+  };
+
+  const completePasswordChangeRequest = async (event, request) => {
+    event.preventDefault();
+    if (passwordRequestForm.password.length < 12) {
+      notify('A senha precisa ter pelo menos 12 caracteres.', 'warning');
+      return;
+    }
+    if (passwordRequestForm.password !== passwordRequestForm.passwordConfirmation) {
+      notify('As senhas informadas não coincidem.', 'warning');
+      return;
+    }
+
+    try {
+      setSavingPasswordRequest(true);
+      const response = await api.patch(`/admin/password-change-requests/${request.id}/complete`, passwordRequestForm);
+      setSelectedPasswordRequestId('');
+      setPasswordRequestForm({ password: '', passwordConfirmation: '' });
+      notify(`${response.data.message} Compartilhe a nova senha com o órgão por um canal seguro.`, 'success');
+      await loadPasswordChangeRequests();
+    } catch (error) {
+      notify(getApiErrorMessage(error, 'Não foi possível concluir a solicitação de senha.'));
+    } finally {
+      setSavingPasswordRequest(false);
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (isReadOnly) return undefined;
+    loadPasswordChangeRequests(false);
+    const intervalId = window.setInterval(() => loadPasswordChangeRequests(false), 30000);
+    return () => window.clearInterval(intervalId);
+  }, [isReadOnly]);
 
   const updateEntityStatus = async (id, status) => {
     try {
@@ -706,6 +764,22 @@ export default function AdminDashboard() {
           </Box>
 
           <Stack direction="row" spacing={1}>
+            {!isReadOnly && (
+              <IconButton
+                color="primary"
+                aria-label="Solicitações de troca de senha"
+                title="Solicitações de troca de senha"
+                onClick={openPasswordRequests}
+              >
+                <Badge
+                  badgeContent={passwordChangeRequests.filter((request) => request.status === 'pending').length}
+                  color="error"
+                  max={99}
+                >
+                  <NotificationsNoneIcon />
+                </Badge>
+              </IconButton>
+            )}
             {!isReadOnly && <Button component={Link} to="/admin/gestao" variant="outlined">Gestão geral</Button>}
             <Button component={Link} to="/perfil" variant="outlined" startIcon={<ManageAccountsIcon />}>
               Perfil
@@ -715,6 +789,123 @@ export default function AdminDashboard() {
             </Button>
           </Stack>
         </Stack>
+
+        {!isReadOnly && (
+          <Dialog
+            open={passwordRequestsOpen}
+            onClose={() => {
+              setPasswordRequestsOpen(false);
+              setSelectedPasswordRequestId('');
+            }}
+            fullWidth
+            maxWidth="sm"
+          >
+            <DialogTitle>Solicitações de troca de senha</DialogTitle>
+            <DialogContent dividers>
+              {passwordRequestsLoading && !passwordChangeRequests.length ? (
+                <Typography color="text.secondary">Carregando solicitações...</Typography>
+              ) : passwordChangeRequests.length === 0 ? (
+                <Typography color="text.secondary">Não há solicitações de senha.</Typography>
+              ) : (
+                <Stack spacing={2}>
+                  {passwordChangeRequests.map((request) => (
+                    <Paper key={request.id} variant="outlined" sx={{ p: 2 }}>
+                      <Stack spacing={1.5}>
+                        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                          <Box>
+                            <Typography fontWeight={700}>{request.entity?.name || 'Órgão não encontrado'}</Typography>
+                            {request.entity?.email && (
+                              <Typography variant="body2" color="text.secondary">{request.entity.email}</Typography>
+                            )}
+                          </Box>
+                          <Chip
+                            size="small"
+                            color={request.status === 'pending' ? 'warning' : 'success'}
+                            label={request.status === 'pending' ? 'Pendente' : 'Concluída'}
+                          />
+                        </Stack>
+                        <Typography variant="body2" color="text.secondary">
+                          Solicitada em {new Date(request.requestedAt).toLocaleString('pt-BR')}
+                        </Typography>
+                        {request.status === 'completed' ? (
+                          <Typography variant="body2" color="text.secondary">
+                            Concluída em {new Date(request.resolvedAt).toLocaleString('pt-BR')}
+                            {request.resolvedBy ? ` por ${request.resolvedBy}` : ''}.
+                          </Typography>
+                        ) : request.entity ? (
+                          selectedPasswordRequestId === request.id ? (
+                            <Box
+                              component="form"
+                              onSubmit={(event) => completePasswordChangeRequest(event, request)}
+                            >
+                              <Stack spacing={1.5}>
+                                <Alert severity="info">
+                                  Defina uma senha temporária e compartilhe-a diretamente com o órgão por um canal seguro.
+                                </Alert>
+                                <TextField
+                                  required
+                                  fullWidth
+                                  type="password"
+                                  label="Nova senha"
+                                  autoComplete="new-password"
+                                  inputProps={{ minLength: 12 }}
+                                  value={passwordRequestForm.password}
+                                  onChange={(event) => setPasswordRequestForm((current) => ({ ...current, password: event.target.value }))}
+                                />
+                                <TextField
+                                  required
+                                  fullWidth
+                                  type="password"
+                                  label="Confirmar nova senha"
+                                  autoComplete="new-password"
+                                  inputProps={{ minLength: 12 }}
+                                  value={passwordRequestForm.passwordConfirmation}
+                                  onChange={(event) => setPasswordRequestForm((current) => ({ ...current, passwordConfirmation: event.target.value }))}
+                                />
+                                <Stack direction="row" spacing={1}>
+                                  <Button type="submit" variant="contained" disabled={savingPasswordRequest}>
+                                    {savingPasswordRequest ? 'Salvando...' : 'Trocar senha e concluir'}
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    disabled={savingPasswordRequest}
+                                    onClick={() => {
+                                      setSelectedPasswordRequestId('');
+                                      setPasswordRequestForm({ password: '', passwordConfirmation: '' });
+                                    }}
+                                  >
+                                    Cancelar
+                                  </Button>
+                                </Stack>
+                              </Stack>
+                            </Box>
+                          ) : (
+                            <Button
+                              variant="outlined"
+                              onClick={() => {
+                                setSelectedPasswordRequestId(request.id);
+                                setPasswordRequestForm({ password: '', passwordConfirmation: '' });
+                              }}
+                            >
+                              Trocar senha
+                            </Button>
+                          )
+                        ) : (
+                          <Typography variant="body2" color="error">
+                            O órgão foi removido; esta solicitação não pode ser concluída.
+                          </Typography>
+                        )}
+                      </Stack>
+                    </Paper>
+                  ))}
+                </Stack>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setPasswordRequestsOpen(false)}>Fechar</Button>
+            </DialogActions>
+          </Dialog>
+        )}
 
         {stats.length > 0 && (
           <Box sx={{ mb: 4 }}>

@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const Admin = require('../models/Admin');
 const Entity = require('../models/Entity');
+const PasswordChangeRequest = require('../models/PasswordChangeRequest');
 const jwtSecret = require('../config/jwtSecret');
 const { auth } = require('../middlewares/auth');
 const {
@@ -125,10 +126,71 @@ router.put('/password', auth, resetPasswordLimiter, async (req, res, next) => {
     account.password = await bcrypt.hash(newPassword, 12);
     account.sessionVersion = (account.sessionVersion || 0) + 1;
     await account.save();
+    if (req.user.type === 'entity') {
+      await PasswordChangeRequest.findOneAndUpdate(
+        { entityId: account._id, status: 'pending' },
+        { $set: { status: 'completed', resolvedAt: new Date(), resolvedBy: null } }
+      );
+    }
 
     void sendPasswordChangedEmail(account);
     return res.json({ success: true, message: 'Senha alterada. Entre novamente com a nova senha.' });
   } catch (error) {
+    return next(error);
+  }
+});
+
+router.get('/password-change-requests/me', auth, async (req, res, next) => {
+  try {
+    if (req.user.type !== 'entity') {
+      return res.status(403).json({ success: false, message: 'A solicitação está disponível somente para órgãos.' });
+    }
+
+    const request = await PasswordChangeRequest.findOne({ entityId: req.user.id, status: 'pending' }).lean();
+    return res.json({
+      success: true,
+      request: request ? { status: request.status, requestedAt: request.requestedAt } : null,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/password-change-requests', auth, resetPasswordLimiter, async (req, res, next) => {
+  try {
+    if (req.user.type !== 'entity') {
+      return res.status(403).json({ success: false, message: 'A solicitação está disponível somente para órgãos.' });
+    }
+
+    const pendingRequest = await PasswordChangeRequest.findOne({
+      entityId: req.user.id,
+      status: 'pending',
+    });
+    if (pendingRequest) {
+      return res.json({
+        success: true,
+        request: { id: pendingRequest._id, status: pendingRequest.status, requestedAt: pendingRequest.requestedAt },
+        message: 'Sua solicitação de troca de senha já está aguardando o administrador.',
+      });
+    }
+
+    const request = await PasswordChangeRequest.create({ entityId: req.user.id });
+    return res.status(201).json({
+      success: true,
+      request: { id: request._id, status: request.status, requestedAt: request.requestedAt },
+      message: 'Solicitação enviada ao administrador. Você será orientado após a troca da senha.',
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      const request = await PasswordChangeRequest.findOne({ entityId: req.user.id, status: 'pending' });
+      if (request) {
+        return res.json({
+          success: true,
+          request: { id: request._id, status: request.status, requestedAt: request.requestedAt },
+          message: 'Sua solicitação de troca de senha já está aguardando o administrador.',
+        });
+      }
+    }
     return next(error);
   }
 });

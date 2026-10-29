@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
 const Entity = require('../models/Entity');
 const Athlete = require('../models/Athlete');
+const PasswordChangeRequest = require('../models/PasswordChangeRequest');
 const RegistrationControls = require('../models/RegistrationControls');
 const { auth } = require('../middlewares/auth');
 const { adminEditorOnly, adminViewerOnly } = require('../middlewares/adminPermissions');
@@ -182,7 +183,8 @@ router.put('/:id', auth, adminEditorOnly, async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Leia e confirme o termo de ciência sobre o tratamento de dados.' });
     }
 
-    const currentEntity = await Entity.findById(req.params.id);
+    const currentEntity = await Entity.findById(req.params.id)
+      .select('+password +sessionVersion +passwordResetTokenHash +passwordResetExpiresAt');
     if (!currentEntity) {
       return res.status(404).json({ success: false, message: 'Órgão não encontrado.' });
     }
@@ -224,12 +226,32 @@ router.put('/:id', auth, adminEditorOnly, async (req, res, next) => {
     };
 
     if (payload.password) {
+      if (payload.password.length < 12) {
+        return res.status(400).json({ success: false, message: 'A senha precisa ter pelo menos 12 caracteres.' });
+      }
+      if (await bcrypt.compare(payload.password, currentEntity.password)) {
+        return res.status(400).json({ success: false, message: 'A nova senha deve ser diferente da senha atual.' });
+      }
       updateData.password = await bcrypt.hash(payload.password, 12);
+      updateData.sessionVersion = (currentEntity.sessionVersion || 0) + 1;
     }
 
-    const entity = await Entity.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    const update = payload.password
+      ? {
+        $set: updateData,
+        $unset: { passwordResetTokenHash: 1, passwordResetExpiresAt: 1 },
+      }
+      : updateData;
+    const entity = await Entity.findByIdAndUpdate(req.params.id, update, { new: true });
     if (!entity) {
       return res.status(404).json({ success: false, message: 'Órgão não encontrado.' });
+    }
+
+    if (payload.password) {
+      await PasswordChangeRequest.findOneAndUpdate(
+        { entityId: entity._id, status: 'pending' },
+        { $set: { status: 'completed', resolvedAt: new Date(), resolvedBy: req.user.id } }
+      );
     }
 
     await Promise.all([
@@ -263,6 +285,7 @@ router.delete('/:id', auth, adminEditorOnly, async (req, res, next) => {
       deleteAsset(entity.responsible.photoUrl),
       deleteAsset(entity.responsible.proofUrl),
       deleteAsset(entity.responsible.affiliationProofUrl),
+      PasswordChangeRequest.deleteMany({ entityId: entity._id }),
     ]);
     res.json({ success: true, message: 'Órgão excluído com sucesso.' });
   } catch (error) {
