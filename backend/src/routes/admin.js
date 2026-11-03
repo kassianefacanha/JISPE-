@@ -10,6 +10,7 @@ const RegistrationControls = require('../models/RegistrationControls');
 const EntityModalityRule = require('../models/EntityModalityRule');
 const PasswordChangeRequest = require('../models/PasswordChangeRequest');
 const { getModalityCatalog } = require('../config/defaultModalities');
+const { applyRegistrationDeadline } = require('../services/registrationWindow');
 
 const router = express.Router();
 
@@ -33,7 +34,7 @@ router.get('/me', auth, (req, res) => {
 router.get('/registration-controls', auth, adminViewerOnly, async (req, res, next) => {
   try {
     const controls = await getRegistrationControls();
-    res.json({ success: true, controls });
+    res.json({ success: true, controls: applyRegistrationDeadline(controls) });
   } catch (error) {
     next(error);
   }
@@ -54,7 +55,7 @@ router.patch('/registration-controls', auth, adminEditorOnly, async (req, res, n
       { $set: update },
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
-    res.json({ success: true, controls });
+    res.json({ success: true, controls: applyRegistrationDeadline(controls) });
   } catch (error) {
     next(error);
   }
@@ -62,6 +63,39 @@ router.patch('/registration-controls', auth, adminEditorOnly, async (req, res, n
 
 router.get('/entities/:entityId/modality-rules', auth, adminViewerOnly, async (req, res, next) => {
   try {
+    if (req.params.entityId === 'all') {
+      const entities = await Entity.find({ status: 'approved' }).select('_id').lean();
+      if (!entities.length) return res.status(404).json({ success: false, message: 'Nenhum órgão aprovado encontrado.' });
+
+      const entityIds = entities.map((entity) => entity._id);
+      const [storedModalities, savedRules] = await Promise.all([
+        Modality.find({ active: true }).lean(),
+        EntityModalityRule.find({ entityId: { $in: entityIds } }).lean(),
+      ]);
+      const rulesByEntityAndSlug = new Map(savedRules.map((rule) => [`${rule.entityId}:${rule.modalitySlug}`, rule]));
+      const modalities = getModalityCatalog(storedModalities);
+      const rules = modalities.map((modality) => {
+        const officialLimit = modality.maxTeamsPerEntity && modality.maxAthletesPerTeam
+          ? modality.maxTeamsPerEntity * modality.maxAthletesPerTeam
+          : null;
+        const limits = entities.map((entity) => {
+          const savedRule = rulesByEntityAndSlug.get(`${entity._id}:${modality.slug}`);
+          return savedRule ? savedRule.maxAthletes : officialLimit;
+        });
+        const distinctLimits = new Set(limits.map((limit) => limit === null ? 'none' : String(limit)));
+
+        return {
+          modalitySlug: modality.slug,
+          modalityName: modality.name,
+          categories: modality.categories || [],
+          maxAthletes: distinctLimits.size === 1 ? limits[0] : null,
+          hasMixedMaxAthletes: distinctLimits.size > 1,
+        };
+      });
+
+      return res.json({ success: true, entityCount: entities.length, rules });
+    }
+
     const entity = await Entity.findById(req.params.entityId).select('name status');
     if (!entity) return res.status(404).json({ success: false, message: 'Órgão não encontrado.' });
 
@@ -99,6 +133,44 @@ router.get('/entities/:entityId/modality-rules', auth, adminViewerOnly, async (r
 
 router.put('/entities/:entityId/modality-rules', auth, adminEditorOnly, async (req, res, next) => {
   try {
+    if (req.params.entityId === 'all') {
+      const entities = await Entity.find({ status: 'approved' }).select('_id').lean();
+      if (!entities.length) return res.status(404).json({ success: false, message: 'Nenhum órgão aprovado encontrado.' });
+      if (!Array.isArray(req.body.rules) || !req.body.rules.length) {
+        return res.status(400).json({ success: false, message: 'Informe ao menos um novo limite por modalidade.' });
+      }
+
+      const storedModalities = await Modality.find({ active: true }).lean();
+      const catalog = getModalityCatalog(storedModalities);
+      const catalogBySlug = new Map(catalog.map((modality) => [modality.slug, modality]));
+      const bulkRules = [];
+
+      for (const rule of req.body.rules) {
+        const modality = catalogBySlug.get(rule.modalitySlug);
+        if (!modality) {
+          return res.status(400).json({ success: false, message: 'Há uma regra de modalidade inválida.' });
+        }
+
+        const maxAthletes = rule.maxAthletes === '' || rule.maxAthletes === null || rule.maxAthletes === undefined
+          ? null
+          : Number(rule.maxAthletes);
+        if (maxAthletes !== null && (!Number.isInteger(maxAthletes) || maxAthletes < 1)) {
+          return res.status(400).json({ success: false, message: `O limite de ${modality.name} precisa ser um inteiro maior que zero ou ficar vazio.` });
+        }
+        bulkRules.push({ modalitySlug: modality.slug, maxAthletes });
+      }
+
+      const operations = entities.flatMap((entity) => bulkRules.map((rule) => ({
+        updateOne: {
+          filter: { entityId: entity._id, modalitySlug: rule.modalitySlug },
+          update: { $set: { maxAthletes: rule.maxAthletes } },
+          upsert: true,
+        },
+      })));
+      await EntityModalityRule.bulkWrite(operations);
+      return res.json({ success: true, message: `Limites atualizados para ${entities.length} órgãos.` });
+    }
+
     const entity = await Entity.findById(req.params.entityId).select('_id');
     if (!entity) return res.status(404).json({ success: false, message: 'Órgão não encontrado.' });
     if (!Array.isArray(req.body.rules)) {

@@ -12,6 +12,7 @@ const { validateUploadedAsset } = require('../utils/uploadValidation');
 const { deleteAsset, deleteReplacedAsset, getAssetUrl, isSameStoredAsset, storeAsset } = require('../services/r2Storage');
 const { sendEntityDecisionEmail, sendEntityRegistrationEmail } = require('../services/passwordResetEmail');
 const { createPrivacyConsent } = require('../utils/privacyConsent');
+const { isRegistrationOpen } = require('../services/registrationWindow');
 
 const router = express.Router();
 const registrationLimiter = rateLimit({
@@ -58,7 +59,7 @@ router.post('/register', registrationLimiter, async (req, res, next) => {
     }
 
     const controls = await RegistrationControls.findById('global').lean();
-    if (controls?.entityRegistrationOpen === false) {
+    if (!isRegistrationOpen(controls, 'entityRegistrationOpen')) {
       return res.status(403).json({ success: false, message: 'O cadastro de novos órgãos está temporariamente fechado.' });
     }
 
@@ -108,6 +109,11 @@ router.post('/', auth, adminEditorOnly, async (req, res, next) => {
   try {
     if (req.body?.privacyConsentConfirmed !== true) {
       return res.status(400).json({ success: false, message: 'Leia e confirme o termo de ciência sobre o tratamento de dados.' });
+    }
+
+    const controls = await RegistrationControls.findById('global').lean();
+    if (!isRegistrationOpen(controls, 'entityRegistrationOpen')) {
+      return res.status(403).json({ success: false, message: 'O cadastro de novos órgãos está temporariamente fechado.' });
     }
 
     const payload = normalizeEntityPayload(req.body);

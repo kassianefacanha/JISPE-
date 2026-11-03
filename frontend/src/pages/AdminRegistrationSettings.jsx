@@ -31,6 +31,7 @@ const defaultControls = {
   athleteRegistrationOpen: true,
   selfAthleteRegistrationOpen: true,
 };
+const allEntitiesId = 'all';
 
 const normalizeControls = (controls = {}) => ({
   ...defaultControls,
@@ -45,6 +46,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
   const [controls, setControls] = useState(defaultControls);
   const [selectedEntityId, setSelectedEntityId] = useState('');
   const [rules, setRules] = useState([]);
+  const [dirtyLimits, setDirtyLimits] = useState(() => new Set());
   const [loadingControls, setLoadingControls] = useState(true);
   const [loadingRules, setLoadingRules] = useState(false);
   const [savingRules, setSavingRules] = useState(false);
@@ -85,6 +87,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
     let mounted = true;
     setLoadingRules(true);
     setRules([]);
+    setDirtyLimits(new Set());
     setError('');
     api.get(`/admin/entities/${selectedEntityId}/modality-rules`)
       .then((response) => {
@@ -117,19 +120,43 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
     setRules((current) => current.map((rule) => (
       rule.modalitySlug === modalitySlug ? { ...rule, [field]: value } : rule
     )));
+    if (selectedEntityId === allEntitiesId && field === 'pendingMaxAthletes') {
+      setDirtyLimits((current) => new Set(current).add(modalitySlug));
+    }
   };
 
   const saveRules = async () => {
     setSavingRules(true);
     try {
-      await api.put(`/admin/entities/${selectedEntityId}/modality-rules`, {
-        rules: rules.map((rule) => ({
-          modalitySlug: rule.modalitySlug,
-          enabled: rule.enabled,
-          maxAthletes: rule.maxAthletes === '' || rule.maxAthletes == null ? null : Number(rule.maxAthletes),
-        })),
-      });
-      notify('Regras por modalidade salvas.', 'success');
+      if (selectedEntityId === allEntitiesId) {
+        const changedRules = rules
+          .filter((rule) => dirtyLimits.has(rule.modalitySlug))
+          .map((rule) => ({
+            modalitySlug: rule.modalitySlug,
+            maxAthletes: rule.pendingMaxAthletes === '' ? null : Number(rule.pendingMaxAthletes),
+          }));
+        await api.put('/admin/entities/all/modality-rules', { rules: changedRules });
+        setRules((current) => current.map((rule) => {
+          if (!dirtyLimits.has(rule.modalitySlug)) return rule;
+          return {
+            ...rule,
+            maxAthletes: rule.pendingMaxAthletes === '' ? null : Number(rule.pendingMaxAthletes),
+            hasMixedMaxAthletes: false,
+            pendingMaxAthletes: undefined,
+          };
+        }));
+        setDirtyLimits(new Set());
+        notify(`Limites aplicados aos ${approvedEntities.length} órgãos aprovados.`, 'success');
+      } else {
+        await api.put(`/admin/entities/${selectedEntityId}/modality-rules`, {
+          rules: rules.map((rule) => ({
+            modalitySlug: rule.modalitySlug,
+            enabled: rule.enabled,
+            maxAthletes: rule.maxAthletes === '' || rule.maxAthletes == null ? null : Number(rule.maxAthletes),
+          })),
+        });
+        notify('Regras por modalidade salvas.', 'success');
+      }
     } catch (saveError) {
       notify(getApiErrorMessage(saveError, 'Não foi possível salvar as regras por modalidade.'));
     } finally {
@@ -174,10 +201,17 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
             onChange={(event) => setSelectedEntityId(event.target.value)}
             disabled={!approvedEntities.length}
           >
+            <MenuItem value={allEntitiesId}>Todos os órgãos aprovados</MenuItem>
             {approvedEntities.map((entity) => <MenuItem key={entity._id} value={entity._id}>{entity.name}</MenuItem>)}
           </Select>
         </FormControl>
       </Stack>
+
+      {selectedEntityId === allEntitiesId && (
+        <Alert severity="info">
+          Os novos limites serão aplicados a todos os {approvedEntities.length} órgãos aprovados. Modalidades sem alteração serão preservadas.
+        </Alert>
+      )}
 
       {!approvedEntities.length ? (
         <Alert severity="info">Não há órgãos aprovados para configurar.</Alert>
@@ -185,19 +219,28 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
         <TableContainer component={Paper} variant="outlined">
           <Table size="small" aria-label="Limites de cadastro por modalidade">
             <TableHead>
-              <TableRow>
-                <TableCell>Modalidade</TableCell>
-                <TableCell>Categorias</TableCell>
-                <TableCell align="center">Atletas cadastrados</TableCell>
-                <TableCell align="center">Cadastro</TableCell>
-                <TableCell align="center">Vagas por órgão</TableCell>
-                <TableCell align="center">Situação</TableCell>
-              </TableRow>
+              {selectedEntityId === allEntitiesId ? (
+                <TableRow>
+                  <TableCell>Modalidade</TableCell>
+                  <TableCell>Categorias</TableCell>
+                  <TableCell align="center">Limite atual</TableCell>
+                  <TableCell align="center">Novo limite por órgão</TableCell>
+                </TableRow>
+              ) : (
+                <TableRow>
+                  <TableCell>Modalidade</TableCell>
+                  <TableCell>Categorias</TableCell>
+                  <TableCell align="center">Atletas cadastrados</TableCell>
+                  <TableCell align="center">Cadastro</TableCell>
+                  <TableCell align="center">Vagas por órgão</TableCell>
+                  <TableCell align="center">Situação</TableCell>
+                </TableRow>
+              )}
             </TableHead>
             <TableBody>
               {loadingRules && (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={selectedEntityId === allEntitiesId ? 4 : 6} align="center">
                     <Stack direction="row" spacing={1} alignItems="center" justifyContent="center" sx={{ py: 1 }}>
                       <CircularProgress size={20} />
                       <Typography variant="body2" color="text.secondary" role="status" aria-live="polite">
@@ -213,29 +256,53 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
                   <TableRow key={rule.modalitySlug} hover>
                     <TableCell sx={{ fontWeight: 700 }}>{rule.modalityName}</TableCell>
                     <TableCell>{rule.categories.join(', ') || '—'}</TableCell>
-                    <TableCell align="center">{rule.registeredCount}</TableCell>
-                    <TableCell align="center">
-                      <Switch checked={rule.enabled} disabled={readOnly} onChange={(event) => updateRule(rule.modalitySlug, 'enabled', event.target.checked)} inputProps={{ 'aria-label': `Permitir ${rule.modalityName}` }} />
-                    </TableCell>
-                    <TableCell align="center">
-                      <TextField
-                        type="number"
-                        size="small"
-                        disabled={readOnly}
-                        value={rule.maxAthletes ?? ''}
-                        onChange={(event) => updateRule(rule.modalitySlug, 'maxAthletes', event.target.value)}
-                        inputProps={{ min: 1, step: 1, 'aria-label': `Vagas de ${rule.modalityName}` }}
-                        placeholder="Sem limite"
-                        sx={{ width: 130 }}
-                      />
-                    </TableCell>
-                    <TableCell align="center">
-                      {!rule.enabled ? <Chip label="Bloqueada" color="error" size="small" /> : full ? <Chip label="Lotada" color="warning" size="small" /> : <Chip label="Aberta" color="success" size="small" />}
-                    </TableCell>
+                    {selectedEntityId === allEntitiesId ? (
+                      <>
+                        <TableCell align="center">
+                          {rule.hasMixedMaxAthletes
+                            ? 'Varia entre os órgãos'
+                            : rule.maxAthletes == null ? 'Sem limite' : rule.maxAthletes}
+                        </TableCell>
+                        <TableCell align="center">
+                          <TextField
+                            type="number"
+                            size="small"
+                            disabled={readOnly}
+                            value={rule.pendingMaxAthletes ?? ''}
+                            onChange={(event) => updateRule(rule.modalitySlug, 'pendingMaxAthletes', event.target.value)}
+                            inputProps={{ min: 1, step: 1, 'aria-label': `Novo limite de ${rule.modalityName} para todos os órgãos` }}
+                            placeholder="Não alterar"
+                            sx={{ width: 150 }}
+                          />
+                        </TableCell>
+                      </>
+                    ) : (
+                      <>
+                        <TableCell align="center">{rule.registeredCount}</TableCell>
+                        <TableCell align="center">
+                          <Switch checked={rule.enabled} disabled={readOnly} onChange={(event) => updateRule(rule.modalitySlug, 'enabled', event.target.checked)} inputProps={{ 'aria-label': `Permitir ${rule.modalityName}` }} />
+                        </TableCell>
+                        <TableCell align="center">
+                          <TextField
+                            type="number"
+                            size="small"
+                            disabled={readOnly}
+                            value={rule.maxAthletes ?? ''}
+                            onChange={(event) => updateRule(rule.modalitySlug, 'maxAthletes', event.target.value)}
+                            inputProps={{ min: 1, step: 1, 'aria-label': `Vagas de ${rule.modalityName}` }}
+                            placeholder="Sem limite"
+                            sx={{ width: 130 }}
+                          />
+                        </TableCell>
+                        <TableCell align="center">
+                          {!rule.enabled ? <Chip label="Bloqueada" color="error" size="small" /> : full ? <Chip label="Lotada" color="warning" size="small" /> : <Chip label="Aberta" color="success" size="small" />}
+                        </TableCell>
+                      </>
+                    )}
                   </TableRow>
                 );
               })}
-              {!rules.length && !loadingRules && !error && <TableRow><TableCell colSpan={6} align="center">Nenhuma modalidade disponível.</TableCell></TableRow>}
+              {!rules.length && !loadingRules && !error && <TableRow><TableCell colSpan={selectedEntityId === allEntitiesId ? 4 : 6} align="center">Nenhuma modalidade disponível.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </TableContainer>
@@ -243,8 +310,8 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
 
       {!readOnly && (
         <Stack direction="row" justifyContent="flex-end">
-          <Button variant="contained" startIcon={<SaveOutlinedIcon />} onClick={saveRules} disabled={!selectedEntityId || loadingRules || savingRules}>
-            {savingRules ? 'Salvando...' : 'Salvar limites'}
+          <Button variant="contained" startIcon={<SaveOutlinedIcon />} onClick={saveRules} disabled={!selectedEntityId || loadingRules || savingRules || (selectedEntityId === allEntitiesId && !dirtyLimits.size)}>
+            {savingRules ? 'Salvando...' : selectedEntityId === allEntitiesId ? 'Aplicar limites a todos' : 'Salvar limites'}
           </Button>
         </Stack>
       )}

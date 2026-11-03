@@ -19,6 +19,7 @@ const { generateAthleteBadge } = require('../services/athleteBadge');
 const { sendAthleteApprovalEmail, sendAthleteRegistrationEmail } = require('../services/passwordResetEmail');
 const { raceAliases, releaseRaceRegistration, releaseRaceRegistrationReservation, reserveRaceRegistration } = require('../services/raceRegistration');
 const { createPrivacyConsent } = require('../utils/privacyConsent');
+const { isRegistrationOpen } = require('../services/registrationWindow');
 
 const serializeAthlete = async (athlete) => {
   const payload = athlete.toObject();
@@ -93,11 +94,13 @@ const createAthlete = async (req, res, next) => {
     if (!selfRegistration && req.user.type !== 'entity' && !isAdminEditor(req.user)) {
       return res.status(403).json({ success: false, message: 'Acesso restrito ao órgão ou ao administrador.' });
     }
-    if (selfRegistration) {
-      const controls = await RegistrationControls.findById('global').lean();
-      if (controls?.selfAthleteRegistrationOpen === false) {
-        return res.status(403).json({ success: false, message: 'O cadastro direto de atletas está temporariamente fechado pelo administrador.' });
-      }
+    const controls = await RegistrationControls.findById('global').lean();
+    const registrationField = selfRegistration ? 'selfAthleteRegistrationOpen' : 'athleteRegistrationOpen';
+    if (!isRegistrationOpen(controls, registrationField)) {
+      const message = selfRegistration
+        ? 'O cadastro direto de atletas está temporariamente fechado.'
+        : 'O cadastro de atletas está temporariamente fechado.';
+      return res.status(403).json({ success: false, message });
     }
 
     const { entityId, cpf, fullName, birthDate, phone, email, gender, naipe, modality, modalities, modalityRegistrations, photoUrl, proofUrl, affiliationProofUrl, medicalCertificateUrl, fitnessDeclarationConfirmed, isPcd, isExternalServant, linkedEntityName, hasAllergy, allergyDetails, hasSpecialCondition, specialConditionDetails } = req.body;
@@ -152,13 +155,6 @@ const createAthlete = async (req, res, next) => {
     }
     if (modalityDefinitions.some((definition, index) => !definition.genders?.includes(requestedRegistrationEntries[index].naipe))) {
       return res.status(400).json({ success: false, message: 'O naipe selecionado não é permitido na modalidade correspondente.' });
-    }
-
-    if (req.user?.type === 'entity') {
-      const controls = await RegistrationControls.findById('global').lean();
-      if (controls?.athleteRegistrationOpen === false) {
-        return res.status(403).json({ success: false, message: 'O cadastro de atletas está temporariamente fechado.' });
-      }
     }
 
     if (selfRegistration || req.user?.type === 'entity') {
@@ -371,6 +367,11 @@ router.put('/:id', auth, async (req, res, next) => {
   try {
     if (!isAdminEditor(req.user) && req.user.type !== 'entity') {
       return res.status(403).json({ success: false, message: 'Acesso negado' });
+    }
+
+    const controls = await RegistrationControls.findById('global').lean();
+    if (!isRegistrationOpen(controls, 'athleteRegistrationOpen')) {
+      return res.status(403).json({ success: false, message: 'As inscrições e alterações de atletas estão encerradas.' });
     }
 
     const athlete = await Athlete.findOne({
@@ -589,6 +590,11 @@ router.post('/:id/registrations', auth, async (req, res, next) => {
   try {
     if (req.user.type !== 'entity') {
       return res.status(403).json({ success: false, message: 'Acesso restrito ao órgão.' });
+    }
+
+    const controls = await RegistrationControls.findById('global').lean();
+    if (!isRegistrationOpen(controls, 'athleteRegistrationOpen')) {
+      return res.status(403).json({ success: false, message: 'As inscrições de atletas estão encerradas.' });
     }
 
     const { modality, gender } = req.body;

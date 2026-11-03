@@ -15,6 +15,7 @@ const Modality = require('../models/Modality');
 const EntityModalityRule = require('../models/EntityModalityRule');
 const { validateUploadedAsset } = require('../utils/uploadValidation');
 const { raceAliases, releaseRaceRegistration, reserveRaceRegistration } = require('../services/raceRegistration');
+const { applyRegistrationDeadline } = require('../services/registrationWindow');
 
 const router = express.Router();
 const badgeLookupLimiter = rateLimit({
@@ -64,12 +65,13 @@ router.get('/registration-status', async (req, res, next) => {
   try {
     const controls = await RegistrationControls.findById('global').lean();
     const raceRegistrationCount = await getRaceRegistrationCount(controls);
+    const registrationControls = applyRegistrationDeadline(controls);
     res.json({
       success: true,
-      entityRegistrationOpen: controls?.entityRegistrationOpen !== false,
-      athleteRegistrationOpen: controls?.athleteRegistrationOpen !== false,
-      selfAthleteRegistrationOpen: controls?.selfAthleteRegistrationOpen !== false,
-      raceRegistrationOpen: raceRegistrationCount < raceRegistrationLimit,
+      entityRegistrationOpen: registrationControls.entityRegistrationOpen,
+      athleteRegistrationOpen: registrationControls.athleteRegistrationOpen,
+      selfAthleteRegistrationOpen: registrationControls.selfAthleteRegistrationOpen,
+      raceRegistrationOpen: registrationControls.athleteRegistrationOpen && raceRegistrationCount < raceRegistrationLimit,
       raceRegistrationCount,
       raceRegistrationLimit,
     });
