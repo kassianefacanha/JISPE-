@@ -5,6 +5,11 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   FormControl,
   FormControlLabel,
   InputLabel,
@@ -50,6 +55,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
   const [loadingControls, setLoadingControls] = useState(true);
   const [loadingRules, setLoadingRules] = useState(false);
   const [savingRules, setSavingRules] = useState(false);
+  const [confirmingBulkSave, setConfirmingBulkSave] = useState(false);
   const [error, setError] = useState('');
 
   const approvedEntities = useMemo(
@@ -126,39 +132,53 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
   };
 
   const saveRules = async () => {
+    if (selectedEntityId === allEntitiesId) {
+      setConfirmingBulkSave(true);
+      return;
+    }
+
     setSavingRules(true);
     try {
-      if (selectedEntityId === allEntitiesId) {
-        const changedRules = rules
-          .filter((rule) => dirtyLimits.has(rule.modalitySlug))
-          .map((rule) => ({
-            modalitySlug: rule.modalitySlug,
-            maxAthletes: rule.pendingMaxAthletes === '' ? null : Number(rule.pendingMaxAthletes),
-          }));
-        await api.put('/admin/entities/all/modality-rules', { rules: changedRules });
-        setRules((current) => current.map((rule) => {
-          if (!dirtyLimits.has(rule.modalitySlug)) return rule;
-          return {
-            ...rule,
-            maxAthletes: rule.pendingMaxAthletes === '' ? null : Number(rule.pendingMaxAthletes),
-            hasMixedMaxAthletes: false,
-            pendingMaxAthletes: undefined,
-          };
-        }));
-        setDirtyLimits(new Set());
-        notify(`Limites aplicados aos ${approvedEntities.length} órgãos aprovados.`, 'success');
-      } else {
-        await api.put(`/admin/entities/${selectedEntityId}/modality-rules`, {
-          rules: rules.map((rule) => ({
-            modalitySlug: rule.modalitySlug,
-            enabled: rule.enabled,
-            maxAthletes: rule.maxAthletes === '' || rule.maxAthletes == null ? null : Number(rule.maxAthletes),
-          })),
-        });
-        notify('Regras por modalidade salvas.', 'success');
-      }
+      await api.put(`/admin/entities/${selectedEntityId}/modality-rules`, {
+        rules: rules.map((rule) => ({
+          modalitySlug: rule.modalitySlug,
+          enabled: rule.enabled,
+          maxAthletes: rule.maxAthletes === '' || rule.maxAthletes == null ? null : Number(rule.maxAthletes),
+        })),
+      });
+      notify('Regras por modalidade salvas.', 'success');
     } catch (saveError) {
       notify(getApiErrorMessage(saveError, 'Não foi possível salvar as regras por modalidade.'));
+    } finally {
+      setSavingRules(false);
+    }
+  };
+
+  const applyBulkLimits = async () => {
+    const changedRules = rules
+      .filter((rule) => dirtyLimits.has(rule.modalitySlug))
+      .map((rule) => ({
+        modalitySlug: rule.modalitySlug,
+        maxAthletes: rule.pendingMaxAthletes === '' ? null : Number(rule.pendingMaxAthletes),
+      }));
+
+    setSavingRules(true);
+    try {
+      await api.put('/admin/entities/all/modality-rules', { rules: changedRules });
+      setRules((current) => current.map((rule) => {
+        if (!dirtyLimits.has(rule.modalitySlug)) return rule;
+        return {
+          ...rule,
+          maxAthletes: rule.pendingMaxAthletes === '' ? null : Number(rule.pendingMaxAthletes),
+          hasMixedMaxAthletes: false,
+          pendingMaxAthletes: undefined,
+        };
+      }));
+      setDirtyLimits(new Set());
+      setConfirmingBulkSave(false);
+      notify(`Limites aplicados aos ${approvedEntities.length} órgãos aprovados.`, 'success');
+    } catch (saveError) {
+      notify(getApiErrorMessage(saveError, 'Não foi possível aplicar os limites a todos os órgãos.'));
     } finally {
       setSavingRules(false);
     }
@@ -315,6 +335,24 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
           </Button>
         </Stack>
       )}
+      <Dialog
+        open={confirmingBulkSave}
+        onClose={() => !savingRules && setConfirmingBulkSave(false)}
+        aria-labelledby="confirm-bulk-limits-title"
+      >
+        <DialogTitle id="confirm-bulk-limits-title">Aplicar limites a todos os órgãos?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Os limites informados para {dirtyLimits.size} modalidade(s) serão aplicados aos {approvedEntities.length} órgãos aprovados. Os bloqueios de cadastro por modalidade não serão alterados.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmingBulkSave(false)} disabled={savingRules}>Cancelar</Button>
+          <Button onClick={applyBulkLimits} variant="contained" startIcon={<SaveOutlinedIcon />} disabled={savingRules}>
+            {savingRules ? 'Aplicando...' : 'Confirmar aplicação'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }

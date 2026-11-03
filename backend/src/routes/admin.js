@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const { auth } = require('../middlewares/auth');
 const { adminEditorOnly, adminViewerOnly } = require('../middlewares/adminPermissions');
@@ -167,7 +168,14 @@ router.put('/entities/:entityId/modality-rules', auth, adminEditorOnly, async (r
           upsert: true,
         },
       })));
-      await EntityModalityRule.bulkWrite(operations);
+      const session = await mongoose.startSession();
+      try {
+        await session.withTransaction(async () => {
+          await EntityModalityRule.bulkWrite(operations, { session });
+        });
+      } finally {
+        await session.endSession();
+      }
       return res.json({ success: true, message: `Limites atualizados para ${entities.length} órgãos.` });
     }
 
