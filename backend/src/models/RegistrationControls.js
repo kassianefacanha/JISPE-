@@ -6,6 +6,7 @@ const registrationControlsSchema = new mongoose.Schema(
     entityRegistrationOpen: { type: Boolean, default: true },
     athleteRegistrationOpen: { type: Boolean, default: true },
     selfAthleteRegistrationOpen: { type: Boolean, default: true },
+    raceRegistrationLimit: { type: Number, min: 1, default: 1500 },
     raceRegistrationCount: { type: Number, min: 0, default: undefined },
   },
   { timestamps: true }

@@ -51,6 +51,10 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
   const [controls, setControls] = useState(defaultControls);
   const [selectedEntityId, setSelectedEntityId] = useState('');
   const [rules, setRules] = useState([]);
+  const [raceRegistrationLimit, setRaceRegistrationLimit] = useState(1500);
+  const [raceRegistrationCount, setRaceRegistrationCount] = useState(0);
+  const [pendingRaceRegistrationLimit, setPendingRaceRegistrationLimit] = useState('');
+  const [raceLimitDirty, setRaceLimitDirty] = useState(false);
   const [dirtyLimits, setDirtyLimits] = useState(() => new Set());
   const [loadingControls, setLoadingControls] = useState(true);
   const [loadingRules, setLoadingRules] = useState(false);
@@ -62,6 +66,38 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
     () => entities.filter((entity) => entity.status === 'approved'),
     [entities]
   );
+
+  const raceLimitWarning = useMemo(() => {
+    if (selectedEntityId !== allEntitiesId) return '';
+    const effectiveRaceLimit = raceLimitDirty && pendingRaceRegistrationLimit !== ''
+      ? Number(pendingRaceRegistrationLimit)
+      : raceRegistrationLimit;
+    const warningMessages = [];
+    if (raceLimitDirty && Number.isInteger(effectiveRaceLimit) && effectiveRaceLimit < raceRegistrationCount) {
+      warningMessages.push(`O novo teto ficará abaixo dos ${raceRegistrationCount.toLocaleString('pt-BR')} participantes já inscritos. Nenhum novo atleta poderá ser reservado até que o total fique abaixo do teto.`);
+    }
+    if (!dirtyLimits.has('corrida-5km')) return warningMessages.join(' ');
+    const raceRule = rules.find((rule) => rule.modalitySlug === 'corrida-5km');
+    if (!raceRule) return warningMessages.join(' ');
+
+    const perEntityLimit = raceRule.pendingMaxAthletes === ''
+      ? null
+      : Number(raceRule.pendingMaxAthletes);
+    const projectedCapacity = perEntityLimit === null
+      ? Number.POSITIVE_INFINITY
+      : perEntityLimit * approvedEntities.length;
+    if (projectedCapacity <= effectiveRaceLimit) return warningMessages.join(' ');
+    if (perEntityLimit === null) {
+      warningMessages.push(`A corrida ficará sem limite individual por órgão. O teto geral de ${effectiveRaceLimit.toLocaleString('pt-BR')} participantes continuará valendo.`);
+      return warningMessages.join(' ');
+    }
+
+    warningMessages.push(`Esse limite permite uma capacidade teórica de ${projectedCapacity.toLocaleString('pt-BR')} inscrições (${perEntityLimit.toLocaleString('pt-BR')} por órgão × ${approvedEntities.length} órgãos), acima do teto geral de ${effectiveRaceLimit.toLocaleString('pt-BR')}. O sistema ainda bloqueará novas inscrições ao atingir o teto global.`);
+    return warningMessages.join(' ');
+  }, [approvedEntities.length, dirtyLimits, raceLimitDirty, raceRegistrationCount, raceRegistrationLimit, pendingRaceRegistrationLimit, rules, selectedEntityId]);
+
+  const invalidRaceLimit = raceLimitDirty
+    && (!Number.isInteger(Number(pendingRaceRegistrationLimit)) || Number(pendingRaceRegistrationLimit) < 1);
 
   useEffect(() => {
     let mounted = true;
@@ -94,10 +130,18 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
     setLoadingRules(true);
     setRules([]);
     setDirtyLimits(new Set());
+    setRaceLimitDirty(false);
+    setPendingRaceRegistrationLimit('');
     setError('');
     api.get(`/admin/entities/${selectedEntityId}/modality-rules`)
-      .then((response) => {
-        if (mounted) setRules(response.data.rules || []);
+      .then(({ data }) => {
+        if (mounted) {
+          setRules(data.rules || []);
+          if (selectedEntityId === allEntitiesId && Number.isFinite(data.raceRegistrationLimit)) {
+            setRaceRegistrationLimit(data.raceRegistrationLimit);
+            setRaceRegistrationCount(data.raceRegistrationCount || 0);
+          }
+        }
       })
       .catch((loadError) => {
         if (mounted) setError(getApiErrorMessage(loadError, 'Não foi possível carregar as modalidades do órgão.'));
@@ -155,6 +199,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
   };
 
   const applyBulkLimits = async () => {
+    if (invalidRaceLimit) return;
     const changedRules = rules
       .filter((rule) => dirtyLimits.has(rule.modalitySlug))
       .map((rule) => ({
@@ -164,7 +209,10 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
 
     setSavingRules(true);
     try {
-      await api.put('/admin/entities/all/modality-rules', { rules: changedRules });
+      const payload = {};
+      if (changedRules.length) payload.rules = changedRules;
+      if (raceLimitDirty) payload.raceRegistrationLimit = Number(pendingRaceRegistrationLimit);
+      await api.put('/admin/entities/all/modality-rules', payload);
       setRules((current) => current.map((rule) => {
         if (!dirtyLimits.has(rule.modalitySlug)) return rule;
         return {
@@ -174,6 +222,11 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
           pendingMaxAthletes: undefined,
         };
       }));
+      if (raceLimitDirty) {
+        setRaceRegistrationLimit(Number(pendingRaceRegistrationLimit));
+        setPendingRaceRegistrationLimit('');
+        setRaceLimitDirty(false);
+      }
       setDirtyLimits(new Set());
       setConfirmingBulkSave(false);
       notify(`Limites aplicados aos ${approvedEntities.length} órgãos aprovados.`, 'success');
@@ -232,6 +285,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
           Os novos limites serão aplicados a todos os {approvedEntities.length} órgãos aprovados. Modalidades sem alteração serão preservadas.
         </Alert>
       )}
+      {raceLimitWarning && <Alert severity="warning">{raceLimitWarning}</Alert>}
 
       {!approvedEntities.length ? (
         <Alert severity="info">Não há órgãos aprovados para configurar.</Alert>
@@ -243,8 +297,10 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
                 <TableRow>
                   <TableCell>Modalidade</TableCell>
                   <TableCell>Categorias</TableCell>
+                  <TableCell align="center">Inscritos</TableCell>
                   <TableCell align="center">Limite atual</TableCell>
                   <TableCell align="center">Novo limite por órgão</TableCell>
+                  <TableCell align="center">Teto geral da corrida</TableCell>
                 </TableRow>
               ) : (
                 <TableRow>
@@ -260,7 +316,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
             <TableBody>
               {loadingRules && (
                 <TableRow>
-                  <TableCell colSpan={selectedEntityId === allEntitiesId ? 4 : 6} align="center">
+                  <TableCell colSpan={selectedEntityId === allEntitiesId ? 6 : 6} align="center">
                     <Stack direction="row" spacing={1} alignItems="center" justifyContent="center" sx={{ py: 1 }}>
                       <CircularProgress size={20} />
                       <Typography variant="body2" color="text.secondary" role="status" aria-live="polite">
@@ -279,6 +335,9 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
                     {selectedEntityId === allEntitiesId ? (
                       <>
                         <TableCell align="center">
+                          {rule.registeredCount.toLocaleString('pt-BR')}
+                        </TableCell>
+                        <TableCell align="center">
                           {rule.hasMixedMaxAthletes
                             ? 'Varia entre os órgãos'
                             : rule.maxAthletes == null ? 'Sem limite' : rule.maxAthletes}
@@ -294,6 +353,27 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
                             placeholder="Não alterar"
                             sx={{ width: 150 }}
                           />
+                        </TableCell>
+                        <TableCell align="center">
+                          {rule.modalitySlug === 'corrida-5km' ? (
+                            <Stack spacing={0.75} alignItems="center">
+                              <Typography variant="body2">{raceRegistrationCount.toLocaleString('pt-BR')} / {raceRegistrationLimit.toLocaleString('pt-BR')}</Typography>
+                              <TextField
+                                type="number"
+                                size="small"
+                                disabled={readOnly}
+                                value={pendingRaceRegistrationLimit}
+                                onChange={(event) => {
+                                  setPendingRaceRegistrationLimit(event.target.value);
+                                  setRaceLimitDirty(true);
+                                }}
+                                inputProps={{ min: 1, step: 1, required: true, 'aria-label': 'Novo teto geral de inscrições da corrida' }}
+                                placeholder="Manter teto"
+                                error={invalidRaceLimit}
+                                sx={{ width: 150 }}
+                              />
+                            </Stack>
+                          ) : '—'}
                         </TableCell>
                       </>
                     ) : (
@@ -322,7 +402,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
                   </TableRow>
                 );
               })}
-              {!rules.length && !loadingRules && !error && <TableRow><TableCell colSpan={selectedEntityId === allEntitiesId ? 4 : 6} align="center">Nenhuma modalidade disponível.</TableCell></TableRow>}
+              {!rules.length && !loadingRules && !error && <TableRow><TableCell colSpan={6} align="center">Nenhuma modalidade disponível.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </TableContainer>
@@ -330,7 +410,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
 
       {!readOnly && (
         <Stack direction="row" justifyContent="flex-end">
-          <Button variant="contained" startIcon={<SaveOutlinedIcon />} onClick={saveRules} disabled={!selectedEntityId || loadingRules || savingRules || (selectedEntityId === allEntitiesId && !dirtyLimits.size)}>
+          <Button variant="contained" startIcon={<SaveOutlinedIcon />} onClick={saveRules} disabled={!selectedEntityId || loadingRules || savingRules || (selectedEntityId === allEntitiesId && !dirtyLimits.size && !raceLimitDirty) || (selectedEntityId === allEntitiesId && invalidRaceLimit)}>
             {savingRules ? 'Salvando...' : selectedEntityId === allEntitiesId ? 'Aplicar limites a todos' : 'Salvar limites'}
           </Button>
         </Stack>
@@ -343,12 +423,14 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
         <DialogTitle id="confirm-bulk-limits-title">Aplicar limites a todos os órgãos?</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Os limites informados para {dirtyLimits.size} modalidade(s) serão aplicados aos {approvedEntities.length} órgãos aprovados. Os bloqueios de cadastro por modalidade não serão alterados.
+            {dirtyLimits.size > 0 && <>Os limites informados para {dirtyLimits.size} modalidade(s) serão aplicados aos {approvedEntities.length} órgãos aprovados. Os bloqueios de cadastro por modalidade não serão alterados. </>}
+            {raceLimitDirty && <>O teto global da corrida será alterado para {Number(pendingRaceRegistrationLimit).toLocaleString('pt-BR')} participantes.</>}
           </DialogContentText>
+          {raceLimitWarning && <Alert severity="warning" sx={{ mt: 2 }}>{raceLimitWarning}</Alert>}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirmingBulkSave(false)} disabled={savingRules}>Cancelar</Button>
-          <Button onClick={applyBulkLimits} variant="contained" startIcon={<SaveOutlinedIcon />} disabled={savingRules}>
+          <Button onClick={applyBulkLimits} variant="contained" startIcon={<SaveOutlinedIcon />} disabled={savingRules || invalidRaceLimit}>
             {savingRules ? 'Aplicando...' : 'Confirmar aplicação'}
           </Button>
         </DialogActions>

@@ -3,7 +3,7 @@ const Registration = require('../models/Registration');
 const RegistrationControls = require('../models/RegistrationControls');
 const { defaultModalities } = require('../config/defaultModalities');
 
-const raceRegistrationLimit = 3000;
+const defaultRaceRegistrationLimit = 1500;
 const raceModality = defaultModalities.find((modality) => modality.slug === 'corrida-5km');
 const raceAliases = [raceModality.name, raceModality.slug, ...(raceModality.legacyNames || []), ...(raceModality.legacySlugs || [])];
 
@@ -46,6 +46,18 @@ const ensureCounter = async (currentControls = null) => {
 
 const getRaceRegistrationCount = async (controls) => ensureCounter(controls);
 
+const getRaceRegistrationLimit = async (currentControls = null) => {
+  const controls = currentControls || await RegistrationControls.findOneAndUpdate(
+    { _id: 'global' },
+    { $setOnInsert: { entityRegistrationOpen: true, athleteRegistrationOpen: true, selfAthleteRegistrationOpen: true } },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  ).lean();
+  const configuredLimit = Number(controls?.raceRegistrationLimit);
+  return Number.isInteger(configuredLimit) && configuredLimit > 0
+    ? configuredLimit
+    : defaultRaceRegistrationLimit;
+};
+
 const reserveRaceRegistration = async (athleteId) => {
   const existingAthlete = await Athlete.findById(athleteId).select('modality modalities approvalStatus').lean();
   if (existingAthlete
@@ -58,6 +70,7 @@ const reserveRaceRegistration = async (athleteId) => {
   if (existingRegistration) return { reserved: false, alreadyCounted: true };
 
   await ensureCounter();
+  const raceRegistrationLimit = await getRaceRegistrationLimit();
   const reservation = await RegistrationControls.findOneAndUpdate(
     { _id: 'global', raceRegistrationCount: { $lt: raceRegistrationLimit } },
     { $inc: { raceRegistrationCount: 1 } },
@@ -95,8 +108,9 @@ const releaseRaceRegistration = async (athleteId) => {
 
 module.exports = {
   getRaceRegistrationCount,
+  getRaceRegistrationLimit,
   raceAliases,
-  raceRegistrationLimit,
+  defaultRaceRegistrationLimit,
   releaseRaceRegistrationReservation,
   releaseRaceRegistration,
   reserveRaceRegistration,

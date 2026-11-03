@@ -6,12 +6,14 @@ const { adminEditorOnly, adminViewerOnly } = require('../middlewares/adminPermis
 const Admin = require('../models/Admin');
 const Entity = require('../models/Entity');
 const Athlete = require('../models/Athlete');
+const Registration = require('../models/Registration');
 const Modality = require('../models/Modality');
 const RegistrationControls = require('../models/RegistrationControls');
 const EntityModalityRule = require('../models/EntityModalityRule');
 const PasswordChangeRequest = require('../models/PasswordChangeRequest');
 const { getModalityCatalog } = require('../config/defaultModalities');
 const { applyRegistrationDeadline } = require('../services/registrationWindow');
+const { getRaceRegistrationCount, getRaceRegistrationLimit } = require('../services/raceRegistration');
 
 const router = express.Router();
 
@@ -69,13 +71,36 @@ router.get('/entities/:entityId/modality-rules', auth, adminViewerOnly, async (r
       if (!entities.length) return res.status(404).json({ success: false, message: 'Nenhum órgão aprovado encontrado.' });
 
       const entityIds = entities.map((entity) => entity._id);
+      const controls = await getRegistrationControls();
+      const [raceRegistrationLimit, raceRegistrationCount] = await Promise.all([
+        getRaceRegistrationLimit(controls),
+        getRaceRegistrationCount(controls),
+      ]);
       const [storedModalities, savedRules] = await Promise.all([
         Modality.find({ active: true }).lean(),
         EntityModalityRule.find({ entityId: { $in: entityIds } }).lean(),
       ]);
       const rulesByEntityAndSlug = new Map(savedRules.map((rule) => [`${rule.entityId}:${rule.modalitySlug}`, rule]));
       const modalities = getModalityCatalog(storedModalities);
-      const rules = modalities.map((modality) => {
+      const registeredCounts = await Promise.all(modalities.map(async (modality) => {
+        const aliases = [modality.name, modality.slug, ...(modality.legacyNames || []), ...(modality.legacySlugs || [])];
+        const [athleteIds, registrationIds] = await Promise.all([
+          Athlete.distinct('_id', {
+            entityId: { $in: entityIds },
+            $or: [
+              { modality: { $in: aliases } },
+              { modalities: { $in: aliases } },
+              { 'modalityRegistrations.modality': { $in: aliases } },
+            ],
+          }),
+          Registration.distinct('athleteId', {
+            entityId: { $in: entityIds },
+            modality: { $in: aliases },
+          }),
+        ]);
+        return new Set([...athleteIds, ...registrationIds].map(String)).size;
+      }));
+      const rules = modalities.map((modality, index) => {
         const officialLimit = modality.maxTeamsPerEntity && modality.maxAthletesPerTeam
           ? modality.maxTeamsPerEntity * modality.maxAthletesPerTeam
           : null;
@@ -89,12 +114,13 @@ router.get('/entities/:entityId/modality-rules', auth, adminViewerOnly, async (r
           modalitySlug: modality.slug,
           modalityName: modality.name,
           categories: modality.categories || [],
+          registeredCount: registeredCounts[index],
           maxAthletes: distinctLimits.size === 1 ? limits[0] : null,
           hasMixedMaxAthletes: distinctLimits.size > 1,
         };
       });
 
-      return res.json({ success: true, entityCount: entities.length, rules });
+      return res.json({ success: true, entityCount: entities.length, raceRegistrationLimit, raceRegistrationCount, rules });
     }
 
     const entity = await Entity.findById(req.params.entityId).select('name status');
@@ -137,8 +163,18 @@ router.put('/entities/:entityId/modality-rules', auth, adminEditorOnly, async (r
     if (req.params.entityId === 'all') {
       const entities = await Entity.find({ status: 'approved' }).select('_id').lean();
       if (!entities.length) return res.status(404).json({ success: false, message: 'Nenhum órgão aprovado encontrado.' });
-      if (!Array.isArray(req.body.rules) || !req.body.rules.length) {
-        return res.status(400).json({ success: false, message: 'Informe ao menos um novo limite por modalidade.' });
+      const hasRaceLimitUpdate = Object.prototype.hasOwnProperty.call(req.body, 'raceRegistrationLimit');
+      if (req.body.rules !== undefined && !Array.isArray(req.body.rules)) {
+        return res.status(400).json({ success: false, message: 'A lista de regras por modalidade é inválida.' });
+      }
+      const hasRulesUpdate = Array.isArray(req.body.rules) && req.body.rules.length > 0;
+      if (!hasRulesUpdate && !hasRaceLimitUpdate) {
+        return res.status(400).json({ success: false, message: 'Informe limites de modalidade ou o teto geral da corrida.' });
+      }
+
+      const raceRegistrationLimit = hasRaceLimitUpdate ? Number(req.body.raceRegistrationLimit) : null;
+      if (hasRaceLimitUpdate && (!Number.isInteger(raceRegistrationLimit) || raceRegistrationLimit < 1)) {
+        return res.status(400).json({ success: false, message: 'O teto da corrida precisa ser um inteiro maior que zero.' });
       }
 
       const storedModalities = await Modality.find({ active: true }).lean();
@@ -146,7 +182,7 @@ router.put('/entities/:entityId/modality-rules', auth, adminEditorOnly, async (r
       const catalogBySlug = new Map(catalog.map((modality) => [modality.slug, modality]));
       const bulkRules = [];
 
-      for (const rule of req.body.rules) {
+      for (const rule of req.body.rules || []) {
         const modality = catalogBySlug.get(rule.modalitySlug);
         if (!modality) {
           return res.status(400).json({ success: false, message: 'Há uma regra de modalidade inválida.' });
@@ -171,12 +207,19 @@ router.put('/entities/:entityId/modality-rules', auth, adminEditorOnly, async (r
       const session = await mongoose.startSession();
       try {
         await session.withTransaction(async () => {
-          await EntityModalityRule.bulkWrite(operations, { session });
+          if (operations.length) await EntityModalityRule.bulkWrite(operations, { session });
+          if (hasRaceLimitUpdate) {
+            await RegistrationControls.updateOne(
+              { _id: 'global' },
+              { $set: { raceRegistrationLimit } },
+              { upsert: true, session, setDefaultsOnInsert: true }
+            );
+          }
         });
       } finally {
         await session.endSession();
       }
-      return res.json({ success: true, message: `Limites atualizados para ${entities.length} órgãos.` });
+      return res.json({ success: true, message: 'Limites e teto global atualizados.' });
     }
 
     const entity = await Entity.findById(req.params.entityId).select('_id');

@@ -293,7 +293,7 @@ export default function AdminAthleteCreatePage() {
               {error && (
                 <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
               )}
-              {!raceRegistrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>As inscrições para a corrida foram encerradas: limite de 3.000 corredores atingido.</Alert>}
+              {!raceRegistrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>As inscrições para a corrida foram encerradas: limite de 1.500 corredores atingido.</Alert>}
               <PrivacyNotice
                 checked={form.privacyConsentConfirmed}
                 onChange={(privacyConsentConfirmed) => setForm((current) => ({ ...current, privacyConsentConfirmed }))}

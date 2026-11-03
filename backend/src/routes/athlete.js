@@ -251,7 +251,7 @@ const createAthlete = async (req, res, next) => {
     if (hasRaceModality && !selfRegistration) {
       const reservation = await reserveRaceRegistration(athlete._id);
       if (reservation.full) {
-        return res.status(409).json({ success: false, message: 'As inscrições para a corrida foram encerradas: limite de 3.000 corredores atingido.' });
+        return res.status(409).json({ success: false, message: 'As inscrições para a corrida foram encerradas: limite de 1.500 corredores atingido.' });
       }
       raceReserved = reservation.reserved;
     }
@@ -301,7 +301,7 @@ router.patch('/:id/approve', auth, async (req, res, next) => {
     if (hasRaceModality) {
       const reservation = await reserveRaceRegistration(athlete._id);
       if (reservation.full) {
-        return res.status(409).json({ success: false, message: 'As inscrições para a corrida foram encerradas: limite de 3.000 corredores atingido.' });
+        return res.status(409).json({ success: false, message: 'As inscrições para a corrida foram encerradas: limite de 1.500 corredores atingido.' });
       }
       raceReserved = reservation.reserved;
     }
@@ -497,7 +497,7 @@ router.put('/:id', auth, async (req, res, next) => {
     if (isAthleteApproved(athlete) && hasRaceModality && !hadRaceModality) {
       const reservation = await reserveRaceRegistration(athlete._id);
       if (reservation.full) {
-        return res.status(409).json({ success: false, message: 'As inscrições para a corrida foram encerradas: limite de 3.000 corredores atingido.' });
+        return res.status(409).json({ success: false, message: 'As inscrições para a corrida foram encerradas: limite de 1.500 corredores atingido.' });
       }
       raceReserved = reservation.reserved;
     }
@@ -629,7 +629,7 @@ router.post('/:id/registrations', auth, async (req, res, next) => {
     if (isRaceRegistration) {
       const reservation = await reserveRaceRegistration(athlete._id);
       if (reservation.full) {
-        return res.status(409).json({ success: false, message: 'As inscrições para a corrida foram encerradas: limite de 3.000 corredores atingido.' });
+        return res.status(409).json({ success: false, message: 'As inscrições para a corrida foram encerradas: limite de 1.500 corredores atingido.' });
       }
       raceReserved = reservation.reserved;
     }

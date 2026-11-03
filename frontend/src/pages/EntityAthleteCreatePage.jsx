@@ -277,7 +277,7 @@ export default function EntityAthleteCreatePage({ selfRegistration = false }) {
             <Box component="form" onSubmit={handleSubmit} noValidate>
               {!athleteRegistrationOpen && !selfRegistration && !isEditing && <Alert severity="warning" sx={{ mb: 2 }}>O cadastro de atletas pelos órgãos está temporariamente fechado pelo administrador.</Alert>}
               {selfRegistration && !selfAthleteRegistrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>O cadastro direto de atletas está temporariamente fechado pelo administrador. Tente novamente quando as inscrições forem liberadas.</Alert>}
-              {!raceRegistrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>As inscrições para a corrida foram encerradas: limite de 3.000 corredores atingido.</Alert>}
+              {!raceRegistrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>As inscrições para a corrida foram encerradas: limite de 1.500 corredores atingido.</Alert>}
               {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
               {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
               {selfRegistration && (

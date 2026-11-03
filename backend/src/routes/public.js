@@ -3,7 +3,7 @@ const rateLimit = require('express-rate-limit');
 const Athlete = require('../models/Athlete');
 const Entity = require('../models/Entity');
 const RegistrationControls = require('../models/RegistrationControls');
-const { getRaceRegistrationCount, raceRegistrationLimit } = require('../services/raceRegistration');
+const { getRaceRegistrationCount, getRaceRegistrationLimit } = require('../services/raceRegistration');
 const { generateMatricula } = require('../utils/matriculaGenerator');
 const { isValidCPF } = require('../utils/cpfValidator');
 const { isAthleteApproved } = require('../services/athleteApproval');
@@ -65,6 +65,7 @@ router.get('/registration-status', async (req, res, next) => {
   try {
     const controls = await RegistrationControls.findById('global').lean();
     const raceRegistrationCount = await getRaceRegistrationCount(controls);
+    const raceRegistrationLimit = await getRaceRegistrationLimit(controls);
     const registrationControls = applyRegistrationDeadline(controls);
     res.json({
       success: true,
@@ -216,7 +217,7 @@ router.post('/registration-status/update', registrationLookupLimiter, async (req
     if (isAthleteApproved(athlete) && hasRace && !previousHadRace) {
       const reservation = await reserveRaceRegistration(athlete._id);
       if (reservation.full) {
-        return res.status(409).json({ success: false, message: 'As inscrições para a corrida foram encerradas: limite de 3.000 corredores atingido.' });
+        return res.status(409).json({ success: false, message: 'As inscrições para a corrida foram encerradas: limite de 1.500 corredores atingido.' });
       }
       raceReserved = reservation.reserved;
     }
