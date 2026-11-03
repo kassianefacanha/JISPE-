@@ -20,6 +20,7 @@ const { sendAthleteApprovalEmail, sendAthleteRegistrationEmail } = require('../s
 const { raceAliases, releaseRaceRegistration, releaseRaceRegistrationReservation, reserveRaceRegistration } = require('../services/raceRegistration');
 const { createPrivacyConsent } = require('../utils/privacyConsent');
 const { isRegistrationOpen } = require('../services/registrationWindow');
+const { releaseGlobalModalityRegistration, reserveGlobalModalityRegistration } = require('../services/globalModalityRegistration');
 
 const serializeAthlete = async (athlete) => {
   const payload = athlete.toObject();
@@ -43,6 +44,21 @@ const getModalityDefinition = async (modalityName) => {
 
   return Modality.findOne({ $or: [{ name: modalityName }, { slug: modalityName }] }).select('name slug genders categories');
 };
+
+const getAthleteModalityDefinitions = async (athlete) => {
+  const identifiers = new Set([
+    athlete.modality,
+    ...(athlete.modalities || []),
+    ...(athlete.modalityRegistrations || []).map((entry) => entry.modality),
+  ].filter(Boolean));
+  const definitions = await Promise.all([...identifiers].map(getModalityDefinition));
+  return [...new Map(definitions.filter(Boolean).map((definition) => [definition.slug, definition])).values()];
+};
+
+const sameModality = (left, right) => left.slug === right.slug
+  || [left.name, left.slug, ...(left.legacyNames || []), ...(left.legacySlugs || [])]
+    .some((alias) => [right.name, right.slug, ...(right.legacyNames || []), ...(right.legacySlugs || [])]
+      .some((otherAlias) => String(alias).trim().toLowerCase() === String(otherAlias).trim().toLowerCase()));
 
 const hasConflictingBinaryNaipe = (entries) => {
   const naipes = new Set(entries.map((entry) => typeof entry === 'string' ? entry : entry?.naipe));
@@ -247,11 +263,36 @@ const createAthlete = async (req, res, next) => {
       specialConditionDetails: hasSpecialCondition ? specialConditionDetails || '' : '',
     });
     const hasRaceModality = modalityNames.some((name) => raceAliases.includes(name));
+    const globalModalityReservations = [];
     let raceReserved = false;
+    try {
+      for (const modalityDefinition of new Map(modalityDefinitions.map((definition) => [definition.slug, definition])).values()) {
+        if (modalityDefinition.slug === 'corrida-5km') continue;
+        const reservation = await reserveGlobalModalityRegistration(athlete._id, modalityDefinition);
+        if (reservation.full) {
+          await Promise.all(globalModalityReservations.map((reservedModality) => releaseGlobalModalityRegistration(athlete._id, reservedModality)));
+          return res.status(409).json({
+            success: false,
+            message: `O teto global de ${reservation.limit} inscrições para ${modalityDefinition.name} foi atingido.`,
+          });
+        }
+        if (reservation.reserved) globalModalityReservations.push(modalityDefinition);
+      }
+    } catch (error) {
+      await Promise.all(globalModalityReservations.map((modalityDefinition) => releaseGlobalModalityRegistration(athlete._id, modalityDefinition)));
+      throw error;
+    }
     if (hasRaceModality && !selfRegistration) {
-      const reservation = await reserveRaceRegistration(athlete._id);
+      let reservation;
+      try {
+        reservation = await reserveRaceRegistration(athlete._id);
+      } catch (error) {
+        await Promise.all(globalModalityReservations.map((modalityDefinition) => releaseGlobalModalityRegistration(athlete._id, modalityDefinition)));
+        throw error;
+      }
       if (reservation.full) {
-        return res.status(409).json({ success: false, message: 'As inscrições para a corrida foram encerradas: limite de 1.500 corredores atingido.' });
+        await Promise.all(globalModalityReservations.map((modalityDefinition) => releaseGlobalModalityRegistration(athlete._id, modalityDefinition)));
+        return res.status(409).json({ success: false, message: `As inscrições para a corrida foram encerradas: limite de ${reservation.limit.toLocaleString('pt-BR')} corredores atingido.` });
       }
       raceReserved = reservation.reserved;
     }
@@ -264,6 +305,7 @@ const createAthlete = async (req, res, next) => {
       await athlete.save();
     } catch (error) {
       if (raceReserved) await releaseRaceRegistration(athlete._id);
+      await Promise.all(globalModalityReservations.map((modalityDefinition) => releaseGlobalModalityRegistration(athlete._id, modalityDefinition)));
       throw error;
     }
 
@@ -301,7 +343,7 @@ router.patch('/:id/approve', auth, async (req, res, next) => {
     if (hasRaceModality) {
       const reservation = await reserveRaceRegistration(athlete._id);
       if (reservation.full) {
-        return res.status(409).json({ success: false, message: 'As inscrições para a corrida foram encerradas: limite de 1.500 corredores atingido.' });
+        return res.status(409).json({ success: false, message: `As inscrições para a corrida foram encerradas: limite de ${reservation.limit.toLocaleString('pt-BR')} corredores atingido.` });
       }
       raceReserved = reservation.reserved;
     }
@@ -412,6 +454,13 @@ router.put('/:id', auth, async (req, res, next) => {
     const resolvedModalityDefinitions = modalityDefinitions.filter(Boolean);
     const resolvedModalities = resolvedModalityDefinitions.map((definition) => definition.name);
     const resolvedModality = resolvedModalities[0];
+    const previousModalityDefinitions = await getAthleteModalityDefinitions(athlete);
+    const addedModalityDefinitions = resolvedModalityDefinitions.filter((definition) => (
+      !previousModalityDefinitions.some((previous) => sameModality(previous, definition))
+    ));
+    const removedModalityDefinitions = previousModalityDefinitions.filter((previous) => (
+      !resolvedModalityDefinitions.some((definition) => sameModality(previous, definition))
+    ));
     const hadRaceModality = [athlete.modality, ...(athlete.modalities || [])].some((name) => raceAliases.includes(name));
     const hasRaceModality = resolvedModalities.some((name) => raceAliases.includes(name));
     const resolvedBirthDate = birthDate || athlete.birthDate;
@@ -493,11 +542,31 @@ router.put('/:id', auth, async (req, res, next) => {
       }
     }
 
+    const globalModalityReservations = [];
+    try {
+      for (const modalityDefinition of addedModalityDefinitions) {
+        if (modalityDefinition.slug === 'corrida-5km') continue;
+        const reservation = await reserveGlobalModalityRegistration(athlete._id, modalityDefinition);
+        if (reservation.full) {
+          await Promise.all(globalModalityReservations.map((reservedModality) => releaseGlobalModalityRegistration(athlete._id, reservedModality)));
+          return res.status(409).json({
+            success: false,
+            message: `O teto global de ${reservation.limit} inscrições para ${modalityDefinition.name} foi atingido.`,
+          });
+        }
+        if (reservation.reserved) globalModalityReservations.push(modalityDefinition);
+      }
+    } catch (error) {
+      await Promise.all(globalModalityReservations.map((modalityDefinition) => releaseGlobalModalityRegistration(athlete._id, modalityDefinition)));
+      throw error;
+    }
+
     let raceReserved = false;
     if (isAthleteApproved(athlete) && hasRaceModality && !hadRaceModality) {
       const reservation = await reserveRaceRegistration(athlete._id);
       if (reservation.full) {
-        return res.status(409).json({ success: false, message: 'As inscrições para a corrida foram encerradas: limite de 1.500 corredores atingido.' });
+        await Promise.all(globalModalityReservations.map((modalityDefinition) => releaseGlobalModalityRegistration(athlete._id, modalityDefinition)));
+        return res.status(409).json({ success: false, message: `As inscrições para a corrida foram encerradas: limite de ${reservation.limit.toLocaleString('pt-BR')} corredores atingido.` });
       }
       raceReserved = reservation.reserved;
     }
@@ -507,11 +576,13 @@ router.put('/:id', auth, async (req, res, next) => {
       updated = await Athlete.findByIdAndUpdate(req.params.id, payload, { new: true });
     } catch (error) {
       if (raceReserved) await releaseRaceRegistration(athlete._id);
+      await Promise.all(globalModalityReservations.map((modalityDefinition) => releaseGlobalModalityRegistration(athlete._id, modalityDefinition)));
       throw error;
     }
     if (isAthleteApproved(athlete) && hadRaceModality && !hasRaceModality) {
       await releaseRaceRegistration(athlete._id);
     }
+    await Promise.all(removedModalityDefinitions.map((modalityDefinition) => releaseGlobalModalityRegistration(athlete._id, modalityDefinition)));
     await Promise.all([
       deleteReplacedAsset(athlete.photoUrl, updated.photoUrl),
       deleteReplacedAsset(athlete.proofUrl, updated.proofUrl),
@@ -541,6 +612,8 @@ router.delete('/:id', auth, async (req, res, next) => {
       && (raceAliases.includes(athlete.modality) || athlete.modalities?.some((name) => raceAliases.includes(name)))) {
       await releaseRaceRegistration(athlete._id);
     }
+    const modalityDefinitions = await getAthleteModalityDefinitions(athlete);
+    await Promise.all(modalityDefinitions.map((modalityDefinition) => releaseGlobalModalityRegistration(athlete._id, modalityDefinition)));
 
     await Promise.all([
       deleteAsset(athlete.photoUrl),
@@ -624,12 +697,21 @@ router.post('/:id/registrations', auth, async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'O atleta não pode se inscrever nos naipes masculino e feminino ao mesmo tempo. O naipe misto pode ser combinado com qualquer um.' });
     }
 
+    const globalReservation = await reserveGlobalModalityRegistration(athlete._id, modalityDefinition);
+    if (globalReservation.full) {
+      return res.status(409).json({
+        success: false,
+        message: `O teto global de ${globalReservation.limit} inscrições para ${modalityDefinition.name} foi atingido.`,
+      });
+    }
+
     const isRaceRegistration = raceAliases.some((alias) => String(alias).toLowerCase() === String(modality).trim().toLowerCase());
     let raceReserved = false;
     if (isRaceRegistration) {
       const reservation = await reserveRaceRegistration(athlete._id);
       if (reservation.full) {
-        return res.status(409).json({ success: false, message: 'As inscrições para a corrida foram encerradas: limite de 1.500 corredores atingido.' });
+        if (globalReservation.reserved) await releaseGlobalModalityRegistration(athlete._id, modalityDefinition);
+        return res.status(409).json({ success: false, message: `As inscrições para a corrida foram encerradas: limite de ${reservation.limit.toLocaleString('pt-BR')} corredores atingido.` });
       }
       raceReserved = reservation.reserved;
     }
@@ -646,6 +728,7 @@ router.post('/:id/registrations', auth, async (req, res, next) => {
       });
     } catch (error) {
       if (raceReserved) await RegistrationControls.updateOne({ _id: 'global' }, { $inc: { raceRegistrationCount: -1 } });
+      if (globalReservation.reserved) await releaseGlobalModalityRegistration(athlete._id, modalityDefinition);
       throw error;
     }
 

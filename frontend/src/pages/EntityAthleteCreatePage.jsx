@@ -93,6 +93,7 @@ export default function EntityAthleteCreatePage({ selfRegistration = false }) {
   const [athleteRegistrationOpen, setAthleteRegistrationOpen] = useState(true);
   const [selfAthleteRegistrationOpen, setSelfAthleteRegistrationOpen] = useState(true);
   const [raceRegistrationOpen, setRaceRegistrationOpen] = useState(true);
+  const [raceRegistrationLimit, setRaceRegistrationLimit] = useState(1500);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const primaryModality = modalities.find((modality) => (
@@ -112,6 +113,7 @@ export default function EntityAthleteCreatePage({ selfRegistration = false }) {
         setAthleteRegistrationOpen(response.data.athleteRegistrationOpen !== false);
         setSelfAthleteRegistrationOpen(response.data.selfAthleteRegistrationOpen !== false);
         setRaceRegistrationOpen(response.data.raceRegistrationOpen !== false);
+        setRaceRegistrationLimit(response.data.raceRegistrationLimit || 1500);
       })
       .catch((loadError) => setError(getApiErrorMessage(loadError, 'Não foi possível verificar se o cadastro está aberto.')));
   }, []);
@@ -277,7 +279,7 @@ export default function EntityAthleteCreatePage({ selfRegistration = false }) {
             <Box component="form" onSubmit={handleSubmit} noValidate>
               {!athleteRegistrationOpen && !selfRegistration && !isEditing && <Alert severity="warning" sx={{ mb: 2 }}>O cadastro de atletas pelos órgãos está temporariamente fechado pelo administrador.</Alert>}
               {selfRegistration && !selfAthleteRegistrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>O cadastro direto de atletas está temporariamente fechado pelo administrador. Tente novamente quando as inscrições forem liberadas.</Alert>}
-              {!raceRegistrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>As inscrições para a corrida foram encerradas: limite de 1.500 corredores atingido.</Alert>}
+              {!raceRegistrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>As inscrições para a corrida foram encerradas: limite de {raceRegistrationLimit.toLocaleString('pt-BR')} corredores atingido.</Alert>}
               {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
               {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
               {selfRegistration && (

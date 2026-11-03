@@ -217,7 +217,7 @@ router.post('/registration-status/update', registrationLookupLimiter, async (req
     if (isAthleteApproved(athlete) && hasRace && !previousHadRace) {
       const reservation = await reserveRaceRegistration(athlete._id);
       if (reservation.full) {
-        return res.status(409).json({ success: false, message: 'As inscrições para a corrida foram encerradas: limite de 1.500 corredores atingido.' });
+        return res.status(409).json({ success: false, message: `As inscrições para a corrida foram encerradas: limite de ${reservation.limit.toLocaleString('pt-BR')} corredores atingido.` });
       }
       raceReserved = reservation.reserved;
     }

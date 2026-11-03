@@ -7,6 +7,7 @@ const Admin = require('../models/Admin');
 const Entity = require('../models/Entity');
 const Athlete = require('../models/Athlete');
 const Registration = require('../models/Registration');
+const Counter = require('../models/Counter');
 const Modality = require('../models/Modality');
 const RegistrationControls = require('../models/RegistrationControls');
 const EntityModalityRule = require('../models/EntityModalityRule');
@@ -14,6 +15,7 @@ const PasswordChangeRequest = require('../models/PasswordChangeRequest');
 const { getModalityCatalog } = require('../config/defaultModalities');
 const { applyRegistrationDeadline } = require('../services/registrationWindow');
 const { getRaceRegistrationCount, getRaceRegistrationLimit } = require('../services/raceRegistration');
+const { getGlobalModalityLimit, getModalityRegistrationCounts } = require('../services/globalModalityRegistration');
 
 const router = express.Router();
 
@@ -82,24 +84,7 @@ router.get('/entities/:entityId/modality-rules', auth, adminViewerOnly, async (r
       ]);
       const rulesByEntityAndSlug = new Map(savedRules.map((rule) => [`${rule.entityId}:${rule.modalitySlug}`, rule]));
       const modalities = getModalityCatalog(storedModalities);
-      const registeredCounts = await Promise.all(modalities.map(async (modality) => {
-        const aliases = [modality.name, modality.slug, ...(modality.legacyNames || []), ...(modality.legacySlugs || [])];
-        const [athleteIds, registrationIds] = await Promise.all([
-          Athlete.distinct('_id', {
-            entityId: { $in: entityIds },
-            $or: [
-              { modality: { $in: aliases } },
-              { modalities: { $in: aliases } },
-              { 'modalityRegistrations.modality': { $in: aliases } },
-            ],
-          }),
-          Registration.distinct('athleteId', {
-            entityId: { $in: entityIds },
-            modality: { $in: aliases },
-          }),
-        ]);
-        return new Set([...athleteIds, ...registrationIds].map(String)).size;
-      }));
+      const modalityCounts = await Promise.all(modalities.map(getModalityRegistrationCounts));
       const rules = modalities.map((modality, index) => {
         const officialLimit = modality.maxTeamsPerEntity && modality.maxAthletesPerTeam
           ? modality.maxTeamsPerEntity * modality.maxAthletesPerTeam
@@ -114,7 +99,13 @@ router.get('/entities/:entityId/modality-rules', auth, adminViewerOnly, async (r
           modalitySlug: modality.slug,
           modalityName: modality.name,
           categories: modality.categories || [],
-          registeredCount: registeredCounts[index],
+          registeredCount: modality.slug === 'corrida-5km'
+            ? raceRegistrationCount
+            : modalityCounts[index].registeredCount,
+          pendingCount: modalityCounts[index].pendingCount,
+          globalMaxAthletes: modality.slug === 'corrida-5km'
+            ? raceRegistrationLimit
+            : getGlobalModalityLimit(controls, modality.slug),
           maxAthletes: distinctLimits.size === 1 ? limits[0] : null,
           hasMixedMaxAthletes: distinctLimits.size > 1,
         };
@@ -164,11 +155,16 @@ router.put('/entities/:entityId/modality-rules', auth, adminEditorOnly, async (r
       const entities = await Entity.find({ status: 'approved' }).select('_id').lean();
       if (!entities.length) return res.status(404).json({ success: false, message: 'Nenhum órgão aprovado encontrado.' });
       const hasRaceLimitUpdate = Object.prototype.hasOwnProperty.call(req.body, 'raceRegistrationLimit');
+      const hasGlobalModalityLimitsUpdate = Object.prototype.hasOwnProperty.call(req.body, 'globalModalityLimits');
       if (req.body.rules !== undefined && !Array.isArray(req.body.rules)) {
         return res.status(400).json({ success: false, message: 'A lista de regras por modalidade é inválida.' });
       }
+      if (hasGlobalModalityLimitsUpdate && !Array.isArray(req.body.globalModalityLimits)) {
+        return res.status(400).json({ success: false, message: 'A lista de tetos globais por modalidade é inválida.' });
+      }
       const hasRulesUpdate = Array.isArray(req.body.rules) && req.body.rules.length > 0;
-      if (!hasRulesUpdate && !hasRaceLimitUpdate) {
+      const hasGlobalLimits = hasGlobalModalityLimitsUpdate && req.body.globalModalityLimits.length > 0;
+      if (!hasRulesUpdate && !hasRaceLimitUpdate && !hasGlobalLimits) {
         return res.status(400).json({ success: false, message: 'Informe limites de modalidade ou o teto geral da corrida.' });
       }
 
@@ -181,6 +177,24 @@ router.put('/entities/:entityId/modality-rules', auth, adminEditorOnly, async (r
       const catalog = getModalityCatalog(storedModalities);
       const catalogBySlug = new Map(catalog.map((modality) => [modality.slug, modality]));
       const bulkRules = [];
+      const globalLimitUpdates = [];
+      const seenGlobalLimitSlugs = new Set();
+
+      for (const rule of req.body.globalModalityLimits || []) {
+        const modality = catalogBySlug.get(rule.modalitySlug);
+        if (!modality || modality.slug === 'corrida-5km' || seenGlobalLimitSlugs.has(modality.slug)) {
+          return res.status(400).json({ success: false, message: 'Há um teto global de modalidade inválido.' });
+        }
+
+        const maxAthletes = rule.maxAthletes === '' || rule.maxAthletes === null || rule.maxAthletes === undefined
+          ? null
+          : Number(rule.maxAthletes);
+        if (maxAthletes !== null && (!Number.isInteger(maxAthletes) || maxAthletes < 1)) {
+          return res.status(400).json({ success: false, message: `O teto global de ${modality.name} precisa ser um inteiro maior que zero ou ficar vazio.` });
+        }
+        seenGlobalLimitSlugs.add(modality.slug);
+        globalLimitUpdates.push({ modalitySlug: modality.slug, maxAthletes });
+      }
 
       for (const rule of req.body.rules || []) {
         const modality = catalogBySlug.get(rule.modalitySlug);
@@ -204,22 +218,40 @@ router.put('/entities/:entityId/modality-rules', auth, adminEditorOnly, async (r
           upsert: true,
         },
       })));
+      const controls = globalLimitUpdates.length
+        ? await getRegistrationControls()
+        : null;
+      const globalLimitsBySlug = new Map((controls?.globalModalityLimits || []).map((rule) => [rule.modalitySlug, rule.maxAthletes]));
+      for (const rule of globalLimitUpdates) globalLimitsBySlug.set(rule.modalitySlug, rule.maxAthletes);
       const session = await mongoose.startSession();
       try {
         await session.withTransaction(async () => {
           if (operations.length) await EntityModalityRule.bulkWrite(operations, { session });
-          if (hasRaceLimitUpdate) {
+          if (hasRaceLimitUpdate || globalLimitUpdates.length) {
+            const controlsUpdate = {};
+            if (hasRaceLimitUpdate) controlsUpdate.raceRegistrationLimit = raceRegistrationLimit;
+            if (globalLimitUpdates.length) {
+              controlsUpdate.globalModalityLimits = Array.from(globalLimitsBySlug, ([modalitySlug, maxAthletes]) => ({
+                modalitySlug,
+                maxAthletes,
+              }));
+            }
             await RegistrationControls.updateOne(
               { _id: 'global' },
-              { $set: { raceRegistrationLimit } },
+              { $set: controlsUpdate },
               { upsert: true, session, setDefaultsOnInsert: true }
             );
+          }
+          if (globalLimitUpdates.length) {
+            await Counter.deleteMany({
+              _id: { $in: globalLimitUpdates.map((rule) => `global-modality:${rule.modalitySlug}`) },
+            }, { session });
           }
         });
       } finally {
         await session.endSession();
       }
-      return res.json({ success: true, message: 'Limites e teto global atualizados.' });
+      return res.json({ success: true, message: 'Limites e tetos globais atualizados.' });
     }
 
     const entity = await Entity.findById(req.params.entityId).select('_id');

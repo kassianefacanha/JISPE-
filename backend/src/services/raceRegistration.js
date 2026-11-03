@@ -76,7 +76,9 @@ const reserveRaceRegistration = async (athleteId) => {
     { $inc: { raceRegistrationCount: 1 } },
     { new: true }
   );
-  return reservation ? { reserved: true, alreadyCounted: false } : { reserved: false, full: true };
+  return reservation
+    ? { reserved: true, alreadyCounted: false }
+    : { reserved: false, full: true, limit: raceRegistrationLimit };
 };
 
 const releaseRaceRegistrationReservation = async (athleteId) => {

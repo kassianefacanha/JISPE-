@@ -101,6 +101,7 @@ export default function AdminAthleteCreatePage() {
   const [success, setSuccess] = useState('');
   const [successOpen, setSuccessOpen] = useState(false);
   const [raceRegistrationOpen, setRaceRegistrationOpen] = useState(true);
+  const [raceRegistrationLimit, setRaceRegistrationLimit] = useState(1500);
   const [uploadInfo, setUploadInfo] = useState({ photo: '', proof: '', affiliationProof: '' });
   const approvedEntities = entities.filter((entity) => entity.status === 'approved');
   const primaryModality = modalities.find((modality) => (
@@ -123,6 +124,7 @@ export default function AdminAthleteCreatePage() {
         setEntities(loadedEntities);
         setModalities(loadedModalities);
         setRaceRegistrationOpen(registrationStatusResponse.data.raceRegistrationOpen !== false);
+        setRaceRegistrationLimit(registrationStatusResponse.data.raceRegistrationLimit || 1500);
 
         if (editId && athleteResponse?.data?.athlete) {
           const athlete = athleteResponse.data.athlete;
@@ -293,7 +295,7 @@ export default function AdminAthleteCreatePage() {
               {error && (
                 <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
               )}
-              {!raceRegistrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>As inscrições para a corrida foram encerradas: limite de 1.500 corredores atingido.</Alert>}
+              {!raceRegistrationOpen && <Alert severity="warning" sx={{ mb: 2 }}>As inscrições para a corrida foram encerradas: limite de {raceRegistrationLimit.toLocaleString('pt-BR')} corredores atingido.</Alert>}
               <PrivacyNotice
                 checked={form.privacyConsentConfirmed}
                 onChange={(privacyConsentConfirmed) => setForm((current) => ({ ...current, privacyConsentConfirmed }))}

@@ -7,6 +7,10 @@ const registrationControlsSchema = new mongoose.Schema(
     athleteRegistrationOpen: { type: Boolean, default: true },
     selfAthleteRegistrationOpen: { type: Boolean, default: true },
     raceRegistrationLimit: { type: Number, min: 1, default: 1500 },
+    globalModalityLimits: [{
+      modalitySlug: { type: String, required: true },
+      maxAthletes: { type: Number, min: 1, default: null },
+    }],
     raceRegistrationCount: { type: Number, min: 0, default: undefined },
   },
   { timestamps: true }
