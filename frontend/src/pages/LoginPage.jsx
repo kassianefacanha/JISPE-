@@ -24,6 +24,7 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [entityRegistrationOpen, setEntityRegistrationOpen] = useState(null);
   const [selfAthleteRegistrationOpen, setSelfAthleteRegistrationOpen] = useState(null);
   const [registrationStatusError, setRegistrationStatusError] = useState(false);
 
@@ -31,10 +32,14 @@ export default function LoginPage() {
     let active = true;
     api.get('/public/registration-status')
       .then((response) => {
-        if (active) setSelfAthleteRegistrationOpen(response.data.selfAthleteRegistrationOpen !== false);
+        if (active) {
+          setEntityRegistrationOpen(response.data.entityRegistrationOpen !== false);
+          setSelfAthleteRegistrationOpen(response.data.selfAthleteRegistrationOpen !== false);
+        }
       })
       .catch(() => {
         if (active) {
+          setEntityRegistrationOpen(false);
           setSelfAthleteRegistrationOpen(false);
           setRegistrationStatusError(true);
         }
@@ -189,13 +194,20 @@ export default function LoginPage() {
                         : 'Inscrições encerradas'}
                   </Button>
                   <Button
-                    component={Link}
-                    to="/cadastro-entidade"
+                    component={entityRegistrationOpen === true ? Link : 'button'}
+                    to={entityRegistrationOpen === true ? '/cadastro-entidade' : undefined}
                     variant="outlined"
                     startIcon={<BusinessIcon />}
+                    disabled={entityRegistrationOpen !== true}
                     sx={{ minHeight: 56, px: 1.5, borderRadius: 2, fontWeight: 700, whiteSpace: 'normal', lineHeight: 1.25 }}
                   >
-                    Cadastrar órgão
+                    {entityRegistrationOpen === null
+                      ? 'Verificando cadastro de órgãos...'
+                      : entityRegistrationOpen
+                        ? 'Cadastrar órgão'
+                        : registrationStatusError
+                          ? 'Cadastro de órgãos indisponível'
+                          : 'Cadastro de órgãos encerrado'}
                   </Button>
                   <Button
                     component={Link}
