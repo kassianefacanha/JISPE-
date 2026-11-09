@@ -40,6 +40,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
@@ -224,6 +225,7 @@ export default function AdminDashboard() {
   });
   const [entityColumnMenuAnchor, setEntityColumnMenuAnchor] = useState(null);
   const [athleteColumnMenuAnchor, setAthleteColumnMenuAnchor] = useState(null);
+  const [athleteFiltersOpen, setAthleteFiltersOpen] = useState(false);
   const [entityExportMenuAnchor, setEntityExportMenuAnchor] = useState(null);
   const [athleteExportMenuAnchor, setAthleteExportMenuAnchor] = useState(null);
   const [exportDialog, setExportDialog] = useState({ open: false, tab: 'entidades', type: 'csv', selectedColumns: [] });
@@ -286,6 +288,12 @@ export default function AdminDashboard() {
       return matchesSearch && matchesEntity && matchesPcd && matchesSpecialCondition && matchesStatus;
     });
   }, [athletes, entityMap, athleteFilter, entityFilter.status]);
+  const activeAthleteFilterCount = [
+    athleteFilter.searchField !== 'all',
+    athleteFilter.entity !== 'all',
+    athleteFilter.isPcd !== 'all',
+    athleteFilter.hasSpecialCondition !== 'all',
+  ].filter(Boolean).length;
 
   const stats = useMemo(() => {
     const representedEntities = new Set(
@@ -1100,8 +1108,8 @@ export default function AdminDashboard() {
             ) : activeTab === 'atletas' ? (
               <Box>
                 <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
-                  <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ flex: 1 }}>
-                    <Typography variant="body1" fontWeight={700} sx={{ alignSelf: 'center', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="body1" fontWeight={700} sx={{ alignSelf: { xs: 'flex-start', sm: 'center' }, whiteSpace: 'nowrap', flexShrink: 0 }}>
                       Atletas cadastrados
                     </Typography>
                     <TextField
@@ -1109,74 +1117,19 @@ export default function AdminDashboard() {
                       onChange={(event) => setAthleteFilter((current) => ({ ...current, search: event.target.value }))}
                       placeholder="Digite para buscar"
                       size="small"
-                      sx={{ minWidth: { xs: '100%', md: 220 } }}
+                      sx={{ minWidth: { xs: '100%', sm: 220 }, maxWidth: { sm: 360 }, flex: 1 }}
                     />
-                    <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 190 } }}>
-                      <InputLabel id="athlete-search-field-label">Buscar em</InputLabel>
-                      <Select
-                        labelId="athlete-search-field-label"
-                        value={athleteFilter.searchField}
-                        label="Buscar em"
-                        onChange={(event) => setAthleteFilter((current) => ({ ...current, searchField: event.target.value }))}
-                      >
-                        <MenuItem value="all">Todas as colunas</MenuItem>
-                        <MenuItem value="fullName">Nome</MenuItem>
-                        <MenuItem value="entityName">Órgão</MenuItem>
-                        <MenuItem value="matricula">Matrícula</MenuItem>
-                        <MenuItem value="cpf">CPF</MenuItem>
-                        <MenuItem value="email">E-mail</MenuItem>
-                        <MenuItem value="phone">Telefone</MenuItem>
-                        <MenuItem value="modality">Modalidade</MenuItem>
-                        <MenuItem value="naipe">Naipe</MenuItem>
-                        <MenuItem value="approvalStatus">Status de aprovação</MenuItem>
-                      </Select>
-                    </FormControl>
-                    <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 200 } }}>
-                      <InputLabel id="athlete-entity-label">Órgão</InputLabel>
-                      <Select
-                        labelId="athlete-entity-label"
-                        value={athleteFilter.entity}
-                        label="Órgão"
-                        onChange={(event) => setAthleteFilter((current) => ({ ...current, entity: event.target.value }))}
-                      >
-                        <MenuItem value="all">Todos os órgãos</MenuItem>
-                        {entities.map((entity) => (
-                          <MenuItem key={entity._id} value={entity._id}>{entity.name}</MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                    <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 160 } }}>
-                      <InputLabel id="athlete-pcd-label">PCD</InputLabel>
-                      <Select
-                        labelId="athlete-pcd-label"
-                        value={athleteFilter.isPcd}
-                        label="PCD"
-                        onChange={(event) => setAthleteFilter((current) => ({ ...current, isPcd: event.target.value }))}
-                      >
-                        <MenuItem value="all">Todos</MenuItem>
-                        <MenuItem value="yes">Marcou PCD</MenuItem>
-                        <MenuItem value="no">Não marcou</MenuItem>
-                      </Select>
-                    </FormControl>
-                    <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 190 } }}>
-                      <InputLabel id="athlete-special-condition-label">Condição especial</InputLabel>
-                      <Select
-                        labelId="athlete-special-condition-label"
-                        value={athleteFilter.hasSpecialCondition}
-                        label="Condição especial"
-                        onChange={(event) => setAthleteFilter((current) => ({
-                          ...current,
-                          hasSpecialCondition: event.target.value,
-                        }))}
-                      >
-                        <MenuItem value="all">Todas</MenuItem>
-                        <MenuItem value="yes">Tem condição especial</MenuItem>
-                        <MenuItem value="no">Não informou</MenuItem>
-                      </Select>
-                    </FormControl>
                   </Stack>
 
-                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                  <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                    <Button
+                      variant={activeAthleteFilterCount ? 'contained' : 'outlined'}
+                      size="small"
+                      startIcon={<FilterListIcon />}
+                      onClick={() => setAthleteFiltersOpen(true)}
+                    >
+                      Filtros{activeAthleteFilterCount ? ` (${activeAthleteFilterCount})` : ''}
+                    </Button>
                     <Button
                       variant="outlined"
                       size="small"
@@ -1208,6 +1161,96 @@ export default function AdminDashboard() {
                     )}
                   </Stack>
                 </Stack>
+
+                <Dialog
+                  open={athleteFiltersOpen}
+                  onClose={() => setAthleteFiltersOpen(false)}
+                  fullWidth
+                  maxWidth="sm"
+                >
+                  <DialogTitle>Filtros dos atletas</DialogTitle>
+                  <DialogContent dividers>
+                    <Stack spacing={2} sx={{ pt: 1 }}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel id="athlete-search-field-label">Buscar em</InputLabel>
+                        <Select
+                          labelId="athlete-search-field-label"
+                          value={athleteFilter.searchField}
+                          label="Buscar em"
+                          onChange={(event) => setAthleteFilter((current) => ({ ...current, searchField: event.target.value }))}
+                        >
+                          <MenuItem value="all">Todas as colunas</MenuItem>
+                          <MenuItem value="fullName">Nome</MenuItem>
+                          <MenuItem value="entityName">Órgão</MenuItem>
+                          <MenuItem value="matricula">Matrícula</MenuItem>
+                          <MenuItem value="cpf">CPF</MenuItem>
+                          <MenuItem value="email">E-mail</MenuItem>
+                          <MenuItem value="phone">Telefone</MenuItem>
+                          <MenuItem value="modality">Modalidade</MenuItem>
+                          <MenuItem value="naipe">Naipe</MenuItem>
+                          <MenuItem value="approvalStatus">Status de aprovação</MenuItem>
+                        </Select>
+                      </FormControl>
+                      <FormControl fullWidth size="small">
+                        <InputLabel id="athlete-entity-label">Órgão</InputLabel>
+                        <Select
+                          labelId="athlete-entity-label"
+                          value={athleteFilter.entity}
+                          label="Órgão"
+                          onChange={(event) => setAthleteFilter((current) => ({ ...current, entity: event.target.value }))}
+                        >
+                          <MenuItem value="all">Todos os órgãos</MenuItem>
+                          {entities.map((entity) => (
+                            <MenuItem key={entity._id} value={entity._id}>{entity.name}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <FormControl fullWidth size="small">
+                        <InputLabel id="athlete-pcd-label">PCD</InputLabel>
+                        <Select
+                          labelId="athlete-pcd-label"
+                          value={athleteFilter.isPcd}
+                          label="PCD"
+                          onChange={(event) => setAthleteFilter((current) => ({ ...current, isPcd: event.target.value }))}
+                        >
+                          <MenuItem value="all">Todos</MenuItem>
+                          <MenuItem value="yes">Marcou PCD</MenuItem>
+                          <MenuItem value="no">Não marcou</MenuItem>
+                        </Select>
+                      </FormControl>
+                      <FormControl fullWidth size="small">
+                        <InputLabel id="athlete-special-condition-label">Condição especial</InputLabel>
+                        <Select
+                          labelId="athlete-special-condition-label"
+                          value={athleteFilter.hasSpecialCondition}
+                          label="Condição especial"
+                          onChange={(event) => setAthleteFilter((current) => ({
+                            ...current,
+                            hasSpecialCondition: event.target.value,
+                          }))}
+                        >
+                          <MenuItem value="all">Todas</MenuItem>
+                          <MenuItem value="yes">Tem condição especial</MenuItem>
+                          <MenuItem value="no">Não informou</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Stack>
+                  </DialogContent>
+                  <DialogActions>
+                    <Button
+                      onClick={() => setAthleteFilter((current) => ({
+                        ...current,
+                        searchField: 'all',
+                        entity: 'all',
+                        isPcd: 'all',
+                        hasSpecialCondition: 'all',
+                      }))}
+                    >
+                      Limpar filtros
+                    </Button>
+                    <Button onClick={() => setAthleteFiltersOpen(false)} variant="contained">Fechar</Button>
+                  </DialogActions>
+                </Dialog>
 
                 <Menu
                   anchorEl={athleteColumnMenuAnchor}
