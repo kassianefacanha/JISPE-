@@ -29,16 +29,13 @@ const getRegistrationControls = () => RegistrationControls.findOneAndUpdate(
 );
 
 const normalizeHomeContent = (body = {}) => ({
-  hero: {
-    title: String(body.hero?.title || '').trim().slice(0, 120),
-    description: String(body.hero?.description || '').trim().slice(0, 2000),
-    bannerUrl: String(body.hero?.bannerUrl || '').trim(),
-  },
-  about: {
-    title: String(body.about?.title || '').trim().slice(0, 120),
-    description: String(body.about?.description || '').trim().slice(0, 5000),
-  },
   news: Array.isArray(body.news) ? body.news.slice(0, 30).map((item) => ({
+    title: String(item?.title || '').trim().slice(0, 160),
+    summary: String(item?.summary || '').trim().slice(0, 500),
+    body: String(item?.body || '').trim().slice(0, 5000),
+    publishedAt: item?.publishedAt || new Date(),
+  })) : null,
+  bulletins: Array.isArray(body.bulletins) ? body.bulletins.slice(0, 30).map((item) => ({
     title: String(item?.title || '').trim().slice(0, 160),
     summary: String(item?.summary || '').trim().slice(0, 500),
     body: String(item?.body || '').trim().slice(0, 5000),
@@ -51,15 +48,10 @@ const normalizeHomeContent = (body = {}) => ({
     fileUrl: String(item?.fileUrl || '').trim(),
     fileName: String(item?.fileName || '').trim().slice(0, 255),
   })) : null,
-  contacts: Array.isArray(body.contacts) ? body.contacts.slice(0, 20).map((item) => ({
-    label: String(item?.label || '').trim().slice(0, 100),
-    value: String(item?.value || '').trim().slice(0, 255),
-  })) : null,
 });
 
 const serializeHomeContent = async (content) => {
   const result = content.toObject();
-  result.hero.bannerUrl = await getAssetUrl(result.hero.bannerUrl);
   result.documents = await Promise.all(result.documents.map(async (document) => {
     const item = document.toObject ? document.toObject() : document;
     item.fileUrl = await getAssetUrl(item.fileUrl, { download: true });
@@ -71,8 +63,10 @@ const serializeHomeContent = async (content) => {
 router.get('/home-content', auth, adminViewerOnly, async (req, res, next) => {
   try {
     const content = await HomeContent.findById('home')
-      || new HomeContent();
-    res.json({ success: true, content: await serializeHomeContent(content) });
+      .select('news bulletins documents');
+    res.json({ success: true, content: content
+      ? await serializeHomeContent(content)
+      : { news: [], bulletins: [], documents: [] } });
   } catch (error) {
     next(error);
   }
@@ -81,26 +75,15 @@ router.get('/home-content', auth, adminViewerOnly, async (req, res, next) => {
 router.put('/home-content', auth, adminEditorOnly, async (req, res, next) => {
   try {
     const content = normalizeHomeContent(req.body);
-    if (!content.news || !content.documents || !content.contacts
-      || !content.hero.title || !content.about.title
+    if (!content.news || !content.bulletins || !content.documents
       || content.news.some((item) => !item.title)
-      || content.documents.some((item) => !item.title || !item.fileUrl || !item.fileName)
-      || content.contacts.some((item) => !item.label || !item.value)) {
+      || content.bulletins.some((item) => !item.title)
+      || content.documents.some((item) => !item.title || !item.fileUrl || !item.fileName)) {
       return res.status(400).json({ success: false, message: 'Revise os campos obrigatórios e tente novamente.' });
     }
 
     const current = await HomeContent.findById('home');
-    const previousBanner = current?.hero.bannerUrl || '';
     const previousDocuments = current?.documents || [];
-    const bannerChanged = content.hero.bannerUrl
-      && !isSameStoredAsset(content.hero.bannerUrl, previousBanner);
-    if (bannerChanged && !/^data:image\/(?:jpeg|png|webp);base64,/i.test(content.hero.bannerUrl)) {
-      return res.status(400).json({ success: false, message: 'O banner precisa ser uma imagem JPG, PNG ou WebP.' });
-    }
-    if (bannerChanged) {
-      const assetError = validateUploadedAsset(content.hero.bannerUrl, 'photo');
-      if (assetError) return res.status(400).json({ success: false, message: assetError });
-    }
     for (const document of content.documents) {
       const previous = previousDocuments.find((item) => document._id
         ? String(item._id) === String(document._id)
@@ -110,9 +93,6 @@ router.put('/home-content', auth, adminEditorOnly, async (req, res, next) => {
       if (assetError) return res.status(400).json({ success: false, message: assetError });
     }
 
-    content.hero.bannerUrl = content.hero.bannerUrl
-      ? await storeAsset(content.hero.bannerUrl, 'home/banner', previousBanner)
-      : '';
     content.documents = await Promise.all(content.documents.map(async (document) => {
       const previous = previousDocuments.find((item) => document._id
         ? String(item._id) === String(document._id)
@@ -125,17 +105,18 @@ router.put('/home-content', auth, adminEditorOnly, async (req, res, next) => {
 
     const saved = await HomeContent.findOneAndUpdate(
       { _id: 'home' },
-      { $set: content },
+      { $set: {
+        news: content.news,
+        bulletins: content.bulletins,
+        documents: content.documents,
+      } },
       { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
     );
-    const nextAssets = new Set([saved.hero.bannerUrl, ...saved.documents.map((item) => item.fileUrl)]);
-    await Promise.all([
-      deleteReplacedAsset(previousBanner, nextAssets.has(previousBanner) ? previousBanner : ''),
-      ...previousDocuments.map((document) => deleteReplacedAsset(
-        document.fileUrl,
-        nextAssets.has(document.fileUrl) ? document.fileUrl : ''
-      )),
-    ]);
+    const nextAssets = new Set(saved.documents.map((item) => item.fileUrl));
+    await Promise.all(previousDocuments.map((document) => deleteReplacedAsset(
+      document.fileUrl,
+      nextAssets.has(document.fileUrl) ? document.fileUrl : ''
+    )));
 
     res.json({ success: true, content: await serializeHomeContent(saved) });
   } catch (error) {

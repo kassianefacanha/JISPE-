@@ -64,15 +64,15 @@ const hasConflictingBinaryNaipe = (entries) => {
 
 router.get('/home-content', async (req, res, next) => {
   try {
-    const content = await HomeContent.findById('home').lean();
+    const content = await HomeContent.findById('home')
+      .select('news bulletins documents')
+      .lean();
     const result = content || {
-      hero: { title: 'JISPE 2026', description: '', bannerUrl: '' },
-      about: { title: 'Sobre os jogos', description: '' },
       news: [],
+      bulletins: [],
       documents: [],
-      contacts: [],
     };
-    result.hero.bannerUrl = await getAssetUrl(result.hero.bannerUrl);
+    result.bulletins = result.bulletins || [];
     result.documents = await Promise.all((result.documents || []).map(async (document) => ({
       ...document,
       fileUrl: await getAssetUrl(document.fileUrl, { download: true }),

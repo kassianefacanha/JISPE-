@@ -18,6 +18,12 @@ const homeContentSchema = new mongoose.Schema(
       body: { type: String, default: '' },
       publishedAt: { type: Date, default: Date.now },
     }],
+    bulletins: [{
+      title: { type: String, required: true },
+      summary: { type: String, default: '' },
+      body: { type: String, default: '' },
+      publishedAt: { type: Date, default: Date.now },
+    }],
     documents: [{
       title: { type: String, required: true },
       description: { type: String, default: '' },
