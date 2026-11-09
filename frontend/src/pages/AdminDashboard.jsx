@@ -215,7 +215,13 @@ export default function AdminDashboard() {
   const [passwordRequestForm, setPasswordRequestForm] = useState({ password: '', passwordConfirmation: '' });
   const [savingPasswordRequest, setSavingPasswordRequest] = useState(false);
   const [entityFilter, setEntityFilter] = useState({ search: '', searchField: 'all', status: 'all' });
-  const [athleteFilter, setAthleteFilter] = useState({ search: '', searchField: 'all', entity: 'all' });
+  const [athleteFilter, setAthleteFilter] = useState({
+    search: '',
+    searchField: 'all',
+    entity: 'all',
+    isPcd: 'all',
+    hasSpecialCondition: 'all',
+  });
   const [entityColumnMenuAnchor, setEntityColumnMenuAnchor] = useState(null);
   const [athleteColumnMenuAnchor, setAthleteColumnMenuAnchor] = useState(null);
   const [entityExportMenuAnchor, setEntityExportMenuAnchor] = useState(null);
@@ -272,8 +278,12 @@ export default function AdminDashboard() {
       };
       const matchesSearch = !searchValue || searchableFields.some((field) => String(searchableValues[field] || '').toLowerCase().includes(searchValue));
       const matchesEntity = athleteFilter.entity === 'all' || athlete.entityId === athleteFilter.entity;
+      const matchesPcd = athleteFilter.isPcd === 'all'
+        || Boolean(athlete.isPcd) === (athleteFilter.isPcd === 'yes');
+      const matchesSpecialCondition = athleteFilter.hasSpecialCondition === 'all'
+        || Boolean(athlete.hasSpecialCondition) === (athleteFilter.hasSpecialCondition === 'yes');
       const matchesStatus = entityFilter.status === 'all' || entityStatus === entityFilter.status;
-      return matchesSearch && matchesEntity && matchesStatus;
+      return matchesSearch && matchesEntity && matchesPcd && matchesSpecialCondition && matchesStatus;
     });
   }, [athletes, entityMap, athleteFilter, entityFilter.status]);
 
@@ -479,6 +489,8 @@ export default function AdminDashboard() {
     { key: 'phone', label: 'Telefone' },
     { key: 'modality', label: 'Modalidade' },
     { key: 'naipe', label: 'Naipe' },
+    { key: 'isPcdLabel', label: 'PCD' },
+    { key: 'hasSpecialConditionLabel', label: 'Condição especial' },
     { key: 'approvalStatusLabel', label: 'Status de aprovação' },
     { key: 'birthDate', label: 'Data de nascimento' },
   ];
@@ -576,6 +588,8 @@ export default function AdminDashboard() {
     phone: athlete.phone || '—',
     modality: (athlete.modalities?.length ? athlete.modalities : [athlete.modality]).filter(Boolean).join(', ') || '—',
     naipe: athlete.naipe || '—',
+    isPcdLabel: athlete.isPcd ? 'Sim' : 'Não',
+    hasSpecialConditionLabel: athlete.hasSpecialCondition ? 'Sim' : 'Não',
     approvalStatus: athlete.approvalStatus || 'approved',
     approvalStatusLabel: ({
       pending: 'Aguardando aprovação',
@@ -1129,6 +1143,35 @@ export default function AdminDashboard() {
                         {entities.map((entity) => (
                           <MenuItem key={entity._id} value={entity._id}>{entity.name}</MenuItem>
                         ))}
+                      </Select>
+                    </FormControl>
+                    <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 160 } }}>
+                      <InputLabel id="athlete-pcd-label">PCD</InputLabel>
+                      <Select
+                        labelId="athlete-pcd-label"
+                        value={athleteFilter.isPcd}
+                        label="PCD"
+                        onChange={(event) => setAthleteFilter((current) => ({ ...current, isPcd: event.target.value }))}
+                      >
+                        <MenuItem value="all">Todos</MenuItem>
+                        <MenuItem value="yes">Marcou PCD</MenuItem>
+                        <MenuItem value="no">Não marcou</MenuItem>
+                      </Select>
+                    </FormControl>
+                    <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 190 } }}>
+                      <InputLabel id="athlete-special-condition-label">Condição especial</InputLabel>
+                      <Select
+                        labelId="athlete-special-condition-label"
+                        value={athleteFilter.hasSpecialCondition}
+                        label="Condição especial"
+                        onChange={(event) => setAthleteFilter((current) => ({
+                          ...current,
+                          hasSpecialCondition: event.target.value,
+                        }))}
+                      >
+                        <MenuItem value="all">Todas</MenuItem>
+                        <MenuItem value="yes">Tem condição especial</MenuItem>
+                        <MenuItem value="no">Não informou</MenuItem>
                       </Select>
                     </FormControl>
                   </Stack>
