@@ -10,11 +10,13 @@ import AdminManagementPage from '../pages/AdminManagementPage';
 import EntityDashboard from '../pages/EntityDashboard';
 import EntityAthleteCreatePage from '../pages/EntityAthleteCreatePage';
 import EntityRegisterPage from '../pages/EntityRegisterPage';
+import HomeContentAdminPage from '../pages/HomeContentAdminPage';
 import LoginPage from '../pages/LoginPage';
 import PasswordRecoveryPage from '../pages/PasswordRecoveryPage';
 import ProfilePage from '../pages/ProfilePage';
 import PublicBadgeValidationPage from '../pages/PublicBadgeValidationPage';
 import PublicRegistrationStatusPage from '../pages/PublicRegistrationStatusPage';
+import PublicHomePage from '../pages/PublicHomePage';
 
 function ProtectedRoute({ children, role }) {
   const { user, loading } = useAuth();
@@ -31,7 +33,7 @@ export default function AppRoutes() {
   return (
     <>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<PublicHomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/recuperar-senha" element={<PasswordRecoveryPage />} />
         <Route path="/redefinir-senha" element={<PasswordRecoveryPage />} />
@@ -46,6 +48,15 @@ export default function AppRoutes() {
           element={
             <ProtectedRoute role={['admin', 'superadmin', 'gerencia']}>
               <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/pagina-inicial"
+          element={
+            <ProtectedRoute role={['admin', 'superadmin', 'gerencia']}>
+              <HomeContentAdminPage />
             </ProtectedRoute>
           }
         />

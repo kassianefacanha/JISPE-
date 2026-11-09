@@ -16,6 +16,7 @@ const EntityModalityRule = require('../models/EntityModalityRule');
 const { validateUploadedAsset } = require('../utils/uploadValidation');
 const { raceAliases, releaseRaceRegistration, reserveRaceRegistration } = require('../services/raceRegistration');
 const { applyRegistrationDeadline } = require('../services/registrationWindow');
+const HomeContent = require('../models/HomeContent');
 
 const router = express.Router();
 const badgeLookupLimiter = rateLimit({
@@ -60,6 +61,27 @@ const hasConflictingBinaryNaipe = (entries) => {
   const naipes = new Set(entries.map((entry) => entry.naipe));
   return naipes.has('masculino') && naipes.has('feminino');
 };
+
+router.get('/home-content', async (req, res, next) => {
+  try {
+    const content = await HomeContent.findById('home').lean();
+    const result = content || {
+      hero: { title: 'JISPE 2026', description: '', bannerUrl: '' },
+      about: { title: 'Sobre os jogos', description: '' },
+      news: [],
+      documents: [],
+      contacts: [],
+    };
+    result.hero.bannerUrl = await getAssetUrl(result.hero.bannerUrl);
+    result.documents = await Promise.all((result.documents || []).map(async (document) => ({
+      ...document,
+      fileUrl: await getAssetUrl(document.fileUrl, { download: true }),
+    })));
+    res.json({ success: true, content: result });
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.get('/registration-status', async (req, res, next) => {
   try {

@@ -763,7 +763,7 @@ export default function AdminDashboard() {
             </Box>
           </Box>
 
-          <Stack direction="row" spacing={1}>
+          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" justifyContent="flex-end">
             {!isReadOnly && (
               <IconButton
                 color="primary"
@@ -781,6 +781,7 @@ export default function AdminDashboard() {
               </IconButton>
             )}
             {!isReadOnly && <Button component={Link} to="/admin/gestao" variant="outlined">Gestão geral</Button>}
+            {!isReadOnly && <Button component={Link} to="/admin/pagina-inicial" variant="outlined">Página inicial</Button>}
             <Button component={Link} to="/perfil" variant="outlined" startIcon={<ManageAccountsIcon />}>
               Perfil
             </Button>
