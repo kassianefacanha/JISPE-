@@ -29,6 +29,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
 import EditIcon from '@mui/icons-material/Edit';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { DataGrid, ptBR } from '@mui/x-data-grid';
@@ -84,6 +85,7 @@ export default function EntityDashboard() {
   const [loadingAthletes, setLoadingAthletes] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchField, setSearchField] = useState('all');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [columnMenuAnchor, setColumnMenuAnchor] = useState(null);
   const [exportMenuAnchor, setExportMenuAnchor] = useState(null);
   const [columnVisibilityModel, setColumnVisibilityModel] = useState({});
@@ -134,6 +136,7 @@ export default function EntityDashboard() {
     linkedEntityName: athlete.linkedEntityName || '—',
   }));
   const pendingAthletesCount = athletes.filter((athlete) => athlete.approvalStatus === 'pending').length;
+  const activeFilterCount = searchField !== 'all' ? 1 : 0;
 
   const approveAthlete = async (athlete) => {
     try {
@@ -400,7 +403,32 @@ export default function EntityDashboard() {
                 inputProps={{ 'aria-label': 'Digite para buscar atleta' }}
                 sx={{ width: { xs: '100%', sm: 220 } }}
               />
-              <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 180 } }}>
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                <Button
+                  variant={activeFilterCount ? 'contained' : 'outlined'}
+                  size="small"
+                  startIcon={<FilterListIcon />}
+                  onClick={() => setFiltersOpen(true)}
+                >
+                  Filtros{activeFilterCount ? ` (${activeFilterCount})` : ''}
+                </Button>
+                <Button variant="outlined" size="small" sx={{ textTransform: 'none', minWidth: 100 }} onClick={(event) => setColumnMenuAnchor(event.currentTarget)}>
+                  Colunas
+                </Button>
+                <Button variant="contained" size="small" startIcon={<DownloadIcon />} sx={{ textTransform: 'none', minWidth: 110 }} onClick={(event) => setExportMenuAnchor(event.currentTarget)}>
+                  Exportar
+                </Button>
+                <Button component={Link} to="/entity/atletas/novo" variant="contained" size="small" startIcon={<AddIcon />} sx={{ textTransform: 'none', minWidth: 150 }}>
+                  Novo cadastro
+                </Button>
+              </Stack>
+            </Stack>
+          </Stack>
+
+          <Dialog open={filtersOpen} onClose={() => setFiltersOpen(false)} fullWidth maxWidth="sm">
+            <DialogTitle>Filtros dos atletas</DialogTitle>
+            <DialogContent dividers>
+              <FormControl fullWidth size="small" sx={{ mt: 1 }}>
                 <InputLabel id="entity-athlete-search-field-label">Buscar em</InputLabel>
                 <Select
                   labelId="entity-athlete-search-field-label"
@@ -417,19 +445,12 @@ export default function EntityDashboard() {
                   <MenuItem value="modality">Modalidade</MenuItem>
                 </Select>
               </FormControl>
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                <Button variant="outlined" size="small" sx={{ textTransform: 'none', minWidth: 100 }} onClick={(event) => setColumnMenuAnchor(event.currentTarget)}>
-                  Colunas
-                </Button>
-                <Button variant="contained" size="small" startIcon={<DownloadIcon />} sx={{ textTransform: 'none', minWidth: 110 }} onClick={(event) => setExportMenuAnchor(event.currentTarget)}>
-                  Exportar
-                </Button>
-                <Button component={Link} to="/entity/atletas/novo" variant="contained" size="small" startIcon={<AddIcon />} sx={{ textTransform: 'none', minWidth: 150 }}>
-                  Novo cadastro
-                </Button>
-              </Stack>
-            </Stack>
-          </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setSearchField('all')}>Limpar filtros</Button>
+              <Button onClick={() => setFiltersOpen(false)} variant="contained">Fechar</Button>
+            </DialogActions>
+          </Dialog>
 
           <Menu anchorEl={columnMenuAnchor} open={Boolean(columnMenuAnchor)} onClose={() => setColumnMenuAnchor(null)}>
             <Box sx={{ p: 1, minWidth: 220 }}>

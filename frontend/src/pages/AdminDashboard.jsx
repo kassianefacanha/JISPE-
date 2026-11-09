@@ -225,6 +225,7 @@ export default function AdminDashboard() {
   });
   const [entityColumnMenuAnchor, setEntityColumnMenuAnchor] = useState(null);
   const [athleteColumnMenuAnchor, setAthleteColumnMenuAnchor] = useState(null);
+  const [entityFiltersOpen, setEntityFiltersOpen] = useState(false);
   const [athleteFiltersOpen, setAthleteFiltersOpen] = useState(false);
   const [entityExportMenuAnchor, setEntityExportMenuAnchor] = useState(null);
   const [athleteExportMenuAnchor, setAthleteExportMenuAnchor] = useState(null);
@@ -291,8 +292,13 @@ export default function AdminDashboard() {
   const activeAthleteFilterCount = [
     athleteFilter.searchField !== 'all',
     athleteFilter.entity !== 'all',
+    entityFilter.status !== 'all',
     athleteFilter.isPcd !== 'all',
     athleteFilter.hasSpecialCondition !== 'all',
+  ].filter(Boolean).length;
+  const activeEntityFilterCount = [
+    entityFilter.searchField !== 'all',
+    entityFilter.status !== 'all',
   ].filter(Boolean).length;
 
   const stats = useMemo(() => {
@@ -973,8 +979,8 @@ export default function AdminDashboard() {
             {activeTab === 'entidades' ? (
               <Box>
                 <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
-                  <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ flex: 1 }}>
-                    <Typography variant="body1" fontWeight={700} sx={{ alignSelf: 'center', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="body1" fontWeight={700} sx={{ alignSelf: { xs: 'flex-start', sm: 'center' }, whiteSpace: 'nowrap', flexShrink: 0 }}>
                       Órgãos cadastrados
                     </Typography>
                     <TextField
@@ -982,41 +988,19 @@ export default function AdminDashboard() {
                       onChange={(event) => setEntityFilter((current) => ({ ...current, search: event.target.value }))}
                       placeholder="Digite para buscar"
                       size="small"
-                      sx={{ minWidth: { xs: '100%', md: 220 } }}
+                      sx={{ minWidth: { xs: '100%', sm: 220 }, maxWidth: { sm: 360 }, flex: 1 }}
                     />
-                    <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 190 } }}>
-                      <InputLabel id="entity-search-field-label">Buscar em</InputLabel>
-                      <Select
-                        labelId="entity-search-field-label"
-                        value={entityFilter.searchField}
-                        label="Buscar em"
-                        onChange={(event) => setEntityFilter((current) => ({ ...current, searchField: event.target.value }))}
-                      >
-                        <MenuItem value="all">Todas as colunas</MenuItem>
-                        <MenuItem value="name">Nome do órgão</MenuItem>
-                        <MenuItem value="email">E-mail</MenuItem>
-                        <MenuItem value="responsibleName">Responsável</MenuItem>
-                        <MenuItem value="responsibleCpf">CPF do responsável</MenuItem>
-                        <MenuItem value="status">Status</MenuItem>
-                      </Select>
-                    </FormControl>
-                    <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 180 } }}>
-                      <InputLabel id="entity-status-label">Status</InputLabel>
-                      <Select
-                        labelId="entity-status-label"
-                        value={entityFilter.status}
-                        label="Status"
-                        onChange={(event) => setEntityFilter((current) => ({ ...current, status: event.target.value }))}
-                      >
-                        <MenuItem value="all">Todos os status</MenuItem>
-                        <MenuItem value="pending">Pendentes</MenuItem>
-                        <MenuItem value="approved">Aprovados</MenuItem>
-                        <MenuItem value="rejected">Reprovados</MenuItem>
-                      </Select>
-                    </FormControl>
                   </Stack>
 
-                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                  <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                    <Button
+                      variant={activeEntityFilterCount ? 'contained' : 'outlined'}
+                      size="small"
+                      startIcon={<FilterListIcon />}
+                      onClick={() => setEntityFiltersOpen(true)}
+                    >
+                      Filtros{activeEntityFilterCount ? ` (${activeEntityFilterCount})` : ''}
+                    </Button>
                     <Button
                       variant="outlined"
                       size="small"
@@ -1048,6 +1032,56 @@ export default function AdminDashboard() {
                     )}
                   </Stack>
                 </Stack>
+
+                <Dialog open={entityFiltersOpen} onClose={() => setEntityFiltersOpen(false)} fullWidth maxWidth="sm">
+                  <DialogTitle>Filtros dos órgãos</DialogTitle>
+                  <DialogContent dividers>
+                    <Stack spacing={2} sx={{ pt: 1 }}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel id="entity-search-field-label">Buscar em</InputLabel>
+                        <Select
+                          labelId="entity-search-field-label"
+                          value={entityFilter.searchField}
+                          label="Buscar em"
+                          onChange={(event) => setEntityFilter((current) => ({ ...current, searchField: event.target.value }))}
+                        >
+                          <MenuItem value="all">Todas as colunas</MenuItem>
+                          <MenuItem value="name">Nome do órgão</MenuItem>
+                          <MenuItem value="email">E-mail</MenuItem>
+                          <MenuItem value="responsibleName">Responsável</MenuItem>
+                          <MenuItem value="responsibleCpf">CPF do responsável</MenuItem>
+                          <MenuItem value="status">Status</MenuItem>
+                        </Select>
+                      </FormControl>
+                      <FormControl fullWidth size="small">
+                        <InputLabel id="entity-status-label">Status</InputLabel>
+                        <Select
+                          labelId="entity-status-label"
+                          value={entityFilter.status}
+                          label="Status"
+                          onChange={(event) => setEntityFilter((current) => ({ ...current, status: event.target.value }))}
+                        >
+                          <MenuItem value="all">Todos os status</MenuItem>
+                          <MenuItem value="pending">Pendentes</MenuItem>
+                          <MenuItem value="approved">Aprovados</MenuItem>
+                          <MenuItem value="rejected">Reprovados</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Stack>
+                  </DialogContent>
+                  <DialogActions>
+                    <Button
+                      onClick={() => setEntityFilter((current) => ({
+                        ...current,
+                        searchField: 'all',
+                        status: 'all',
+                      }))}
+                    >
+                      Limpar filtros
+                    </Button>
+                    <Button onClick={() => setEntityFiltersOpen(false)} variant="contained">Fechar</Button>
+                  </DialogActions>
+                </Dialog>
 
                 <Menu
                   anchorEl={entityColumnMenuAnchor}
@@ -1206,6 +1240,20 @@ export default function AdminDashboard() {
                         </Select>
                       </FormControl>
                       <FormControl fullWidth size="small">
+                        <InputLabel id="athlete-entity-status-label">Status do órgão</InputLabel>
+                        <Select
+                          labelId="athlete-entity-status-label"
+                          value={entityFilter.status}
+                          label="Status do órgão"
+                          onChange={(event) => setEntityFilter((current) => ({ ...current, status: event.target.value }))}
+                        >
+                          <MenuItem value="all">Todos os status</MenuItem>
+                          <MenuItem value="pending">Pendentes</MenuItem>
+                          <MenuItem value="approved">Aprovados</MenuItem>
+                          <MenuItem value="rejected">Reprovados</MenuItem>
+                        </Select>
+                      </FormControl>
+                      <FormControl fullWidth size="small">
                         <InputLabel id="athlete-pcd-label">PCD</InputLabel>
                         <Select
                           labelId="athlete-pcd-label"
@@ -1238,13 +1286,16 @@ export default function AdminDashboard() {
                   </DialogContent>
                   <DialogActions>
                     <Button
-                      onClick={() => setAthleteFilter((current) => ({
-                        ...current,
-                        searchField: 'all',
-                        entity: 'all',
-                        isPcd: 'all',
-                        hasSpecialCondition: 'all',
-                      }))}
+                      onClick={() => {
+                        setAthleteFilter((current) => ({
+                          ...current,
+                          searchField: 'all',
+                          entity: 'all',
+                          isPcd: 'all',
+                          hasSpecialCondition: 'all',
+                        }));
+                        setEntityFilter((current) => ({ ...current, status: 'all' }));
+                      }}
                     >
                       Limpar filtros
                     </Button>

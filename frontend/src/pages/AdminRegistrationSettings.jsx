@@ -28,6 +28,7 @@ import {
   Typography,
 } from '@mui/material';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import { useFeedback } from '../contexts/FeedbackContext';
 import api, { getApiErrorMessage } from '../services/api';
 
@@ -50,6 +51,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
   const { notify } = useFeedback();
   const [controls, setControls] = useState(defaultControls);
   const [selectedEntityId, setSelectedEntityId] = useState('');
+  const [entityFilterOpen, setEntityFilterOpen] = useState(false);
   const [rules, setRules] = useState([]);
   const [raceRegistrationLimit, setRaceRegistrationLimit] = useState(1500);
   const [raceRegistrationCount, setRaceRegistrationCount] = useState(0);
@@ -294,21 +296,46 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
       </Paper>
 
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
-        <Typography variant="h6" fontWeight={700}>Limites por modalidade e órgão</Typography>
-        <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 300 } }}>
-          <InputLabel id="modality-rules-entity-label">Órgão aprovado</InputLabel>
-          <Select
-            labelId="modality-rules-entity-label"
-            label="Órgão aprovado"
-            value={selectedEntityId}
-            onChange={(event) => setSelectedEntityId(event.target.value)}
-            disabled={!approvedEntities.length}
-          >
-            <MenuItem value={allEntitiesId}>Todos os órgãos aprovados</MenuItem>
-            {approvedEntities.map((entity) => <MenuItem key={entity._id} value={entity._id}>{entity.name}</MenuItem>)}
-          </Select>
-        </FormControl>
+        <Box>
+          <Typography variant="h6" fontWeight={700}>Limites por modalidade e órgão</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Órgão selecionado: {selectedEntityId === allEntitiesId
+              ? 'Todos os órgãos aprovados'
+              : approvedEntities.find((entity) => entity._id === selectedEntityId)?.name || 'Carregando'}
+          </Typography>
+        </Box>
+        <Button
+          variant={selectedEntityId && selectedEntityId !== allEntitiesId ? 'contained' : 'outlined'}
+          size="small"
+          startIcon={<FilterListIcon />}
+          onClick={() => setEntityFilterOpen(true)}
+          disabled={!approvedEntities.length}
+        >
+          Filtros{selectedEntityId && selectedEntityId !== allEntitiesId ? ' (1)' : ''}
+        </Button>
       </Stack>
+
+      <Dialog open={entityFilterOpen} onClose={() => setEntityFilterOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Filtro do órgão</DialogTitle>
+        <DialogContent dividers>
+          <FormControl fullWidth size="small" sx={{ mt: 1 }}>
+            <InputLabel id="modality-rules-entity-label">Órgão aprovado</InputLabel>
+            <Select
+              labelId="modality-rules-entity-label"
+              label="Órgão aprovado"
+              value={selectedEntityId}
+              onChange={(event) => setSelectedEntityId(event.target.value)}
+            >
+              <MenuItem value={allEntitiesId}>Todos os órgãos aprovados</MenuItem>
+              {approvedEntities.map((entity) => <MenuItem key={entity._id} value={entity._id}>{entity.name}</MenuItem>)}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSelectedEntityId(allEntitiesId)}>Limpar filtro</Button>
+          <Button onClick={() => setEntityFilterOpen(false)} variant="contained">Fechar</Button>
+        </DialogActions>
+      </Dialog>
 
       {selectedEntityId === allEntitiesId && (
         <Alert severity="info">
