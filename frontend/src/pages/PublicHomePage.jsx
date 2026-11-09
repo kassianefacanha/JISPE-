@@ -22,10 +22,10 @@ import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import api, { getApiErrorMessage } from '../services/api';
 
 const eventDescription = [
-  'O Governo do Estado do Ceará, por meio da Secretaria do Esporte do Ceará (Sesporte), realizará os Jogos da Integração do Servidor Público Estadual.',
+  'O Governo do Estado do Ceará, por meio da Secretaria do Esporte do Ceará (Sesporte), da Secretaria do Planejamento e Gestão (Seplag) e da Escola de Gestão Pública do Ceará (EGPCE), realizará os Jogos da Integração do Servidor Público Estadual.',
   'O objetivo do evento é oferecer aos servidores públicos cearenses atividades esportivas e de lazer que promovam intersetorialidade, valorização do funcionário, sociabilidade, integralidade e a união entre os participantes e o Governo do Estado.',
-  'O período de inscrições será de 22 de setembro a 06 de outubro.',
-  'A abertura oficial do Mês do Servidor, juntamente com a abertura dos Jogos da Integração, acontecerá no Centro Administrativo do Cambeba, no dia 10 de outubro, às 13h30.',
+  'As inscrições foram realizadas de 19 de outubro a 06 de novembro.',
+  'A abertura dos Jogos da Integração será no dia 13 de novembro, às 14h, no Centro Administrativo do Cambeba.',
 ];
 
 const modalities = [
@@ -181,7 +181,7 @@ export default function PublicHomePage() {
           >
             <Box sx={{ maxWidth: 700 }}>
               <Typography variant="overline" sx={{ letterSpacing: 3, fontWeight: 800, opacity: 0.9 }}>
-                Jogos da Integração do Servidor Público Estadual
+                Sesporte • Seplag • EGPCE
               </Typography>
               <Typography variant="h1" sx={{ fontSize: { xs: 40, sm: 54, md: 68 }, lineHeight: 1.05, mt: 1 }}>
                 JISPE 2026
