@@ -31,18 +31,18 @@ const getRegistrationControls = () => RegistrationControls.findOneAndUpdate(
 const normalizeHomeContent = (body = {}) => ({
   news: Array.isArray(body.news) ? body.news.slice(0, 30).map((item) => ({
     title: String(item?.title || '').trim().slice(0, 160),
+    type: ['Boletim', 'Informativa', 'Aviso', 'Comunicado', 'Outra'].includes(item?.type)
+      ? item.type
+      : 'Informativa',
     summary: String(item?.summary || '').trim().slice(0, 500),
     body: String(item?.body || '').trim().slice(0, 5000),
-    publishedAt: item?.publishedAt || new Date(),
-  })) : null,
-  bulletins: Array.isArray(body.bulletins) ? body.bulletins.slice(0, 30).map((item) => ({
-    title: String(item?.title || '').trim().slice(0, 160),
-    summary: String(item?.summary || '').trim().slice(0, 500),
-    body: String(item?.body || '').trim().slice(0, 5000),
+    link: String(item?.link || '').trim().slice(0, 2048),
+    documentId: String(item?.documentId || '').trim(),
     publishedAt: item?.publishedAt || new Date(),
   })) : null,
   documents: Array.isArray(body.documents) ? body.documents.slice(0, 30).map((item) => ({
-    _id: item?._id || undefined,
+    _id: item?._id || new mongoose.Types.ObjectId(),
+    clientId: String(item?.clientId || '').trim(),
     title: String(item?.title || '').trim().slice(0, 160),
     description: String(item?.description || '').trim().slice(0, 500),
     fileUrl: String(item?.fileUrl || '').trim(),
@@ -64,9 +64,22 @@ router.get('/home-content', auth, adminViewerOnly, async (req, res, next) => {
   try {
     const content = await HomeContent.findById('home')
       .select('news bulletins documents');
+    const news = [
+      ...(content?.news || []).map((item) => ({
+        ...item.toObject(),
+        type: item.type || 'Informativa',
+      })),
+      ...(content?.bulletins || []).map((item) => ({
+        ...item.toObject(),
+        type: 'Boletim',
+      })),
+    ].sort((first, second) => new Date(second.publishedAt) - new Date(first.publishedAt));
     res.json({ success: true, content: content
-      ? await serializeHomeContent(content)
-      : { news: [], bulletins: [], documents: [] } });
+      ? {
+        ...await serializeHomeContent(content),
+        news,
+      }
+      : { news: [], documents: [] } });
   } catch (error) {
     next(error);
   }
@@ -75,15 +88,39 @@ router.get('/home-content', auth, adminViewerOnly, async (req, res, next) => {
 router.put('/home-content', auth, adminEditorOnly, async (req, res, next) => {
   try {
     const content = normalizeHomeContent(req.body);
-    if (!content.news || !content.bulletins || !content.documents
+    if (!content.news || !content.documents
       || content.news.some((item) => !item.title)
-      || content.bulletins.some((item) => !item.title)
       || content.documents.some((item) => !item.title || !item.fileUrl || !item.fileName)) {
       return res.status(400).json({ success: false, message: 'Revise os campos obrigatórios e tente novamente.' });
+    }
+    if (content.news.some((item) => {
+      if (!item.link) return false;
+      try {
+        const url = new URL(item.link);
+        return !['http:', 'https:'].includes(url.protocol);
+      } catch (error) {
+        return true;
+      }
+    })) {
+      return res.status(400).json({ success: false, message: 'Os links das notícias precisam ser endereços HTTP ou HTTPS válidos.' });
     }
 
     const current = await HomeContent.findById('home');
     const previousDocuments = current?.documents || [];
+    const documentIds = new Set(content.documents.map((document) => String(document._id)));
+    const documentIdByReference = new Map(content.documents.flatMap((document) => [
+      [String(document._id), String(document._id)],
+      ...(document.clientId ? [[document.clientId, String(document._id)]] : []),
+    ]));
+    for (const news of content.news) {
+      if (!news.documentId) continue;
+      const documentId = documentIdByReference.get(news.documentId);
+      if (!documentId || !documentIds.has(documentId)) {
+        return res.status(400).json({ success: false, message: 'A notícia está vinculada a um documento que não foi enviado.' });
+      }
+      news.documentId = documentId;
+    }
+
     for (const document of content.documents) {
       const previous = previousDocuments.find((item) => document._id
         ? String(item._id) === String(document._id)
@@ -98,16 +135,18 @@ router.put('/home-content', auth, adminEditorOnly, async (req, res, next) => {
         ? String(item._id) === String(document._id)
         : item.fileName === document.fileName);
       return {
+        _id: document._id,
         ...document,
         fileUrl: await storeAsset(document.fileUrl, 'home/documents', previous?.fileUrl || ''),
       };
     }));
 
+    content.documents = content.documents.map(({ clientId, ...document }) => document);
     const saved = await HomeContent.findOneAndUpdate(
       { _id: 'home' },
       { $set: {
         news: content.news,
-        bulletins: content.bulletins,
+        bulletins: [],
         documents: content.documents,
       } },
       { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }

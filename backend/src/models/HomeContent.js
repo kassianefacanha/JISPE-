@@ -14,8 +14,11 @@ const homeContentSchema = new mongoose.Schema(
     },
     news: [{
       title: { type: String, required: true },
+      type: { type: String, enum: ['Boletim', 'Informativa', 'Aviso', 'Comunicado', 'Outra'], default: 'Informativa' },
       summary: { type: String, default: '' },
       body: { type: String, default: '' },
+      link: { type: String, default: '', maxlength: 2048 },
+      documentId: { type: String, default: '' },
       publishedAt: { type: Date, default: Date.now },
     }],
     bulletins: [{

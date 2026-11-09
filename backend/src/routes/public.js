@@ -69,14 +69,33 @@ router.get('/home-content', async (req, res, next) => {
       .lean();
     const result = content || {
       news: [],
-      bulletins: [],
       documents: [],
     };
-    result.bulletins = result.bulletins || [];
+    result.news = [
+      ...(result.news || []).map((item) => ({ ...item, type: item.type || 'Informativa' })),
+      ...(result.bulletins || []).map((item) => ({ ...item, type: 'Boletim' })),
+    ].sort((first, second) => new Date(second.publishedAt) - new Date(first.publishedAt));
+    delete result.bulletins;
     result.documents = await Promise.all((result.documents || []).map(async (document) => ({
       ...document,
       fileUrl: await getAssetUrl(document.fileUrl, { download: true }),
     })));
+    const documentsById = new Map(result.documents.map((document) => [
+      String(document._id),
+      document,
+    ]));
+    result.news = result.news.map((news) => {
+      const linkedDocument = news.documentId ? documentsById.get(String(news.documentId)) : null;
+      if (!linkedDocument) return news;
+      return {
+        ...news,
+        linkedDocument: {
+          title: linkedDocument.title,
+          fileName: linkedDocument.fileName,
+          fileUrl: linkedDocument.fileUrl,
+        },
+      };
+    });
     res.json({ success: true, content: result });
   } catch (error) {
     next(error);

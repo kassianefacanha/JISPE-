@@ -5,8 +5,12 @@ import {
   Box,
   Button,
   Container,
+  FormControl,
   IconButton,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   TextField,
   Typography,
@@ -19,7 +23,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useFeedback } from '../contexts/FeedbackContext';
 import api, { getApiErrorMessage } from '../services/api';
 
-const emptyContent = { bulletins: [], news: [], documents: [] };
+const emptyContent = { news: [], documents: [] };
 
 const readFile = (file) => new Promise((resolve, reject) => {
   const acceptedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
@@ -61,18 +65,20 @@ export default function HomeContentAdminPage() {
     return () => { active = false; };
   }, []);
 
-  const addPost = (field) => setContent((current) => ({
+  const addPost = () => setContent((current) => ({
     ...current,
-    [field]: [...current[field], {
+    news: [...current.news, {
       title: '',
+      type: 'Informativa',
       summary: '',
       body: '',
+      link: '',
       publishedAt: new Date().toISOString(),
     }],
   }));
-  const updatePost = (field, index, key, value) => setContent((current) => ({
+  const updatePost = (index, key, value) => setContent((current) => ({
     ...current,
-    [field]: current[field].map((item, itemIndex) => (
+    news: current.news.map((item, itemIndex) => (
       itemIndex === index ? { ...item, [key]: value } : item
     )),
   }));
@@ -86,6 +92,13 @@ export default function HomeContentAdminPage() {
     setContent((current) => ({
       ...current,
       [field]: current[field].filter((_, itemIndex) => itemIndex !== index),
+      ...(field === 'documents' ? {
+        news: current.news.map((news) => (
+          news.documentId === (current.documents[index]._id || current.documents[index].clientId)
+            ? { ...news, documentId: '' }
+            : news
+        )),
+      } : {}),
     }));
   };
 
@@ -98,6 +111,7 @@ export default function HomeContentAdminPage() {
       setContent((current) => ({
         ...current,
         documents: [...current.documents, {
+          clientId: crypto.randomUUID(),
           title: file.name.replace(/\.[^.]+$/, ''),
           description: '',
           fileUrl,
@@ -127,44 +141,57 @@ export default function HomeContentAdminPage() {
     }
   };
 
-  const renderPosts = (field, label, singular) => (
+  const renderNews = () => (
     <Paper sx={{ p: { xs: 2, sm: 3 } }}>
       <Stack spacing={2}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-          <Typography variant="h6">{label}</Typography>
-          <Button startIcon={<AddIcon />} disabled={readOnly} onClick={() => addPost(field)}>
+          <Typography variant="h6">Notícias</Typography>
+          <Button startIcon={<AddIcon />} disabled={readOnly} onClick={addPost}>
             Adicionar
           </Button>
         </Stack>
-        {content[field].map((item, index) => (
-          <Paper key={item._id || `${field}-${index}`} variant="outlined" sx={{ p: 2 }}>
+        {content.news.map((item, index) => (
+          <Paper key={item._id || `news-${index}`} variant="outlined" sx={{ p: 2 }}>
             <Stack spacing={1.5}>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Typography fontWeight={700}>{singular} {index + 1}</Typography>
+                <Typography fontWeight={700}>Notícia {index + 1}</Typography>
                 {!readOnly && (
                   <IconButton
-                    aria-label={`Excluir ${singular.toLowerCase()} ${index + 1}`}
+                    aria-label={`Excluir notícia ${index + 1}`}
                     color="error"
-                    onClick={() => removeItem(field, index, singular.toLowerCase())}
+                    onClick={() => removeItem('news', index, 'a notícia')}
                   >
                     <DeleteOutlineIcon />
                   </IconButton>
                 )}
               </Stack>
+              <FormControl fullWidth disabled={readOnly}>
+                <InputLabel id={`news-type-${index}`}>Tipo da notícia</InputLabel>
+                <Select
+                  labelId={`news-type-${index}`}
+                  label="Tipo da notícia"
+                  value={item.type || 'Informativa'}
+                  onChange={(event) => updatePost(index, 'type', event.target.value)}
+                >
+                  {['Boletim', 'Informativa', 'Aviso', 'Comunicado', 'Outra'].map((type) => (
+                    <MenuItem key={type} value={type}>{type}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
               <TextField
                 label="Título"
                 required
                 fullWidth
                 disabled={readOnly}
                 value={item.title}
-                onChange={(event) => updatePost(field, index, 'title', event.target.value)}
+                onChange={(event) => updatePost(index, 'title', event.target.value)}
               />
               <TextField
                 label="Resumo"
                 fullWidth
                 disabled={readOnly}
                 value={item.summary}
-                onChange={(event) => updatePost(field, index, 'summary', event.target.value)}
+                onChange={(event) => updatePost(index, 'summary', event.target.value)}
               />
               <TextField
                 label="Texto"
@@ -173,12 +200,42 @@ export default function HomeContentAdminPage() {
                 minRows={3}
                 disabled={readOnly}
                 value={item.body}
-                onChange={(event) => updatePost(field, index, 'body', event.target.value)}
+                onChange={(event) => updatePost(index, 'body', event.target.value)}
               />
+              <TextField
+                label="Link complementar (opcional)"
+                type="url"
+                fullWidth
+                disabled={readOnly}
+                placeholder="https://exemplo.com"
+                helperText="Será exibido junto ao texto completo da notícia. Use um endereço http:// ou https://."
+                inputProps={{ maxLength: 2048 }}
+                value={item.link || ''}
+                onChange={(event) => updatePost(index, 'link', event.target.value)}
+              />
+              <FormControl fullWidth disabled={readOnly || !content.documents.length}>
+                <InputLabel id={`news-document-${index}`}>Documento para baixar (opcional)</InputLabel>
+                <Select
+                  labelId={`news-document-${index}`}
+                  label="Documento para baixar (opcional)"
+                  value={item.documentId || ''}
+                  onChange={(event) => updatePost(index, 'documentId', event.target.value)}
+                >
+                  <MenuItem value="">Nenhum documento vinculado</MenuItem>
+                  {content.documents.map((document, documentIndex) => {
+                    const documentId = document._id || document.clientId;
+                    return (
+                      <MenuItem key={documentId || documentIndex} value={documentId}>
+                        {document.title || document.fileName}
+                      </MenuItem>
+                    );
+                  })}
+                </Select>
+              </FormControl>
             </Stack>
           </Paper>
         ))}
-        {!content[field].length && <Typography color="text.secondary">Nenhum item publicado.</Typography>}
+        {!content.news.length && <Typography color="text.secondary">Nenhuma notícia publicada.</Typography>}
       </Stack>
     </Paper>
   );
@@ -192,7 +249,7 @@ export default function HomeContentAdminPage() {
               <Button component={Link} to="/admin" startIcon={<ArrowBackIcon />} sx={{ mb: 1 }}>
                 Voltar ao painel
               </Button>
-              <Typography variant="h4" fontWeight={800}>Boletins, notícias e documentos</Typography>
+              <Typography variant="h4" fontWeight={800}>Notícias e documentos</Typography>
               <Typography color="text.secondary">Publique e remova conteúdo da página inicial. Banner e informações do evento são fixos.</Typography>
             </Box>
             <Button component="a" href="/" target="_blank" rel="noopener noreferrer" variant="outlined">
@@ -207,8 +264,7 @@ export default function HomeContentAdminPage() {
           ) : !pageError && (
             <Box component="form" onSubmit={saveContent}>
               <Stack spacing={2.5}>
-                {renderPosts('bulletins', 'Boletins', 'Boletim')}
-                {renderPosts('news', 'Notícias', 'Notícia')}
+                {renderNews()}
 
                 <Paper sx={{ p: { xs: 2, sm: 3 } }}>
                   <Stack spacing={2}>
@@ -223,7 +279,7 @@ export default function HomeContentAdminPage() {
                     </Stack>
                     <Typography variant="body2" color="text.secondary">PDF, JPG, PNG ou WebP; até 3 MiB por arquivo.</Typography>
                     {content.documents.map((item, index) => (
-                      <Paper key={item._id || `document-${index}`} variant="outlined" sx={{ p: 2 }}>
+                      <Paper key={item._id || item.clientId || `document-${index}`} variant="outlined" sx={{ p: 2 }}>
                         <Stack spacing={1.5}>
                           <Stack direction="row" justifyContent="space-between" alignItems="center">
                             <Typography variant="body2" color="text.secondary">{item.fileName}</Typography>
@@ -258,6 +314,9 @@ export default function HomeContentAdminPage() {
                               )),
                             }))}
                           />
+                          {item.fileUrl?.startsWith('data:') && (
+                            <Alert severity="info">Documento disponível para vincular às notícias após o envio.</Alert>
+                          )}
                           {item.fileUrl?.startsWith('data:') && <Alert severity="info">Arquivo selecionado; será enviado ao salvar.</Alert>}
                         </Stack>
                       </Paper>

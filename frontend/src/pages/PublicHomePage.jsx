@@ -6,7 +6,12 @@ import {
   Button,
   Card,
   CardContent,
+  Chip,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Paper,
   Stack,
   Typography,
@@ -40,16 +45,15 @@ const modalities = [
 ];
 
 export default function PublicHomePage() {
-  const [content, setContent] = useState({ bulletins: [], news: [], documents: [] });
+  const [content, setContent] = useState({ news: [], documents: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
+  const [selectedNews, setSelectedNews] = useState(null);
   const loadContent = () => {
     setLoading(true);
     setError('');
     api.get('/public/home-content')
       .then(({ data }) => setContent({
-        bulletins: data.content?.bulletins || [],
         news: data.content?.news || [],
         documents: data.content?.documents || [],
       }))
@@ -59,29 +63,94 @@ export default function PublicHomePage() {
 
   useEffect(() => { loadContent(); }, []);
 
-  const renderPosts = (items, title, id, icon) => items.length > 0 && (
-    <Box component="section" aria-labelledby={id}>
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+  const renderPosts = (items, title, id, icon) => (
+    <Paper
+      component="section"
+      aria-labelledby={id}
+      variant="outlined"
+      sx={{ height: { xs: 440, md: 620 }, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+    >
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 2, py: 2, borderBottom: '1px solid #e2e8f0' }}>
         {icon}
-        <Typography id={id} variant="h4" fontWeight={800}>{title}</Typography>
+        <Typography id={id} variant="h6" fontWeight={800}>{title}</Typography>
       </Stack>
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, gap: 2 }}>
-        {items.map((item, index) => (
-          <Card key={item._id || `${id}-${index}`} variant="outlined">
-            <CardContent sx={{ p: 3 }}>
-              {item.publishedAt && (
-                <Typography variant="overline" color="primary.main" fontWeight={700}>
-                  {new Date(item.publishedAt).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+      <Stack spacing={1.5} sx={{ p: 1.5, overflowY: 'auto', flex: 1, minHeight: 0 }}>
+        {loading ? (
+          <Typography role="status" color="text.secondary">Carregando {title.toLowerCase()}...</Typography>
+        ) : error ? (
+          <Stack spacing={1} alignItems="flex-start">
+            <Typography color="error.main">Não foi possível carregar o conteúdo.</Typography>
+            <Button size="small" onClick={loadContent}>Tentar novamente</Button>
+          </Stack>
+        ) : items.length ? items.map((item, index) => (
+          <Card key={item._id || `${id}-${index}`} variant="outlined" sx={{ flexShrink: 0 }}>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                <Chip size="small" color={item.type === 'Boletim' ? 'secondary' : 'primary'} label={item.type || 'Informativa'} />
+                {item.publishedAt && (
+                  <Typography variant="caption" color="text.secondary">
+                    {new Date(item.publishedAt).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                  </Typography>
+                )}
+              </Stack>
+              <Typography variant="subtitle1" fontWeight={800} sx={{ mt: 0.5, overflowWrap: 'anywhere' }}>{item.title}</Typography>
+              {item.summary && (
+                <Typography
+                  variant="body2"
+                  sx={{
+                    mt: 1,
+                    overflowWrap: 'anywhere',
+                    display: '-webkit-box',
+                    WebkitBoxOrient: 'vertical',
+                    WebkitLineClamp: 3,
+                    overflow: 'hidden',
+                  }}
+                  color="text.secondary"
+                >
+                  {item.summary}
                 </Typography>
               )}
-              <Typography variant="h6" fontWeight={800} sx={{ mt: 0.5 }}>{item.title}</Typography>
-              {item.summary && <Typography sx={{ mt: 1 }} color="text.secondary">{item.summary}</Typography>}
-              {item.body && <Typography sx={{ mt: 1.5, whiteSpace: 'pre-line' }}>{item.body}</Typography>}
+              {item.body && (
+                <Typography
+                  variant="body2"
+                  sx={{
+                    mt: 1.5,
+                    whiteSpace: 'pre-line',
+                    overflowWrap: 'anywhere',
+                    display: '-webkit-box',
+                    WebkitBoxOrient: 'vertical',
+                    WebkitLineClamp: 4,
+                    overflow: 'hidden',
+                  }}
+                >
+                  {item.body}
+                </Typography>
+              )}
+              {(item.summary || item.body) && (
+                <Button size="small" onClick={() => setSelectedNews(item)} sx={{ mt: 1 }}>
+                  Ler notícia completa
+                </Button>
+              )}
+              {item.linkedDocument && (
+                <Button
+                  component="a"
+                  href={item.linkedDocument.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                  size="small"
+                  sx={{ mt: 1 }}
+                >
+                  Baixar {item.linkedDocument.title}
+                </Button>
+              )}
             </CardContent>
           </Card>
-        ))}
-      </Box>
-    </Box>
+        )) : (
+          <Typography color="text.secondary">Nenhum conteúdo publicado.</Typography>
+        )}
+      </Stack>
+    </Paper>
   );
 
   return (
@@ -148,53 +217,119 @@ export default function PublicHomePage() {
             </Typography>
           </Box>
 
-          {error && (
-            <Alert severity="error" action={<Button color="inherit" size="small" onClick={loadContent}>Tentar novamente</Button>}>
-              {error}
-            </Alert>
-          )}
-          {loading && <Typography color="text.secondary">Carregando publicações...</Typography>}
-          {!loading && !error && (
-            <>
-              {renderPosts(
-                content.bulletins,
-                'Boletins',
-                'bulletins-title',
-                <ArticleOutlinedIcon color="primary" />
-              )}
-              {renderPosts(
-                content.news,
-                'Notícias',
-                'news-title',
-                <ArticleOutlinedIcon color="primary" />
-              )}
+          <Box sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+            gap: 2,
+            alignItems: 'start',
+          }}>
+            {renderPosts(
+              content.news,
+              'Notícias',
+              'news-title',
+              <ArticleOutlinedIcon color="primary" />
+            )}
+            <Paper
+              component="section"
+              aria-labelledby="documents-title"
+              variant="outlined"
+              sx={{ height: { xs: 360, md: 480 }, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+            >
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 2, py: 2, borderBottom: '1px solid #e2e8f0' }}>
+                <DescriptionOutlinedIcon color="primary" />
+                <Typography id="documents-title" variant="h6" fontWeight={800}>Documentos</Typography>
+              </Stack>
+              <Stack spacing={1.5} sx={{ p: 1.5, overflowY: 'auto', flex: 1, minHeight: 0 }}>
+                {loading ? (
+                  <Typography role="status" color="text.secondary">Carregando documentos...</Typography>
+                ) : error ? (
+                  <Stack spacing={1} alignItems="flex-start">
+                    <Typography color="error.main">Não foi possível carregar o conteúdo.</Typography>
+                    <Button size="small" onClick={loadContent}>Tentar novamente</Button>
+                  </Stack>
+                ) : content.documents.length ? content.documents.map((document, index) => (
+                  <Card key={document._id || `document-${index}`} variant="outlined">
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <Typography variant="subtitle1" fontWeight={800} sx={{ overflowWrap: 'anywhere' }}>{document.title}</Typography>
+                      {document.description && <Typography variant="body2" color="text.secondary" sx={{ mt: 1, overflowWrap: 'anywhere' }}>{document.description}</Typography>}
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, overflowWrap: 'anywhere' }}>{document.fileName}</Typography>
+                      <Button component="a" href={document.fileUrl} target="_blank" rel="noopener noreferrer" variant="outlined" size="small" download sx={{ mt: 1 }}>
+                        Abrir documento
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )) : (
+                  <Typography color="text.secondary">Nenhum documento publicado.</Typography>
+                )}
+              </Stack>
+            </Paper>
+          </Box>
 
-              {content.documents.length > 0 && (
-                <Box component="section" aria-labelledby="documents-title">
-                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-                    <DescriptionOutlinedIcon color="primary" />
-                    <Typography id="documents-title" variant="h4" fontWeight={800}>Documentos</Typography>
+          <Dialog
+            open={Boolean(selectedNews)}
+            onClose={() => setSelectedNews(null)}
+            fullWidth
+            maxWidth="sm"
+            aria-labelledby="news-dialog-title"
+          >
+            {selectedNews && (
+              <>
+                <DialogTitle id="news-dialog-title">{selectedNews.title}</DialogTitle>
+                <DialogContent dividers>
+                  <Stack spacing={2}>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Chip
+                        size="small"
+                        color={selectedNews.type === 'Boletim' ? 'secondary' : 'primary'}
+                        label={selectedNews.type || 'Informativa'}
+                      />
+                      {selectedNews.publishedAt && (
+                        <Typography variant="body2" color="text.secondary">
+                          {new Date(selectedNews.publishedAt).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                        </Typography>
+                      )}
+                    </Stack>
+                    {selectedNews.summary && (
+                      <Typography fontWeight={700} color="text.secondary">{selectedNews.summary}</Typography>
+                    )}
+                    {selectedNews.body && (
+                      <Typography sx={{ whiteSpace: 'pre-line', overflowWrap: 'anywhere' }}>
+                        {selectedNews.body}
+                      </Typography>
+                    )}
+                    {selectedNews.link && (
+                      <Button
+                        component="a"
+                        href={selectedNews.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant="contained"
+                        sx={{ alignSelf: 'flex-start' }}
+                      >
+                        Acessar link complementar
+                      </Button>
+                    )}
+                    {selectedNews.linkedDocument && (
+                      <Button
+                        component="a"
+                        href={selectedNews.linkedDocument.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download
+                        variant="outlined"
+                        sx={{ alignSelf: 'flex-start' }}
+                      >
+                        Baixar {selectedNews.linkedDocument.title}
+                      </Button>
+                    )}
                   </Stack>
-                  <Stack spacing={1.5}>
-                    {content.documents.map((document, index) => (
-                      <Paper key={document._id || `document-${index}`} variant="outlined" sx={{ p: 2.5 }}>
-                        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={1.5}>
-                          <Box>
-                            <Typography fontWeight={800}>{document.title}</Typography>
-                            {document.description && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{document.description}</Typography>}
-                            <Typography variant="caption" color="text.secondary">{document.fileName}</Typography>
-                          </Box>
-                          <Button component="a" href={document.fileUrl} target="_blank" rel="noopener noreferrer" variant="outlined" download>
-                            Abrir documento
-                          </Button>
-                        </Stack>
-                      </Paper>
-                    ))}
-                  </Stack>
-                </Box>
-              )}
-            </>
-          )}
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={() => setSelectedNews(null)}>Fechar</Button>
+                </DialogActions>
+              </>
+            )}
+          </Dialog>
 
           <Box component="footer" sx={{ borderTop: '1px solid #e2e8f0', pt: 3, textAlign: 'center' }}>
             <Typography variant="body2" color="text.secondary">JISPE 2026</Typography>
