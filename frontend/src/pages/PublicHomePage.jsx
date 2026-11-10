@@ -50,6 +50,8 @@ export default function PublicHomePage() {
   const [error, setError] = useState('');
   const [selectedNews, setSelectedNews] = useState(null);
   const [selectedDocument, setSelectedDocument] = useState(null);
+  const [documentPreviewUrl, setDocumentPreviewUrl] = useState('');
+  const [documentPreviewError, setDocumentPreviewError] = useState('');
   const loadContent = () => {
     setLoading(true);
     setError('');
@@ -64,10 +66,30 @@ export default function PublicHomePage() {
 
   useEffect(() => { loadContent(); }, []);
 
-  const getDocumentPreviewUrl = (document) => {
-    const apiBaseUrl = api.defaults.baseURL.replace(/\/$/, '');
-    return `${apiBaseUrl}/public/home-content/documents/${encodeURIComponent(document._id)}/preview`;
-  };
+  useEffect(() => {
+    if (!selectedDocument) return undefined;
+
+    let active = true;
+    let objectUrl = '';
+    setDocumentPreviewUrl('');
+    setDocumentPreviewError('');
+    api.get(`/public/home-content/documents/${encodeURIComponent(selectedDocument._id)}/preview`, {
+      responseType: 'blob',
+    })
+      .then(({ data }) => {
+        if (!active) return;
+        objectUrl = URL.createObjectURL(data);
+        setDocumentPreviewUrl(objectUrl);
+      })
+      .catch(() => {
+        if (active) setDocumentPreviewError('Não foi possível carregar a prévia. Tente baixar o documento.');
+      });
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [selectedDocument]);
 
   const renderPosts = (items, title, id, icon) => (
     <Paper
@@ -379,17 +401,21 @@ export default function PublicHomePage() {
               <>
                 <DialogTitle id="document-dialog-title">{selectedDocument.title}</DialogTitle>
                 <DialogContent dividers>
-                  {selectedDocument.fileName?.toLowerCase().endsWith('.pdf') ? (
+                  {documentPreviewError ? (
+                    <Alert severity="error">{documentPreviewError}</Alert>
+                  ) : !documentPreviewUrl ? (
+                    <Typography role="status" color="text.secondary">Carregando prévia do documento...</Typography>
+                  ) : selectedDocument.fileName?.toLowerCase().endsWith('.pdf') ? (
                     <Box
                       component="iframe"
                       title={`Prévia de ${selectedDocument.title}`}
-                      src={getDocumentPreviewUrl(selectedDocument)}
+                      src={documentPreviewUrl}
                       sx={{ display: 'block', width: '100%', height: { xs: '60vh', md: '70vh' }, border: 0 }}
                     />
                   ) : (
                     <Box
                       component="img"
-                      src={selectedDocument.fileUrl}
+                      src={documentPreviewUrl}
                       alt={selectedDocument.title}
                       sx={{ display: 'block', maxWidth: '100%', maxHeight: '70vh', mx: 'auto', objectFit: 'contain' }}
                     />
