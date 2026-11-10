@@ -402,7 +402,7 @@ router.put('/:id', auth, async (req, res, next) => {
     }
 
     const controls = await RegistrationControls.findById('global').lean();
-    if (!isRegistrationOpen(controls, 'athleteRegistrationOpen')) {
+    if (!isAdminEditor(req.user) && !isRegistrationOpen(controls, 'athleteRegistrationOpen')) {
       return res.status(403).json({ success: false, message: 'As inscrições e alterações de atletas estão encerradas.' });
     }
 
