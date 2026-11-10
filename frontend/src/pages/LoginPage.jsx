@@ -11,7 +11,6 @@ import {
   Typography,
 } from '@mui/material';
 import LoginIcon from '@mui/icons-material/Login';
-import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
 import BusinessIcon from '@mui/icons-material/Business';
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
@@ -25,7 +24,6 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [entityRegistrationOpen, setEntityRegistrationOpen] = useState(null);
-  const [selfAthleteRegistrationOpen, setSelfAthleteRegistrationOpen] = useState(null);
   const [registrationStatusError, setRegistrationStatusError] = useState(false);
 
   useEffect(() => {
@@ -34,13 +32,11 @@ export default function LoginPage() {
       .then((response) => {
         if (active) {
           setEntityRegistrationOpen(response.data.entityRegistrationOpen !== false);
-          setSelfAthleteRegistrationOpen(response.data.selfAthleteRegistrationOpen !== false);
         }
       })
       .catch(() => {
         if (active) {
           setEntityRegistrationOpen(false);
-          setSelfAthleteRegistrationOpen(false);
           setRegistrationStatusError(true);
         }
       });
@@ -179,21 +175,6 @@ export default function LoginPage() {
                   }}
                 >
                   <Button
-                    component={selfAthleteRegistrationOpen === true ? Link : 'button'}
-                    to={selfAthleteRegistrationOpen === true ? '/cadastro-atleta' : undefined}
-                    variant="contained"
-                    color="secondary"
-                    startIcon={<PersonAddAlt1Icon />}
-                    disabled={selfAthleteRegistrationOpen !== true}
-                    sx={{ minHeight: 56, px: 1.5, borderRadius: 2, fontWeight: 700, whiteSpace: 'normal', lineHeight: 1.25 }}
-                  >
-                    {selfAthleteRegistrationOpen === null
-                      ? 'Verificando inscrições...'
-                      : selfAthleteRegistrationOpen
-                        ? 'Cadastro de atleta'
-                        : 'Inscrições encerradas'}
-                  </Button>
-                  <Button
                     component={entityRegistrationOpen === true ? Link : 'button'}
                     to={entityRegistrationOpen === true ? '/cadastro-entidade' : undefined}
                     variant="outlined"
@@ -231,13 +212,6 @@ export default function LoginPage() {
                   </Button>
                 </Box>
 
-                {selfAthleteRegistrationOpen === false && (
-                  <Alert severity={registrationStatusError ? 'warning' : 'info'}>
-                    {registrationStatusError
-                      ? 'Não foi possível verificar se as inscrições estão abertas. Tente novamente mais tarde.'
-                      : 'O cadastro direto de atletas está temporariamente fechado.'}
-                  </Alert>
-                )}
               </Stack>
             </Paper>
           </Box>

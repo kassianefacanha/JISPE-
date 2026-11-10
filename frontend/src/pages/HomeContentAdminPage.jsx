@@ -25,10 +25,14 @@ import api, { getApiErrorMessage } from '../services/api';
 
 const emptyContent = { news: [], documents: [] };
 
-const readFile = (file) => new Promise((resolve, reject) => {
-  const acceptedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+const readFile = (file, imagesOnly = false) => new Promise((resolve, reject) => {
+  const acceptedTypes = imagesOnly
+    ? ['image/jpeg', 'image/png', 'image/webp']
+    : ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
   if (!acceptedTypes.includes(file.type)) {
-    reject(new Error('Envie um arquivo PDF, JPG, PNG ou WebP.'));
+    reject(new Error(imagesOnly
+      ? 'Envie uma imagem JPG, PNG ou WebP.'
+      : 'Envie um arquivo PDF, JPG, PNG ou WebP.'));
     return;
   }
   if (file.size > 3 * 1024 * 1024) {
@@ -73,6 +77,7 @@ export default function HomeContentAdminPage() {
       summary: '',
       body: '',
       link: '',
+      imageUrl: '',
       publishedAt: new Date().toISOString(),
     }],
   }));
@@ -118,6 +123,17 @@ export default function HomeContentAdminPage() {
           fileName: file.name,
         }],
       }));
+    } catch (error) {
+      notify(error.message);
+    }
+  };
+
+  const addNewsImage = async (index, event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      updatePost(index, 'imageUrl', await readFile(file, true));
     } catch (error) {
       notify(error.message);
     }
@@ -202,6 +218,33 @@ export default function HomeContentAdminPage() {
                 value={item.body}
                 onChange={(event) => updatePost(index, 'body', event.target.value)}
               />
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'stretch', sm: 'center' }}>
+                <Button component="label" variant="outlined" disabled={readOnly} startIcon={<AddIcon />}>
+                  {item.imageUrl ? 'Trocar foto da notícia' : 'Adicionar foto à notícia'}
+                  <input
+                    hidden
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) => addNewsImage(index, event)}
+                  />
+                </Button>
+                {item.imageUrl && !readOnly && (
+                  <Button color="error" onClick={() => updatePost(index, 'imageUrl', '')}>
+                    Remover foto
+                  </Button>
+                )}
+              </Stack>
+              {item.imageUrl && (
+                <Box
+                  component="img"
+                  src={item.imageUrl}
+                  alt={`Prévia da foto da notícia ${index + 1}`}
+                  sx={{ display: 'block', maxWidth: '100%', maxHeight: 240, objectFit: 'contain', borderRadius: 1 }}
+                />
+              )}
+              <Typography variant="caption" color="text.secondary">
+                JPG, PNG ou WebP; até 3 MiB.
+              </Typography>
               <TextField
                 label="Link complementar (opcional)"
                 type="url"

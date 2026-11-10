@@ -96,6 +96,10 @@ export default function EntityAthleteCreatePage({ selfRegistration = false }) {
   const [raceRegistrationLimit, setRaceRegistrationLimit] = useState(1500);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  useEffect(() => {
+    if (!athleteId && !selfRegistration) navigate('/entity', { replace: true });
+  }, [athleteId, navigate, selfRegistration]);
+
   const primaryModality = modalities.find((modality) => (
     [modality.name, modality.slug, ...(modality.legacyNames || []), ...(modality.legacySlugs || [])]
       .includes(form.modalityRegistrations[0]?.modality)
@@ -256,6 +260,8 @@ export default function EntityAthleteCreatePage({ selfRegistration = false }) {
       setSaving(false);
     }
   };
+
+  if (!athleteId && !selfRegistration) return null;
 
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: '#f8fafc', py: { xs: 3, md: 5 }, px: 2 }}>

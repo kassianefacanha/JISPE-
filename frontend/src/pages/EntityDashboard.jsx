@@ -23,7 +23,6 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -417,9 +416,6 @@ export default function EntityDashboard() {
                 </Button>
                 <Button variant="contained" size="small" startIcon={<DownloadIcon />} sx={{ textTransform: 'none', minWidth: 110 }} onClick={(event) => setExportMenuAnchor(event.currentTarget)}>
                   Exportar
-                </Button>
-                <Button component={Link} to="/entity/atletas/novo" variant="contained" size="small" startIcon={<AddIcon />} sx={{ textTransform: 'none', minWidth: 150 }}>
-                  Novo cadastro
                 </Button>
               </Stack>
             </Stack>

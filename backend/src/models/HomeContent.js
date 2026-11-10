@@ -18,6 +18,7 @@ const homeContentSchema = new mongoose.Schema(
       summary: { type: String, default: '' },
       body: { type: String, default: '' },
       link: { type: String, default: '', maxlength: 2048 },
+      imageUrl: { type: String, default: '' },
       documentId: { type: String, default: '' },
       publishedAt: { type: Date, default: Date.now },
     }],

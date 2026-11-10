@@ -94,6 +94,14 @@ export default function PublicHomePage() {
                 )}
               </Stack>
               <Typography variant="subtitle1" fontWeight={800} sx={{ mt: 0.5, overflowWrap: 'anywhere' }}>{item.title}</Typography>
+              {item.imageUrl && (
+                <Box
+                  component="img"
+                  src={item.imageUrl}
+                  alt={item.title}
+                  sx={{ display: 'block', width: '100%', maxHeight: 180, mt: 1, objectFit: 'cover', borderRadius: 1 }}
+                />
+              )}
               {item.summary && (
                 <Typography
                   variant="body2"
@@ -134,7 +142,7 @@ export default function PublicHomePage() {
               {item.linkedDocument && (
                 <Button
                   component="a"
-                  href={item.linkedDocument.fileUrl}
+                  href={item.linkedDocument.downloadUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   download
@@ -233,13 +241,28 @@ export default function PublicHomePage() {
               component="section"
               aria-labelledby="documents-title"
               variant="outlined"
-              sx={{ height: { xs: 360, md: 480 }, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+              sx={{
+                height: { xs: 'auto', md: 480 },
+                maxHeight: { xs: 'none', md: 480 },
+                minWidth: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: { xs: 'visible', md: 'hidden' },
+              }}
             >
               <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 2, py: 2, borderBottom: '1px solid #e2e8f0' }}>
                 <DescriptionOutlinedIcon color="primary" />
                 <Typography id="documents-title" variant="h6" fontWeight={800}>Documentos</Typography>
               </Stack>
-              <Stack spacing={1.5} sx={{ p: 1.5, overflowY: 'auto', flex: 1, minHeight: 0 }}>
+              <Stack
+                spacing={1.5}
+                sx={{
+                  p: 1.5,
+                  overflowY: { xs: 'visible', md: 'auto' },
+                  flex: { xs: '0 0 auto', md: '1 1 0%' },
+                  minHeight: 0,
+                }}
+              >
                 {loading ? (
                   <Typography role="status" color="text.secondary">Carregando documentos...</Typography>
                 ) : error ? (
@@ -247,18 +270,37 @@ export default function PublicHomePage() {
                     <Typography color="error.main">Não foi possível carregar o conteúdo.</Typography>
                     <Button size="small" onClick={loadContent}>Tentar novamente</Button>
                   </Stack>
-                ) : content.documents.length ? content.documents.map((document, index) => (
-                  <Card key={document._id || `document-${index}`} variant="outlined">
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="subtitle1" fontWeight={800} sx={{ overflowWrap: 'anywhere' }}>{document.title}</Typography>
-                      {document.description && <Typography variant="body2" color="text.secondary" sx={{ mt: 1, overflowWrap: 'anywhere' }}>{document.description}</Typography>}
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, overflowWrap: 'anywhere' }}>{document.fileName}</Typography>
-                      <Button component="a" href={document.fileUrl} target="_blank" rel="noopener noreferrer" variant="outlined" size="small" download sx={{ mt: 1 }}>
-                        Abrir documento
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )) : (
+                ) : content.documents.length ? content.documents.map((document, index) => {
+                  const isPdf = document.fileName?.toLowerCase().endsWith('.pdf');
+                  const isImage = /\.(jpe?g|png|webp)$/i.test(document.fileName || '');
+                  return (
+                    <Card key={document._id || `document-${index}`} variant="outlined" sx={{ flexShrink: 0, minWidth: 0 }}>
+                      <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                        <Typography variant="subtitle1" fontWeight={800} sx={{ overflowWrap: 'anywhere' }}>{document.title}</Typography>
+                        {document.description && <Typography variant="body2" color="text.secondary" sx={{ mt: 1, overflowWrap: 'anywhere' }}>{document.description}</Typography>}
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, overflowWrap: 'anywhere' }}>{document.fileName}</Typography>
+                        {isPdf ? (
+                          <Box
+                            component="iframe"
+                            title={`Prévia de ${document.title}`}
+                            src={document.fileUrl}
+                            sx={{ display: 'block', width: '100%', height: { xs: 280, md: 340 }, mt: 1, border: '1px solid #e2e8f0', borderRadius: 1 }}
+                          />
+                        ) : isImage ? (
+                          <Box
+                            component="img"
+                            src={document.fileUrl}
+                            alt={document.title}
+                            sx={{ display: 'block', maxWidth: '100%', maxHeight: { xs: 280, md: 340 }, mt: 1, objectFit: 'contain' }}
+                          />
+                        ) : null}
+                        <Button component="a" href={document.downloadUrl} target="_blank" rel="noopener noreferrer" variant="outlined" size="small" download sx={{ mt: 1, maxWidth: '100%', overflowWrap: 'anywhere' }}>
+                          Baixar documento
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  );
+                }) : (
                   <Typography color="text.secondary">Nenhum documento publicado.</Typography>
                 )}
               </Stack>
@@ -297,6 +339,14 @@ export default function PublicHomePage() {
                         {selectedNews.body}
                       </Typography>
                     )}
+                    {selectedNews.imageUrl && (
+                      <Box
+                        component="img"
+                        src={selectedNews.imageUrl}
+                        alt={selectedNews.title}
+                        sx={{ display: 'block', maxWidth: '100%', maxHeight: 420, objectFit: 'contain', borderRadius: 1 }}
+                      />
+                    )}
                     {selectedNews.link && (
                       <Button
                         component="a"
@@ -312,7 +362,7 @@ export default function PublicHomePage() {
                     {selectedNews.linkedDocument && (
                       <Button
                         component="a"
-                        href={selectedNews.linkedDocument.fileUrl}
+                        href={selectedNews.linkedDocument.downloadUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         download

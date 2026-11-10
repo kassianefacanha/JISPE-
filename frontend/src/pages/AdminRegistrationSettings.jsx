@@ -35,16 +35,12 @@ import api, { getApiErrorMessage } from '../services/api';
 const defaultControls = {
   entityRegistrationOpen: true,
   athleteRegistrationOpen: true,
-  selfAthleteRegistrationOpen: true,
 };
 const allEntitiesId = 'all';
 
 const normalizeControls = (controls = {}) => ({
   ...defaultControls,
   ...controls,
-  selfAthleteRegistrationOpen: typeof controls.selfAthleteRegistrationOpen === 'boolean'
-    ? controls.selfAthleteRegistrationOpen
-    : defaultControls.selfAthleteRegistrationOpen,
 });
 
 export default function AdminRegistrationSettings({ entities, readOnly = false }) {
@@ -286,11 +282,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false }
           />
           <FormControlLabel
             control={<Switch checked={controls.athleteRegistrationOpen} disabled={loadingControls || readOnly} onChange={(event) => updateGlobalControl('athleteRegistrationOpen', event.target.checked)} />}
-            label={<Box><Typography fontWeight={700}>Cadastro de atletas</Typography><Typography variant="body2" color="text.secondary">{controls.athleteRegistrationOpen ? 'Órgãos podem cadastrar atletas' : 'Bloqueado para órgãos'}</Typography></Box>}
-          />
-          <FormControlLabel
-            control={<Switch checked={controls.selfAthleteRegistrationOpen} disabled={loadingControls || readOnly} onChange={(event) => updateGlobalControl('selfAthleteRegistrationOpen', event.target.checked)} />}
-            label={<Box><Typography fontWeight={700}>Cadastro direto pelo atleta</Typography><Typography variant="body2" color="text.secondary">{controls.selfAthleteRegistrationOpen ? 'Atletas podem enviar cadastro para aprovação' : 'Bloqueado para novos cadastros diretos'}</Typography></Box>}
+            label={<Box><Typography fontWeight={700}>Cadastro de atletas</Typography><Typography variant="body2" color="text.secondary">{controls.athleteRegistrationOpen ? 'Administradores podem cadastrar atletas' : 'Bloqueado para novos cadastros'}</Typography></Box>}
           />
         </Stack>
       </Paper>

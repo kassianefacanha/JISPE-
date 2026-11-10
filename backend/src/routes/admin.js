@@ -30,6 +30,7 @@ const getRegistrationControls = () => RegistrationControls.findOneAndUpdate(
 
 const normalizeHomeContent = (body = {}) => ({
   news: Array.isArray(body.news) ? body.news.slice(0, 30).map((item) => ({
+    _id: item?._id || new mongoose.Types.ObjectId(),
     title: String(item?.title || '').trim().slice(0, 160),
     type: ['Boletim', 'Informativa', 'Aviso', 'Comunicado', 'Outra'].includes(item?.type)
       ? item.type
@@ -37,6 +38,7 @@ const normalizeHomeContent = (body = {}) => ({
     summary: String(item?.summary || '').trim().slice(0, 500),
     body: String(item?.body || '').trim().slice(0, 5000),
     link: String(item?.link || '').trim().slice(0, 2048),
+    imageUrl: String(item?.imageUrl || '').trim(),
     documentId: String(item?.documentId || '').trim(),
     publishedAt: item?.publishedAt || new Date(),
   })) : null,
@@ -52,6 +54,11 @@ const normalizeHomeContent = (body = {}) => ({
 
 const serializeHomeContent = async (content) => {
   const result = content.toObject();
+  result.news = await Promise.all(result.news.map(async (news) => {
+    const item = news.toObject ? news.toObject() : news;
+    item.imageUrl = await getAssetUrl(item.imageUrl);
+    return item;
+  }));
   result.documents = await Promise.all(result.documents.map(async (document) => {
     const item = document.toObject ? document.toObject() : document;
     item.fileUrl = await getAssetUrl(item.fileUrl, { download: true });
@@ -74,10 +81,14 @@ router.get('/home-content', auth, adminViewerOnly, async (req, res, next) => {
         type: 'Boletim',
       })),
     ].sort((first, second) => new Date(second.publishedAt) - new Date(first.publishedAt));
+    const newsWithAssets = await Promise.all(news.map(async (item) => ({
+      ...item,
+      imageUrl: await getAssetUrl(item.imageUrl),
+    })));
     res.json({ success: true, content: content
       ? {
         ...await serializeHomeContent(content),
-        news,
+        news: newsWithAssets,
       }
       : { news: [], documents: [] } });
   } catch (error) {
@@ -106,6 +117,7 @@ router.put('/home-content', auth, adminEditorOnly, async (req, res, next) => {
     }
 
     const current = await HomeContent.findById('home');
+    const previousNews = current?.news || [];
     const previousDocuments = current?.documents || [];
     const documentIds = new Set(content.documents.map((document) => String(document._id)));
     const documentIdByReference = new Map(content.documents.flatMap((document) => [
@@ -130,6 +142,24 @@ router.put('/home-content', auth, adminEditorOnly, async (req, res, next) => {
       if (assetError) return res.status(400).json({ success: false, message: assetError });
     }
 
+    for (const news of content.news) {
+      if (!news.imageUrl) continue;
+      const previous = previousNews.find((item) => String(item._id) === String(news._id));
+      if (isSameStoredAsset(news.imageUrl, previous?.imageUrl || '')) continue;
+      const assetError = validateUploadedAsset(news.imageUrl, 'photo');
+      if (assetError) return res.status(400).json({ success: false, message: assetError });
+    }
+
+    content.news = await Promise.all(content.news.map(async (news) => {
+      const previous = previousNews.find((item) => String(item._id) === String(news._id));
+      return {
+        ...news,
+        imageUrl: news.imageUrl
+          ? await storeAsset(news.imageUrl, `home/news/${news._id}`, previous?.imageUrl || '')
+          : '',
+      };
+    }));
+
     content.documents = await Promise.all(content.documents.map(async (document) => {
       const previous = previousDocuments.find((item) => document._id
         ? String(item._id) === String(document._id)
@@ -152,6 +182,11 @@ router.put('/home-content', auth, adminEditorOnly, async (req, res, next) => {
       { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
     );
     const nextAssets = new Set(saved.documents.map((item) => item.fileUrl));
+    const nextNewsAssets = new Set(saved.news.map((item) => item.imageUrl).filter(Boolean));
+    await Promise.all(previousNews.map((news) => deleteReplacedAsset(
+      news.imageUrl,
+      nextNewsAssets.has(news.imageUrl) ? news.imageUrl : ''
+    )));
     await Promise.all(previousDocuments.map((document) => deleteReplacedAsset(
       document.fileUrl,
       nextAssets.has(document.fileUrl) ? document.fileUrl : ''

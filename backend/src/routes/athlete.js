@@ -1,5 +1,4 @@
 const express = require('express');
-const rateLimit = require('express-rate-limit');
 const Athlete = require('../models/Athlete');
 const Entity = require('../models/Entity');
 const Modality = require('../models/Modality');
@@ -66,14 +65,6 @@ const hasConflictingBinaryNaipe = (entries) => {
 };
 
 const router = express.Router();
-const selfRegistrationLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, message: 'Muitas tentativas de cadastro. Tente novamente em 15 minutos.' },
-});
-
 router.get('/', auth, async (req, res, next) => {
   try {
     const isAdmin = isAdminViewer(req.user);
@@ -317,12 +308,11 @@ const createAthlete = async (req, res, next) => {
   }
 };
 
-router.post('/self-register', selfRegistrationLimiter, (req, res, next) => {
-  req.selfRegistration = true;
-  return createAthlete(req, res, next);
-});
+router.post('/self-register', (req, res) => (
+  res.status(403).json({ success: false, message: 'O cadastro de atletas é restrito ao administrador.' })
+));
 
-router.post('/', auth, createAthlete);
+router.post('/', auth, adminEditorOnly, createAthlete);
 
 router.patch('/:id/approve', auth, async (req, res, next) => {
   try {
