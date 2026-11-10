@@ -64,6 +64,11 @@ export default function PublicHomePage() {
 
   useEffect(() => { loadContent(); }, []);
 
+  const getDocumentPreviewUrl = (document) => {
+    const apiBaseUrl = api.defaults.baseURL.replace(/\/$/, '');
+    return `${apiBaseUrl}/public/home-content/documents/${encodeURIComponent(document._id)}/preview`;
+  };
+
   const renderPosts = (items, title, id, icon) => (
     <Paper
       component="section"
@@ -378,7 +383,7 @@ export default function PublicHomePage() {
                     <Box
                       component="iframe"
                       title={`Prévia de ${selectedDocument.title}`}
-                      src={selectedDocument.fileUrl}
+                      src={getDocumentPreviewUrl(selectedDocument)}
                       sx={{ display: 'block', width: '100%', height: { xs: '60vh', md: '70vh' }, border: 0 }}
                     />
                   ) : (

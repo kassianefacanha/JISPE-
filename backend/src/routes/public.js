@@ -8,7 +8,14 @@ const { generateMatricula } = require('../utils/matriculaGenerator');
 const { isValidCPF } = require('../utils/cpfValidator');
 const { isAthleteApproved } = require('../services/athleteApproval');
 const { generateAthleteBadge } = require('../services/athleteBadge');
-const { deleteReplacedAsset, getAssetUrl, isSameStoredAsset, storeAsset } = require('../services/r2Storage');
+const {
+  deleteReplacedAsset,
+  getAssetBuffer,
+  getAssetUrl,
+  isR2Value,
+  isSameStoredAsset,
+  storeAsset,
+} = require('../services/r2Storage');
 const { getAgeCategory } = require('../services/ageCategory');
 const { getModalityCatalog } = require('../config/defaultModalities');
 const Modality = require('../models/Modality');
@@ -61,6 +68,53 @@ const hasConflictingBinaryNaipe = (entries) => {
   const naipes = new Set(entries.map((entry) => entry.naipe));
   return naipes.has('masculino') && naipes.has('feminino');
 };
+
+router.get('/home-content/documents/:documentId/preview', async (req, res, next) => {
+  try {
+    const content = await HomeContent.findById('home').select('documents').lean();
+    const document = content?.documents?.find((item) => String(item._id) === req.params.documentId);
+    if (!document) {
+      return res.status(404).json({ success: false, message: 'Documento não encontrado.' });
+    }
+
+    const mimeTypes = {
+      pdf: 'application/pdf',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      webp: 'image/webp',
+    };
+    const extension = document.fileName?.split('.').pop()?.toLowerCase();
+    const contentType = mimeTypes[extension];
+    if (!contentType) {
+      return res.status(415).json({ success: false, message: 'Formato de documento não suportado para visualização.' });
+    }
+
+    let fileBuffer;
+    if (isR2Value(document.fileUrl)) {
+      fileBuffer = await getAssetBuffer(document.fileUrl);
+    } else if (typeof document.fileUrl === 'string') {
+      const match = document.fileUrl.match(/^data:([^;,]+);base64,([A-Za-z0-9+/]+={0,2})$/i);
+      if (match && match[1].toLowerCase() === contentType) {
+        fileBuffer = Buffer.from(match[2], 'base64');
+      }
+    }
+
+    if (!fileBuffer) {
+      return res.status(502).json({ success: false, message: 'Não foi possível carregar a prévia do documento.' });
+    }
+
+    res.set({
+      'Content-Type': contentType,
+      'Content-Disposition': 'inline',
+      'Content-Length': fileBuffer.length,
+      'Cache-Control': 'private, no-store',
+    });
+    return res.send(fileBuffer);
+  } catch (error) {
+    return next(error);
+  }
+});
 
 router.get('/home-content', async (req, res, next) => {
   try {
