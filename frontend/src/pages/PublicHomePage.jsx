@@ -49,6 +49,7 @@ export default function PublicHomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedNews, setSelectedNews] = useState(null);
+  const [selectedDocument, setSelectedDocument] = useState(null);
   const loadContent = () => {
     setLoading(true);
     setError('');
@@ -241,28 +242,13 @@ export default function PublicHomePage() {
               component="section"
               aria-labelledby="documents-title"
               variant="outlined"
-              sx={{
-                height: { xs: 'auto', md: 480 },
-                maxHeight: { xs: 'none', md: 480 },
-                minWidth: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: { xs: 'visible', md: 'hidden' },
-              }}
+              sx={{ height: { xs: 440, md: 620 }, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
             >
               <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 2, py: 2, borderBottom: '1px solid #e2e8f0' }}>
                 <DescriptionOutlinedIcon color="primary" />
                 <Typography id="documents-title" variant="h6" fontWeight={800}>Documentos</Typography>
               </Stack>
-              <Stack
-                spacing={1.5}
-                sx={{
-                  p: 1.5,
-                  overflowY: { xs: 'visible', md: 'auto' },
-                  flex: { xs: '0 0 auto', md: '1 1 0%' },
-                  minHeight: 0,
-                }}
-              >
+              <Stack spacing={1.5} sx={{ p: 1.5, overflowY: 'auto', flex: 1, minHeight: 0 }}>
                 {loading ? (
                   <Typography role="status" color="text.secondary">Carregando documentos...</Typography>
                 ) : error ? (
@@ -271,32 +257,28 @@ export default function PublicHomePage() {
                     <Button size="small" onClick={loadContent}>Tentar novamente</Button>
                   </Stack>
                 ) : content.documents.length ? content.documents.map((document, index) => {
-                  const isPdf = document.fileName?.toLowerCase().endsWith('.pdf');
-                  const isImage = /\.(jpe?g|png|webp)$/i.test(document.fileName || '');
                   return (
                     <Card key={document._id || `document-${index}`} variant="outlined" sx={{ flexShrink: 0, minWidth: 0 }}>
                       <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                         <Typography variant="subtitle1" fontWeight={800} sx={{ overflowWrap: 'anywhere' }}>{document.title}</Typography>
                         {document.description && <Typography variant="body2" color="text.secondary" sx={{ mt: 1, overflowWrap: 'anywhere' }}>{document.description}</Typography>}
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, overflowWrap: 'anywhere' }}>{document.fileName}</Typography>
-                        {isPdf ? (
-                          <Box
-                            component="iframe"
-                            title={`Prévia de ${document.title}`}
-                            src={document.fileUrl}
-                            sx={{ display: 'block', width: '100%', height: { xs: 280, md: 340 }, mt: 1, border: '1px solid #e2e8f0', borderRadius: 1 }}
-                          />
-                        ) : isImage ? (
-                          <Box
-                            component="img"
-                            src={document.fileUrl}
-                            alt={document.title}
-                            sx={{ display: 'block', maxWidth: '100%', maxHeight: { xs: 280, md: 340 }, mt: 1, objectFit: 'contain' }}
-                          />
-                        ) : null}
-                        <Button component="a" href={document.downloadUrl} target="_blank" rel="noopener noreferrer" variant="outlined" size="small" download sx={{ mt: 1, maxWidth: '100%', overflowWrap: 'anywhere' }}>
-                          Baixar documento
-                        </Button>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mt: 1 }}>
+                          <Button variant="outlined" size="small" onClick={() => setSelectedDocument(document)}>
+                            Visualizar documento
+                          </Button>
+                          <Button
+                            component="a"
+                            href={document.downloadUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            variant="contained"
+                            size="small"
+                            download
+                          >
+                            Baixar documento
+                          </Button>
+                        </Stack>
                       </CardContent>
                     </Card>
                   );
@@ -376,6 +358,50 @@ export default function PublicHomePage() {
                 </DialogContent>
                 <DialogActions>
                   <Button onClick={() => setSelectedNews(null)}>Fechar</Button>
+                </DialogActions>
+              </>
+            )}
+          </Dialog>
+
+          <Dialog
+            open={Boolean(selectedDocument)}
+            onClose={() => setSelectedDocument(null)}
+            fullWidth
+            maxWidth="md"
+            aria-labelledby="document-dialog-title"
+          >
+            {selectedDocument && (
+              <>
+                <DialogTitle id="document-dialog-title">{selectedDocument.title}</DialogTitle>
+                <DialogContent dividers>
+                  {selectedDocument.fileName?.toLowerCase().endsWith('.pdf') ? (
+                    <Box
+                      component="iframe"
+                      title={`Prévia de ${selectedDocument.title}`}
+                      src={selectedDocument.fileUrl}
+                      sx={{ display: 'block', width: '100%', height: { xs: '60vh', md: '70vh' }, border: 0 }}
+                    />
+                  ) : (
+                    <Box
+                      component="img"
+                      src={selectedDocument.fileUrl}
+                      alt={selectedDocument.title}
+                      sx={{ display: 'block', maxWidth: '100%', maxHeight: '70vh', mx: 'auto', objectFit: 'contain' }}
+                    />
+                  )}
+                </DialogContent>
+                <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
+                  <Button
+                    component="a"
+                    href={selectedDocument.downloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="contained"
+                    download
+                  >
+                    Baixar documento
+                  </Button>
+                  <Button onClick={() => setSelectedDocument(null)}>Fechar</Button>
                 </DialogActions>
               </>
             )}
