@@ -103,7 +103,7 @@ const createAthlete = async (req, res, next) => {
     }
     const controls = await RegistrationControls.findById('global').lean();
     const registrationField = selfRegistration ? 'selfAthleteRegistrationOpen' : 'athleteRegistrationOpen';
-    if (!isRegistrationOpen(controls, registrationField)) {
+    if (!isAdminEditor(req.user) && !isRegistrationOpen(controls, registrationField)) {
       const message = selfRegistration
         ? 'O cadastro direto de atletas está temporariamente fechado.'
         : 'O cadastro de atletas está temporariamente fechado.';
