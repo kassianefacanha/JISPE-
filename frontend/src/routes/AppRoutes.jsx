@@ -1,10 +1,11 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useSearchParams } from 'react-router-dom';
 import { Button } from '@mui/material';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import { useAuth } from '../contexts/AuthContext';
 import AdminAthleteCreatePage from '../pages/AdminAthleteCreatePage';
 import AdminDashboard from '../pages/AdminDashboard';
+import AdminStatisticsPage from '../pages/AdminStatisticsPage';
 import AdminEntityCreatePage from '../pages/AdminEntityCreatePage';
 import AdminManagementPage from '../pages/AdminManagementPage';
 import EntityDashboard from '../pages/EntityDashboard';
@@ -20,8 +21,14 @@ import PublicHomePage from '../pages/PublicHomePage';
 
 function ProtectedRoute({ children, role }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const allowedRoles = Array.isArray(role) ? role : role ? [role] : [];
+  const localDemoRoute = import.meta.env.DEV
+    && searchParams.get('demo') === '1'
+    && ['/admin', '/admin/estatisticas', '/entity'].includes(location.pathname);
 
+  if (localDemoRoute) return children;
   if (loading) return <div className="flex min-h-screen items-center justify-center text-slate-600">Carregando...</div>;
   if (!user) return <Navigate to="/login" replace />;
   if (allowedRoles.length && !allowedRoles.includes(user.role)) return <Navigate to="/login" replace />;
@@ -55,6 +62,15 @@ export default function AppRoutes() {
           element={
             <ProtectedRoute role={['admin', 'superadmin', 'gerencia']}>
               <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/estatisticas"
+          element={
+            <ProtectedRoute role={['admin', 'superadmin', 'gerencia']}>
+              <AdminStatisticsPage />
             </ProtectedRoute>
           }
         />
@@ -126,15 +142,19 @@ export default function AppRoutes() {
           bottom: { xs: 12, sm: 24 },
           zIndex: 1300,
           borderRadius: 99,
-          px: 2,
-          py: 1.25,
+          minWidth: { xs: 44, sm: 'auto' },
+          width: { xs: 44, sm: 'auto' },
+          height: { xs: 44, sm: 'auto' },
+          px: { xs: 1, sm: 2 },
+          py: { xs: 1, sm: 1.25 },
           color: '#fff',
           backgroundColor: '#128c7e',
           boxShadow: 4,
           '&:hover': { backgroundColor: '#0f766e' },
         }}
+        title="Falar com o suporte JISPE 2026"
       >
-        Suporte: (85) 99674-4204
+        <span className="hidden sm:inline">Suporte: (85) 99674-4204</span>
       </Button>
       <Button
         component="a"
@@ -146,18 +166,22 @@ export default function AppRoutes() {
         sx={{
           position: 'fixed',
           right: { xs: 12, sm: 24 },
-          bottom: { xs: 72, sm: 84 },
+          bottom: { xs: 64, sm: 84 },
           zIndex: 1300,
           borderRadius: 99,
-          px: 2,
-          py: 1.25,
+          minWidth: { xs: 44, sm: 'auto' },
+          width: { xs: 44, sm: 'auto' },
+          height: { xs: 44, sm: 'auto' },
+          px: { xs: 1, sm: 2 },
+          py: { xs: 1, sm: 1.25 },
           color: '#fff',
           backgroundColor: '#1e40af',
           boxShadow: 4,
           '&:hover': { backgroundColor: '#1e3a8a' },
         }}
+        title="Abrir Regulamento JISPE 2026 em PDF"
       >
-        Regulamento
+        <span className="hidden sm:inline">Regulamento</span>
       </Button>
     </>
   );

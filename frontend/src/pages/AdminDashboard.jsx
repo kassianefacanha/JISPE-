@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
 import {
@@ -38,8 +38,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
 import EditIcon from '@mui/icons-material/Edit';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
@@ -49,6 +47,7 @@ import GridLoadingOverlay from '../components/GridLoadingOverlay';
 import { useAuth } from '../contexts/AuthContext';
 import { useFeedback } from '../contexts/FeedbackContext';
 import AdminRegistrationSettings from './AdminRegistrationSettings';
+import { getDashboardDemoData } from '../utils/dashboardDemoData';
 import api, { getApiErrorMessage } from '../services/api';
 
 const downloadFile = (filename, content, type) => {
@@ -204,8 +203,10 @@ export default function AdminDashboard() {
   const { user, logout } = useAuth();
   const isReadOnly = user?.role === 'gerencia';
   const { notify, confirm } = useFeedback();
+  const [searchParams] = useSearchParams();
+  const isDemoMode = searchParams.get('demo') === '1';
+  const demoSuffix = isDemoMode ? '?demo=1' : '';
   const [activeTab, setActiveTab] = useState('entidades');
-  const [showAllStats, setShowAllStats] = useState(false);
   const [entities, setEntities] = useState([]);
   const [athletes, setAthletes] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
@@ -231,8 +232,19 @@ export default function AdminDashboard() {
   const [athleteExportMenuAnchor, setAthleteExportMenuAnchor] = useState(null);
   const [exportDialog, setExportDialog] = useState({ open: false, tab: 'entidades', type: 'csv', selectedColumns: [] });
   const [detailDialog, setDetailDialog] = useState({ open: false, type: 'entidade', data: null });
-  const [entityColumnVisibilityModel, setEntityColumnVisibilityModel] = useState({});
-  const [athleteColumnVisibilityModel, setAthleteColumnVisibilityModel] = useState({});
+  const [entityColumnVisibilityModel, setEntityColumnVisibilityModel] = useState({
+    email: false,
+    responsibleName: false,
+    responsibleCpf: false,
+  });
+  const [athleteColumnVisibilityModel, setAthleteColumnVisibilityModel] = useState({
+    matricula: false,
+    cpf: false,
+    email: false,
+    phone: false,
+    naipe: false,
+    birthDate: false,
+  });
 
   const entityMap = useMemo(
     () => Object.fromEntries(entities.map((entity) => [entity._id, entity])),
@@ -301,59 +313,24 @@ export default function AdminDashboard() {
     entityFilter.status !== 'all',
   ].filter(Boolean).length;
 
-  const stats = useMemo(() => {
-    const representedEntities = new Set(
-      athletes.map((athlete) => String(athlete.entityId?._id || athlete.entityId || '')).filter(Boolean)
-    );
-    const modalityCounts = athletes.reduce((counts, athlete) => {
-      const modalities = [...new Set([athlete.modality, ...(athlete.modalities || [])].filter(Boolean))];
-      modalities.forEach((modality) => counts.set(modality, (counts.get(modality) || 0) + 1));
-      return counts;
-    }, new Map());
-    const representedModalities = modalityCounts.size;
-    const modalityStats = Array.from(modalityCounts, ([modality, count]) => ({
-      title: `Modalidade: ${modality}`,
-      value: count,
-      color: 'green',
-    })).sort((first, second) => second.value - first.value || first.title.localeCompare(second.title, 'pt-BR'));
-
-    if (activeTab === 'entidades') {
-      return [
-        { title: 'Total de órgãos', value: entities.length, color: 'slate' },
-        { title: 'Pendentes de aprovação', value: entities.filter((entity) => entity.status === 'pending').length, color: 'orange' },
-        { title: 'Aprovados', value: entities.filter((entity) => entity.status === 'approved').length, color: 'green' },
-        { title: 'Reprovados', value: entities.filter((entity) => entity.status === 'rejected').length, color: 'red' },
-        { title: 'Atletas vinculados aos órgãos', value: athletes.length, color: 'blue' },
-        { title: 'Aprovados sem atletas', value: entities.filter((entity) => entity.status === 'approved' && !representedEntities.has(String(entity._id))).length, color: 'purple' },
-      ];
-    }
-
-    if (activeTab === 'modalidades') {
-      return [
-        { title: 'Atletas cadastrados', value: athletes.length, color: 'slate' },
-        { title: 'Modalidades representadas', value: representedModalities, color: 'orange' },
-        ...modalityStats,
-      ];
-    }
-
-    if (activeTab !== 'atletas') return [];
-
+  const overviewStats = useMemo(() => {
     return [
-      { title: 'Atletas cadastrados', value: athletes.length, color: 'slate' },
-      { title: 'Masculino', value: athletes.filter((athlete) => (athlete.naipe || athlete.gender) === 'masculino').length, color: 'blue' },
-      { title: 'Feminino', value: athletes.filter((athlete) => (athlete.naipe || athlete.gender) === 'feminino').length, color: 'pink' },
-      { title: 'Misto', value: athletes.filter((athlete) => (athlete.naipe || athlete.gender) === 'misto').length, color: 'purple' },
-      { title: 'Órgãos participantes', value: representedEntities.size, color: 'green' },
-      { title: 'Modalidades representadas', value: representedModalities, color: 'orange' },
-      { title: 'Fotos pendentes', value: athletes.filter((athlete) => !athlete.photoUrl).length, color: 'red' },
-      { title: 'Comprovantes pendentes', value: athletes.filter((athlete) => !athlete.proofUrl).length, color: 'orange' },
-      ...modalityStats,
+      { title: 'Órgãos cadastrados', value: entities.length },
+      { title: 'Órgãos pendentes', value: entities.filter((entity) => entity.status === 'pending').length },
+      { title: 'Atletas cadastrados', value: athletes.length },
+      { title: 'Atletas pendentes', value: athletes.filter((athlete) => athlete.approvalStatus === 'pending').length },
     ];
-  }, [activeTab, athletes, entities]);
+  }, [athletes, entities]);
 
   const loadData = async () => {
     setLoadingData(true);
     try {
+      if (isDemoMode) {
+        const demoData = getDashboardDemoData();
+        setEntities(demoData.entities);
+        setAthletes(demoData.athletes);
+        return;
+      }
       const [entitiesResponse, athletesResponse] = await Promise.all([
         api.get('/entities'),
         api.get('/athletes'),
@@ -368,6 +345,7 @@ export default function AdminDashboard() {
   };
 
   const loadPasswordChangeRequests = async (showError = true) => {
+    if (isDemoMode) return;
     try {
       setPasswordRequestsLoading(true);
       const response = await api.get('/admin/password-change-requests');
@@ -411,16 +389,17 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [isDemoMode]);
 
   useEffect(() => {
-    if (isReadOnly) return undefined;
+    if (isReadOnly || isDemoMode) return undefined;
     loadPasswordChangeRequests(false);
     const intervalId = window.setInterval(() => loadPasswordChangeRequests(false), 30000);
     return () => window.clearInterval(intervalId);
-  }, [isReadOnly]);
+  }, [isReadOnly, isDemoMode]);
 
   const updateEntityStatus = async (id, status) => {
+    if (isDemoMode) return;
     try {
       const action = status === 'approved' ? 'approve' : 'reject';
       const response = await api.patch(`/entities/${id}/${action}`);
@@ -439,6 +418,7 @@ export default function AdminDashboard() {
   };
 
   const deleteEntity = async (id) => {
+    if (isDemoMode) return;
     const entity = entities.find((item) => item._id === id);
     const associatedAthletes = athletes.filter((athlete) => athlete.entityId === id).map((athlete) => athlete.fullName).filter(Boolean);
 
@@ -469,6 +449,7 @@ export default function AdminDashboard() {
   };
 
   const deleteAthlete = async (id) => {
+    if (isDemoMode) return;
     const athlete = athletes.find((item) => item._id === id);
     const confirmed = await confirm({
       title: 'Excluir atleta',
@@ -551,6 +532,7 @@ export default function AdminDashboard() {
   };
 
   const downloadBadge = async (athleteId) => {
+    if (isDemoMode) return;
     try {
       const response = await api.get(`/athletes/${athleteId}/badge`, { responseType: 'blob' });
       const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
@@ -651,18 +633,18 @@ export default function AdminDashboard() {
     {
       field: 'actions',
       headerName: 'Ações',
-      width: 190,
+      width: isDemoMode ? 64 : 190,
       sortable: false,
       filterable: false,
       disableColumnMenu: true,
       renderCell: (params) => (
         <Stack direction="row" spacing={0.5} useFlexGap>
-          {!isReadOnly && params.row.status !== 'approved' && (
+          {!isReadOnly && !isDemoMode && params.row.status !== 'approved' && (
             <IconButton color="success" size="small" onClick={() => updateEntityStatus(params.row._id, 'approved')} title="Aprovar">
               <CheckCircleIcon fontSize="small" />
             </IconButton>
           )}
-          {!isReadOnly && params.row.status !== 'rejected' && (
+          {!isReadOnly && !isDemoMode && params.row.status !== 'rejected' && (
             <IconButton color="error" size="small" onClick={() => updateEntityStatus(params.row._id, 'rejected')} title="Rejeitar">
               <CloseIcon fontSize="small" />
             </IconButton>
@@ -670,7 +652,7 @@ export default function AdminDashboard() {
           <IconButton color="info" size="small" onClick={() => setDetailDialog({ open: true, type: 'entidade', data: params.row })} title="Ver detalhes">
             <VisibilityIcon fontSize="small" />
           </IconButton>
-          {!isReadOnly && (
+          {!isReadOnly && !isDemoMode && (
             <>
               <IconButton color="warning" size="small" component={Link} to={`/admin/entidades/novo?id=${params.row._id}`} title="Editar">
                 <EditIcon fontSize="small" />
@@ -721,7 +703,7 @@ export default function AdminDashboard() {
     {
       field: 'actions',
       headerName: 'Ações',
-      width: 190,
+      width: isDemoMode ? 64 : 190,
       sortable: false,
       filterable: false,
       disableColumnMenu: true,
@@ -730,7 +712,7 @@ export default function AdminDashboard() {
           <IconButton color="info" size="small" onClick={() => setDetailDialog({ open: true, type: 'atleta', data: params.row })} title="Ver detalhes">
             <VisibilityIcon fontSize="small" />
           </IconButton>
-          {!isReadOnly && (
+          {!isReadOnly && !isDemoMode && (
             <>
               <IconButton color="warning" size="small" component={Link} to={`/admin/atletas/novo?id=${params.row._id}`} title="Editar">
                 <EditIcon fontSize="small" />
@@ -740,9 +722,11 @@ export default function AdminDashboard() {
               </IconButton>
             </>
           )}
-          <IconButton color="secondary" size="small" onClick={() => downloadBadge(params.row._id)} title="Gerar carteirinha">
-            <DownloadIcon fontSize="small" />
-          </IconButton>
+          {!isDemoMode && (
+            <IconButton color="secondary" size="small" onClick={() => downloadBadge(params.row._id)} title="Gerar carteirinha">
+              <DownloadIcon fontSize="small" />
+            </IconButton>
+          )}
         </Stack>
       ),
     },
@@ -776,7 +760,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#f8fafc', py: { xs: 3, md: 5 }, px: 2 }}>
+    <Box sx={{ minHeight: '100vh', backgroundColor: '#f8fafc', pt: { xs: 3, md: 5 }, pb: { xs: 14, md: 5 }, px: 2 }}>
       <Container maxWidth="xl">
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={2} sx={{ mb: 4 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 }, minWidth: 0 }}>
@@ -792,7 +776,10 @@ export default function AdminDashboard() {
           </Box>
 
           <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" justifyContent="flex-end">
-            {!isReadOnly && (
+            <Button component={Link} to={isDemoMode ? '/admin' : '/admin?demo=1'} variant="outlined">
+              {isDemoMode ? 'Sair da demonstração' : 'Ver demonstração'}
+            </Button>
+            {!isReadOnly && !isDemoMode && (
               <IconButton
                 color="primary"
                 aria-label="Solicitações de troca de senha"
@@ -808,8 +795,9 @@ export default function AdminDashboard() {
                 </Badge>
               </IconButton>
             )}
-            {!isReadOnly && <Button component={Link} to="/admin/gestao" variant="outlined">Gestão geral</Button>}
-            {!isReadOnly && <Button component={Link} to="/admin/pagina-inicial" variant="outlined">Página inicial</Button>}
+            <Button component={Link} to={`/admin/estatisticas${demoSuffix}`} variant="outlined">Estatísticas</Button>
+            {!isReadOnly && !isDemoMode && <Button component={Link} to="/admin/gestao" variant="outlined">Gestão geral</Button>}
+            {!isReadOnly && !isDemoMode && <Button component={Link} to="/admin/pagina-inicial" variant="outlined">Página inicial</Button>}
             <Button component={Link} to="/perfil" variant="outlined" startIcon={<ManageAccountsIcon />}>
               Perfil
             </Button>
@@ -819,7 +807,7 @@ export default function AdminDashboard() {
           </Stack>
         </Stack>
 
-        {!isReadOnly && (
+        {!isReadOnly && !isDemoMode && (
           <Dialog
             open={passwordRequestsOpen}
             onClose={() => {
@@ -936,27 +924,24 @@ export default function AdminDashboard() {
           </Dialog>
         )}
 
-        {stats.length > 0 && (
-          <Box sx={{ mb: 4 }}>
-            <Grid container spacing={3}>
-              {(showAllStats ? stats : stats.slice(0, 4)).map((card) => (
-                <Grid item xs={12} sm={6} md={3} key={card.title}>
-                  <StatCard title={card.title} value={card.value} color={card.color} />
-                </Grid>
-              ))}
-            </Grid>
-            {stats.length > 4 && (
-              <Button
-                onClick={() => setShowAllStats((current) => !current)}
-                endIcon={showAllStats ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                aria-expanded={showAllStats}
-                sx={{ display: 'flex', mx: 'auto', mt: 1, textTransform: 'none' }}
-              >
-                {showAllStats ? 'Ver menos' : `Ver mais (${stats.length - 4})`}
-              </Button>
-            )}
-          </Box>
+        {isDemoMode && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Modo demonstração: dados fictícios. Ações que alteram dados reais estão desativadas.
+          </Alert>
         )}
+
+        <Grid container spacing={1.5} sx={{ mb: 2 }}>
+          {overviewStats.map((card) => (
+            <Grid item xs={6} md={3} key={card.title}>
+              <Card variant="outlined" sx={{ height: '100%', borderColor: '#e2e8f0' }}>
+                <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
+                  <Typography variant="body2" color="text.secondary">{card.title}</Typography>
+                  <Typography variant="h5" fontWeight={800} sx={{ mt: 0.5 }}>{card.value}</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
 
         <Paper sx={{ border: '1px solid #e2e8f0', overflow: 'hidden' }}>
           <Tabs
@@ -1018,7 +1003,7 @@ export default function AdminDashboard() {
                     >
                       Exportar
                     </Button>
-                    {!isReadOnly && (
+                    {!isReadOnly && !isDemoMode && (
                       <Button
                         component={Link}
                         to="/admin/entidades/novo"
@@ -1114,21 +1099,23 @@ export default function AdminDashboard() {
                   <MenuItem onClick={() => { openExportDialog('entidades', 'pdf'); setEntityExportMenuAnchor(null); }}>PDF</MenuItem>
                 </Menu>
 
-                <Paper variant="outlined" sx={{ overflow: 'hidden', p: 1.5 }}>
+                <Paper variant="outlined" sx={{ overflow: 'hidden', p: 1 }}>
                   <DataGrid
                     rows={prepareEntityRows.map((row) => ({ ...row, id: row._id }))}
                     columns={entityGridColumns}
                     loading={loadingData}
                     components={{ LoadingOverlay: GridLoadingOverlay }}
-                    autoHeight
+                    density="compact"
+                    pageSize={10}
                     disableRowSelectionOnClick
                     disableColumnMenu
-                    pageSizeOptions={[5, 10, 25, 50, 100]}
-                    initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
+                    rowsPerPageOptions={[10, 25, 50]}
+                    initialState={{ pagination: { pageSize: 10 } }}
                     columnVisibilityModel={entityColumnVisibilityModel}
                     onColumnVisibilityModelChange={(model) => setEntityColumnVisibilityModel(model)}
                     sx={{
                       border: 0,
+                      height: { xs: 380, sm: 480 },
                       '& .MuiDataGrid-columnHeaders': { backgroundColor: '#f8fafc', fontWeight: 700 },
                       '& .MuiDataGrid-row:hover': { backgroundColor: '#f8fafc' },
                     }}
@@ -1181,7 +1168,7 @@ export default function AdminDashboard() {
                     >
                       Exportar
                     </Button>
-                    {!isReadOnly && (
+                    {!isReadOnly && !isDemoMode && (
                       <Button
                         component={Link}
                         to="/admin/atletas/novo"
@@ -1334,21 +1321,23 @@ export default function AdminDashboard() {
                   <MenuItem onClick={() => { openExportDialog('atletas', 'pdf'); setAthleteExportMenuAnchor(null); }}>PDF</MenuItem>
                 </Menu>
 
-                <Paper variant="outlined" sx={{ overflow: 'hidden', p: 1.5 }}>
+                <Paper variant="outlined" sx={{ overflow: 'hidden', p: 1 }}>
                   <DataGrid
                     rows={prepareAthleteRows.map((row) => ({ ...row, id: row._id }))}
                     columns={athleteGridColumns}
                     loading={loadingData}
                     components={{ LoadingOverlay: GridLoadingOverlay }}
-                    autoHeight
+                    density="compact"
+                    pageSize={10}
                     disableRowSelectionOnClick
                     disableColumnMenu
-                    pageSizeOptions={[5, 10, 25, 50, 100]}
-                    initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
+                    rowsPerPageOptions={[10, 25, 50]}
+                    initialState={{ pagination: { pageSize: 10 } }}
                     columnVisibilityModel={athleteColumnVisibilityModel}
                     onColumnVisibilityModelChange={(model) => setAthleteColumnVisibilityModel(model)}
                     sx={{
                       border: 0,
+                      height: { xs: 380, sm: 480 },
                       '& .MuiDataGrid-columnHeaders': { backgroundColor: '#f8fafc', fontWeight: 700 },
                       '& .MuiDataGrid-row:hover': { backgroundColor: '#f8fafc' },
                     }}
@@ -1360,7 +1349,11 @@ export default function AdminDashboard() {
                 </Paper>
               </Box>
             ) : (
-              <AdminRegistrationSettings entities={entities} readOnly={isReadOnly} />
+              <AdminRegistrationSettings
+                entities={entities}
+                readOnly={isReadOnly || isDemoMode}
+                demoMode={isDemoMode}
+              />
             )}
           </Box>
         </Paper>
@@ -1556,37 +1549,5 @@ function ExportSelectionDialog({ exportDialog, setExportDialog, onConfirm }) {
         <Button variant="contained" onClick={onConfirm}>Exportar</Button>
       </DialogActions>
     </Dialog>
-  );
-}
-
-function StatCard({ title, value, color, detail }) {
-  const palette = {
-    slate: { background: '#f1f5f9', color: '#0f172a', border: '#e2e8f0' },
-    green: { background: '#ecfdf5', color: '#047857', border: '#bbf7d0' },
-    orange: { background: '#fff7ed', color: '#c2410c', border: '#fed7aa' },
-    red: { background: '#fef2f2', color: '#b91c1c', border: '#fecaca' },
-    blue: { background: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe' },
-    pink: { background: '#fdf2f8', color: '#be185d', border: '#fbcfe8' },
-    purple: { background: '#f5f3ff', color: '#6d28d9', border: '#ddd6fe' },
-  };
-
-  const style = palette[color] || palette.slate;
-
-  return (
-    <Card sx={{ borderRadius: 4, border: `1px solid ${style.border}`, backgroundColor: style.background }}>
-      <CardContent>
-        <Typography variant="body2" color={style.color} fontWeight={700}>
-          {title}
-        </Typography>
-        <Typography variant="h4" sx={{ mt: 1, fontWeight: 800, color: style.color }}>
-          {value}
-        </Typography>
-        {detail && (
-          <Typography variant="caption" color="text.secondary">
-            {detail}
-          </Typography>
-        )}
-      </CardContent>
-    </Card>
   );
 }

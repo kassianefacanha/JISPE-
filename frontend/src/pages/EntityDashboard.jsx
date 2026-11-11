@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Alert,
   Box,
@@ -38,6 +38,7 @@ import GridLoadingOverlay from '../components/GridLoadingOverlay';
 import api, { getApiErrorMessage } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useFeedback } from '../contexts/FeedbackContext';
+import { getEntityDashboardDemoAthletes } from '../utils/dashboardDemoData';
 
 const athleteExportColumns = [
   { key: 'fullName', label: 'Nome' },
@@ -80,6 +81,8 @@ const formatBirthDate = (value) => {
 export default function EntityDashboard() {
   const { user, logout } = useAuth();
   const { notify, confirm } = useFeedback();
+  const [searchParams] = useSearchParams();
+  const isDemoMode = searchParams.get('demo') === '1';
   const [athletes, setAthletes] = useState([]);
   const [loadingAthletes, setLoadingAthletes] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -87,13 +90,24 @@ export default function EntityDashboard() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [columnMenuAnchor, setColumnMenuAnchor] = useState(null);
   const [exportMenuAnchor, setExportMenuAnchor] = useState(null);
-  const [columnVisibilityModel, setColumnVisibilityModel] = useState({});
+  const [columnVisibilityModel, setColumnVisibilityModel] = useState({
+    cpf: false,
+    email: false,
+    phone: false,
+    birthDate: false,
+    externalServantLabel: false,
+    linkedEntityName: false,
+  });
   const [detailAthlete, setDetailAthlete] = useState(null);
   const [exportDialog, setExportDialog] = useState({ open: false, type: 'csv', selectedColumns: [] });
 
   const loadAthletes = async () => {
     setLoadingAthletes(true);
     try {
+      if (isDemoMode) {
+        setAthletes(getEntityDashboardDemoAthletes());
+        return;
+      }
       const athletesResponse = await api.get('/athletes');
       setAthletes(athletesResponse.data.athletes || []);
     } catch (error) {
@@ -105,7 +119,7 @@ export default function EntityDashboard() {
 
   useEffect(() => {
     loadAthletes();
-  }, []);
+  }, [isDemoMode]);
 
   const searchValue = searchTerm.trim().toLocaleLowerCase('pt-BR');
   const filteredAthletes = athletes.filter((athlete) => (
@@ -118,7 +132,7 @@ export default function EntityDashboard() {
 
   const athleteRows = filteredAthletes.map((athlete) => ({
     ...athlete,
-    entityName: user?.name || '—',
+    entityName: isDemoMode ? 'Órgão de demonstração 01' : user?.name || '—',
     matricula: athlete.matricula || '—',
     cpf: athlete.cpf || '—',
     email: athlete.email || '—',
@@ -138,6 +152,7 @@ export default function EntityDashboard() {
   const activeFilterCount = searchField !== 'all' ? 1 : 0;
 
   const approveAthlete = async (athlete) => {
+    if (isDemoMode) return;
     try {
       const response = await api.patch(`/athletes/${athlete._id}/approve`);
       await loadAthletes();
@@ -153,6 +168,7 @@ export default function EntityDashboard() {
   };
 
   const cancelAthleteApproval = async (athlete) => {
+    if (isDemoMode) return;
     const confirmed = await confirm({
       title: 'Cancelar aprovação',
       message: `Deseja cancelar a aprovação de "${athlete.fullName || 'atleta'}"? O cadastro voltará a aguardar aprovação.`,
@@ -171,6 +187,7 @@ export default function EntityDashboard() {
   };
 
   const deleteAthlete = async (athlete) => {
+    if (isDemoMode) return;
     const confirmed = await confirm({
       title: 'Excluir atleta',
       message: `Deseja excluir o atleta "${athlete.fullName || 'selecionado'}"?`,
@@ -189,6 +206,7 @@ export default function EntityDashboard() {
   };
 
   const downloadBadge = async (athlete) => {
+    if (isDemoMode) return;
     try {
       const response = await api.get(`/athletes/${athlete._id}/badge`, { responseType: 'blob' });
       downloadFile(`carteirinha-${athlete.matricula || athlete._id}.pdf`, response.data, 'application/pdf');
@@ -298,18 +316,18 @@ export default function EntityDashboard() {
   athleteColumns.push({
     field: 'actions',
     headerName: 'Ações',
-    width: 205,
+    width: isDemoMode ? 64 : 205,
     sortable: false,
     filterable: false,
     disableColumnMenu: true,
     renderCell: (params) => (
       <Stack direction="row" spacing={0.25}>
-        {params.row.approvalStatus === 'pending' && (
+        {!isDemoMode && params.row.approvalStatus === 'pending' && (
           <IconButton color="success" size="small" onClick={() => approveAthlete(params.row)} title="Aprovar cadastro">
             <CheckCircleOutlineIcon fontSize="small" />
           </IconButton>
         )}
-        {params.row.approvalStatus === 'approved' && (
+        {!isDemoMode && params.row.approvalStatus === 'approved' && (
           <IconButton color="error" size="small" onClick={() => cancelAthleteApproval(params.row)} title="Cancelar aprovação">
             <CancelOutlinedIcon fontSize="small" />
           </IconButton>
@@ -317,21 +335,25 @@ export default function EntityDashboard() {
         <IconButton color="info" size="small" onClick={() => setDetailAthlete(params.row)} title="Ver detalhes">
           <VisibilityIcon fontSize="small" />
         </IconButton>
-        <IconButton color="warning" size="small" component={Link} to={`/entity/atletas/novo?id=${params.row._id}`} title="Editar">
-          <EditIcon fontSize="small" />
-        </IconButton>
-        <IconButton color="inherit" size="small" onClick={() => deleteAthlete(params.row)} title="Excluir">
-          <DeleteIcon fontSize="small" />
-        </IconButton>
-        <IconButton
-          color="secondary"
-          size="small"
-          disabled={params.row.approvalStatus !== 'approved'}
-          onClick={() => downloadBadge(params.row)}
-          title={params.row.approvalStatus === 'approved' ? 'Gerar carteirinha' : 'Carteirinha disponível após aprovação'}
-        >
-          <DownloadIcon fontSize="small" />
-        </IconButton>
+        {!isDemoMode && (
+          <>
+            <IconButton color="warning" size="small" component={Link} to={`/entity/atletas/novo?id=${params.row._id}`} title="Editar">
+              <EditIcon fontSize="small" />
+            </IconButton>
+            <IconButton color="inherit" size="small" onClick={() => deleteAthlete(params.row)} title="Excluir">
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+            <IconButton
+              color="secondary"
+              size="small"
+              disabled={params.row.approvalStatus !== 'approved'}
+              onClick={() => downloadBadge(params.row)}
+              title={params.row.approvalStatus === 'approved' ? 'Gerar carteirinha' : 'Carteirinha disponível após aprovação'}
+            >
+              <DownloadIcon fontSize="small" />
+            </IconButton>
+          </>
+        )}
       </Stack>
     ),
   });
@@ -341,7 +363,7 @@ export default function EntityDashboard() {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#f8fafc', py: { xs: 3, md: 6 }, px: 2 }}>
+    <Box sx={{ minHeight: '100vh', backgroundColor: '#f8fafc', pt: { xs: 3, md: 6 }, pb: { xs: 14, md: 6 }, px: 2 }}>
       <Container maxWidth="xl">
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={2} sx={{ mb: 4 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 }, minWidth: 0 }}>
@@ -356,6 +378,9 @@ export default function EntityDashboard() {
             </Box>
           </Box>
           <Stack direction="row" spacing={1}>
+            <Button component={Link} to={isDemoMode ? '/entity' : '/entity?demo=1'} variant="outlined">
+              {isDemoMode ? 'Sair da demonstração' : 'Ver demonstração'}
+            </Button>
             <Button component={Link} to="/perfil" variant="outlined" startIcon={<ManageAccountsIcon />}>
               Perfil
             </Button>
@@ -367,7 +392,7 @@ export default function EntityDashboard() {
           <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} md={8}>
               <Typography variant="caption" color="text.secondary">Órgão</Typography>
-              <Typography variant="h6" fontWeight={700}>{user?.name || 'Órgão'}</Typography>
+              <Typography variant="h6" fontWeight={700}>{isDemoMode ? 'Órgão de demonstração 01' : user?.name || 'Órgão'}</Typography>
             </Grid>
             <Grid item xs={12} md={4}>
               <Typography variant="caption" color="text.secondary">Atletas cadastrados</Typography>
@@ -376,13 +401,22 @@ export default function EntityDashboard() {
           </Grid>
         </Paper>
 
+        {isDemoMode && (
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            Modo demonstração: estes dados são fictícios e nenhuma alteração será salva.{' '}
+            <Button component={Link} to="/entity" color="inherit" size="small">Voltar aos dados reais</Button>
+          </Alert>
+        )}
+
         <Alert severity="info" sx={{ mt: 2 }}>
           As inscrições para os torneios de Beach Tennis dos Jogos dos Servidores 2026 devem ser realizadas exclusivamente pelo site{' '}
           <a href="https://www.beachtennisgovce.com.br/" target="_blank" rel="noreferrer">beachtennisgovce.com.br</a>.
         </Alert>
         {pendingAthletesCount > 0 && (
           <Alert severity="warning" sx={{ mt: 2 }}>
-            {pendingAthletesCount === 1
+            {isDemoMode
+              ? `${pendingAthletesCount} cadastros fictícios aguardam aprovação no exemplo.`
+              : pendingAthletesCount === 1
               ? 'Há 1 cadastro de atleta aguardando aprovação. Aprove-o na coluna Ações.'
               : `Há ${pendingAthletesCount} cadastros de atletas aguardando aprovação. Aprove-os na coluna Ações.`}
           </Alert>
@@ -390,9 +424,14 @@ export default function EntityDashboard() {
 
         <Paper sx={{ mt: 4, p: { xs: 2, md: 3 }, borderRadius: 4, border: '1px solid #e2e8f0' }}>
           <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} spacing={2} sx={{ mb: 2 }}>
-            <Typography variant="body1" fontWeight={700} sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-              Atletas cadastrados
-            </Typography>
+            <Box>
+              <Typography variant="body1" fontWeight={700} sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                Atletas cadastrados
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Exibindo {filteredAthletes.length} de {athletes.length}
+              </Typography>
+            </Box>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'stretch', sm: 'center' }}>
               <TextField
                 size="small"
@@ -465,21 +504,23 @@ export default function EntityDashboard() {
             <MenuItem onClick={() => openExportDialog('pdf')}>PDF</MenuItem>
           </Menu>
 
-          <Paper variant="outlined" sx={{ overflow: 'hidden', p: 1.5 }}>
+          <Paper variant="outlined" sx={{ overflow: 'hidden', p: 1 }}>
             <DataGrid
               rows={athleteRows.map((row) => ({ ...row, id: row._id }))}
               columns={athleteColumns}
               loading={loadingAthletes}
               components={{ LoadingOverlay: GridLoadingOverlay }}
-              autoHeight
+              density="compact"
+              pageSize={10}
               disableRowSelectionOnClick
               disableColumnMenu
-              pageSizeOptions={[5, 10, 25, 50, 100]}
-              initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
+              rowsPerPageOptions={[10, 25, 50]}
+              initialState={{ pagination: { pageSize: 10 } }}
               columnVisibilityModel={columnVisibilityModel}
               onColumnVisibilityModelChange={setColumnVisibilityModel}
               sx={{
                 border: 0,
+                height: { xs: 380, sm: 480 },
                 '& .MuiDataGrid-columnHeaders': { backgroundColor: '#f8fafc', fontWeight: 700 },
                 '& .MuiDataGrid-row:hover': { backgroundColor: '#f8fafc' },
               }}
