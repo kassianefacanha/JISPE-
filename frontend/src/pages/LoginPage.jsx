@@ -11,6 +11,7 @@ import {
   Typography,
 } from '@mui/material';
 import LoginIcon from '@mui/icons-material/Login';
+import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
 import BusinessIcon from '@mui/icons-material/Business';
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
@@ -73,6 +74,14 @@ export default function LoginPage() {
     >
       <Container maxWidth="lg">
         <Stack spacing={{ xs: 3, md: 4 }}>
+          <Button
+            component={Link}
+            to="/"
+            startIcon={<HomeOutlinedIcon />}
+            sx={{ alignSelf: 'flex-start' }}
+          >
+            Voltar para o início
+          </Button>
           <Box textAlign="center">
             <Box
               component="img"
