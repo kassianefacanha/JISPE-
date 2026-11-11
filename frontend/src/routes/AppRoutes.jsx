@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, useLocation, useSearchParams } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { Button } from '@mui/material';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
@@ -21,14 +21,8 @@ import PublicHomePage from '../pages/PublicHomePage';
 
 function ProtectedRoute({ children, role }) {
   const { user, loading } = useAuth();
-  const location = useLocation();
-  const [searchParams] = useSearchParams();
   const allowedRoles = Array.isArray(role) ? role : role ? [role] : [];
-  const localDemoRoute = import.meta.env.DEV
-    && searchParams.get('demo') === '1'
-    && ['/admin', '/admin/estatisticas', '/entity'].includes(location.pathname);
 
-  if (localDemoRoute) return children;
   if (loading) return <div className="flex min-h-screen items-center justify-center text-slate-600">Carregando...</div>;
   if (!user) return <Navigate to="/login" replace />;
   if (allowedRoles.length && !allowedRoles.includes(user.role)) return <Navigate to="/login" replace />;

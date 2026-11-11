@@ -37,23 +37,13 @@ const defaultControls = {
   athleteRegistrationOpen: true,
 };
 const allEntitiesId = 'all';
-const demoRules = [
-  { modalitySlug: 'corrida-5km', modalityName: 'Corrida de 5 km', categories: ['Masculino', 'Feminino'], registeredCount: 3, pendingCount: 1, maxAthletes: 10, enabled: true },
-  { modalitySlug: 'futsal', modalityName: 'Futsal', categories: ['Masculino', 'Feminino'], registeredCount: 3, pendingCount: 1, maxAthletes: 12, enabled: true },
-  { modalitySlug: 'voleibol', modalityName: 'Voleibol', categories: ['Masculino', 'Feminino'], registeredCount: 3, pendingCount: 1, maxAthletes: 12, enabled: true },
-  { modalitySlug: 'natacao', modalityName: 'Natação', categories: ['Masculino', 'Feminino'], registeredCount: 3, pendingCount: 1, maxAthletes: 10, enabled: true },
-  { modalitySlug: 'tenis-de-mesa', modalityName: 'Tênis de mesa', categories: ['Masculino', 'Feminino'], registeredCount: 3, pendingCount: 1, maxAthletes: 8, enabled: true },
-  { modalitySlug: 'xadrez', modalityName: 'Xadrez', categories: ['Masculino', 'Feminino'], registeredCount: 3, pendingCount: 1, maxAthletes: 8, enabled: true },
-  { modalitySlug: 'handebol', modalityName: 'Handebol', categories: ['Masculino', 'Feminino'], registeredCount: 3, pendingCount: 1, maxAthletes: 12, enabled: true },
-  { modalitySlug: 'basquetebol', modalityName: 'Basquetebol', categories: ['Masculino', 'Feminino'], registeredCount: 3, pendingCount: 1, maxAthletes: 12, enabled: true },
-];
 
 const normalizeControls = (controls = {}) => ({
   ...defaultControls,
   ...controls,
 });
 
-export default function AdminRegistrationSettings({ entities, readOnly = false, demoMode = false }) {
+export default function AdminRegistrationSettings({ entities, readOnly = false }) {
   const { notify } = useFeedback();
   const [controls, setControls] = useState(defaultControls);
   const [selectedEntityId, setSelectedEntityId] = useState('');
@@ -121,12 +111,6 @@ export default function AdminRegistrationSettings({ entities, readOnly = false, 
   ));
 
   useEffect(() => {
-    if (demoMode) {
-      setControls(defaultControls);
-      setLoadingControls(false);
-      return undefined;
-    }
-
     let mounted = true;
     api.get('/admin/registration-controls')
       .then((response) => {
@@ -139,7 +123,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false, 
         if (mounted) setLoadingControls(false);
       });
     return () => { mounted = false; };
-  }, [demoMode]);
+  }, []);
 
   useEffect(() => {
     if (!selectedEntityId && approvedEntities.length) {
@@ -150,22 +134,6 @@ export default function AdminRegistrationSettings({ entities, readOnly = false, 
   useEffect(() => {
     if (!selectedEntityId) {
       setRules([]);
-      return undefined;
-    }
-
-    if (demoMode) {
-      setRules(demoRules.map((rule) => ({
-        ...rule,
-        registeredCount: selectedEntityId === allEntitiesId ? rule.registeredCount * 4 : rule.registeredCount,
-        pendingCount: selectedEntityId === allEntitiesId ? rule.pendingCount * 4 : rule.pendingCount,
-        hasMixedMaxAthletes: false,
-        globalMaxAthletes: null,
-        pendingMaxAthletes: '',
-        pendingGlobalMaxAthletes: '',
-      })));
-      setRaceRegistrationCount(12);
-      setLoadingRules(false);
-      setError('');
       return undefined;
     }
 
@@ -195,7 +163,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false, 
       });
 
     return () => { mounted = false; };
-  }, [demoMode, selectedEntityId]);
+  }, [selectedEntityId]);
 
   const updateGlobalControl = async (field, value) => {
     const previous = controls[field];
@@ -300,9 +268,7 @@ export default function AdminRegistrationSettings({ entities, readOnly = false, 
   return (
     <Stack spacing={2.5}>
       <Typography variant="h6" fontWeight={700}>Controles gerais de inscrição</Typography>
-      {demoMode ? (
-        <Alert severity="warning">Modo demonstração: modalidades e números fictícios, em modo somente leitura.</Alert>
-      ) : readOnly ? <Alert severity="info">Perfil Gerência: visualização somente leitura.</Alert> : null}
+      {readOnly && <Alert severity="info">Perfil Gerência: visualização somente leitura.</Alert>}
       {error && <Alert severity="error">{error}</Alert>}
       <Alert severity="info">
         As inscrições para os torneios de Beach Tennis dos Jogos dos Servidores 2026 são feitas exclusivamente em{' '}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
 import {
@@ -47,7 +47,6 @@ import GridLoadingOverlay from '../components/GridLoadingOverlay';
 import { useAuth } from '../contexts/AuthContext';
 import { useFeedback } from '../contexts/FeedbackContext';
 import AdminRegistrationSettings from './AdminRegistrationSettings';
-import { getDashboardDemoData } from '../utils/dashboardDemoData';
 import api, { getApiErrorMessage } from '../services/api';
 
 const downloadFile = (filename, content, type) => {
@@ -203,9 +202,6 @@ export default function AdminDashboard() {
   const { user, logout } = useAuth();
   const isReadOnly = user?.role === 'gerencia';
   const { notify, confirm } = useFeedback();
-  const [searchParams] = useSearchParams();
-  const isDemoMode = searchParams.get('demo') === '1';
-  const demoSuffix = isDemoMode ? '?demo=1' : '';
   const [activeTab, setActiveTab] = useState('entidades');
   const [entities, setEntities] = useState([]);
   const [athletes, setAthletes] = useState([]);
@@ -325,12 +321,6 @@ export default function AdminDashboard() {
   const loadData = async () => {
     setLoadingData(true);
     try {
-      if (isDemoMode) {
-        const demoData = getDashboardDemoData();
-        setEntities(demoData.entities);
-        setAthletes(demoData.athletes);
-        return;
-      }
       const [entitiesResponse, athletesResponse] = await Promise.all([
         api.get('/entities'),
         api.get('/athletes'),
@@ -345,7 +335,6 @@ export default function AdminDashboard() {
   };
 
   const loadPasswordChangeRequests = async (showError = true) => {
-    if (isDemoMode) return;
     try {
       setPasswordRequestsLoading(true);
       const response = await api.get('/admin/password-change-requests');
@@ -389,17 +378,16 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     loadData();
-  }, [isDemoMode]);
+  }, []);
 
   useEffect(() => {
-    if (isReadOnly || isDemoMode) return undefined;
+    if (isReadOnly) return undefined;
     loadPasswordChangeRequests(false);
     const intervalId = window.setInterval(() => loadPasswordChangeRequests(false), 30000);
     return () => window.clearInterval(intervalId);
-  }, [isReadOnly, isDemoMode]);
+  }, [isReadOnly]);
 
   const updateEntityStatus = async (id, status) => {
-    if (isDemoMode) return;
     try {
       const action = status === 'approved' ? 'approve' : 'reject';
       const response = await api.patch(`/entities/${id}/${action}`);
@@ -418,7 +406,6 @@ export default function AdminDashboard() {
   };
 
   const deleteEntity = async (id) => {
-    if (isDemoMode) return;
     const entity = entities.find((item) => item._id === id);
     const associatedAthletes = athletes.filter((athlete) => athlete.entityId === id).map((athlete) => athlete.fullName).filter(Boolean);
 
@@ -449,7 +436,6 @@ export default function AdminDashboard() {
   };
 
   const deleteAthlete = async (id) => {
-    if (isDemoMode) return;
     const athlete = athletes.find((item) => item._id === id);
     const confirmed = await confirm({
       title: 'Excluir atleta',
@@ -532,7 +518,6 @@ export default function AdminDashboard() {
   };
 
   const downloadBadge = async (athleteId) => {
-    if (isDemoMode) return;
     try {
       const response = await api.get(`/athletes/${athleteId}/badge`, { responseType: 'blob' });
       const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
@@ -633,18 +618,18 @@ export default function AdminDashboard() {
     {
       field: 'actions',
       headerName: 'Ações',
-      width: isDemoMode ? 64 : 190,
+      width: 190,
       sortable: false,
       filterable: false,
       disableColumnMenu: true,
       renderCell: (params) => (
         <Stack direction="row" spacing={0.5} useFlexGap>
-          {!isReadOnly && !isDemoMode && params.row.status !== 'approved' && (
+          {!isReadOnly && params.row.status !== 'approved' && (
             <IconButton color="success" size="small" onClick={() => updateEntityStatus(params.row._id, 'approved')} title="Aprovar">
               <CheckCircleIcon fontSize="small" />
             </IconButton>
           )}
-          {!isReadOnly && !isDemoMode && params.row.status !== 'rejected' && (
+          {!isReadOnly && params.row.status !== 'rejected' && (
             <IconButton color="error" size="small" onClick={() => updateEntityStatus(params.row._id, 'rejected')} title="Rejeitar">
               <CloseIcon fontSize="small" />
             </IconButton>
@@ -652,7 +637,7 @@ export default function AdminDashboard() {
           <IconButton color="info" size="small" onClick={() => setDetailDialog({ open: true, type: 'entidade', data: params.row })} title="Ver detalhes">
             <VisibilityIcon fontSize="small" />
           </IconButton>
-          {!isReadOnly && !isDemoMode && (
+          {!isReadOnly && (
             <>
               <IconButton color="warning" size="small" component={Link} to={`/admin/entidades/novo?id=${params.row._id}`} title="Editar">
                 <EditIcon fontSize="small" />
@@ -703,7 +688,7 @@ export default function AdminDashboard() {
     {
       field: 'actions',
       headerName: 'Ações',
-      width: isDemoMode ? 64 : 190,
+      width: 190,
       sortable: false,
       filterable: false,
       disableColumnMenu: true,
@@ -712,7 +697,7 @@ export default function AdminDashboard() {
           <IconButton color="info" size="small" onClick={() => setDetailDialog({ open: true, type: 'atleta', data: params.row })} title="Ver detalhes">
             <VisibilityIcon fontSize="small" />
           </IconButton>
-          {!isReadOnly && !isDemoMode && (
+          {!isReadOnly && (
             <>
               <IconButton color="warning" size="small" component={Link} to={`/admin/atletas/novo?id=${params.row._id}`} title="Editar">
                 <EditIcon fontSize="small" />
@@ -722,11 +707,9 @@ export default function AdminDashboard() {
               </IconButton>
             </>
           )}
-          {!isDemoMode && (
-            <IconButton color="secondary" size="small" onClick={() => downloadBadge(params.row._id)} title="Gerar carteirinha">
-              <DownloadIcon fontSize="small" />
-            </IconButton>
-          )}
+          <IconButton color="secondary" size="small" onClick={() => downloadBadge(params.row._id)} title="Gerar carteirinha">
+            <DownloadIcon fontSize="small" />
+          </IconButton>
         </Stack>
       ),
     },
@@ -776,10 +759,7 @@ export default function AdminDashboard() {
           </Box>
 
           <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" justifyContent="flex-end">
-            <Button component={Link} to={isDemoMode ? '/admin' : '/admin?demo=1'} variant="outlined">
-              {isDemoMode ? 'Sair da demonstração' : 'Ver demonstração'}
-            </Button>
-            {!isReadOnly && !isDemoMode && (
+            {!isReadOnly && (
               <IconButton
                 color="primary"
                 aria-label="Solicitações de troca de senha"
@@ -795,9 +775,9 @@ export default function AdminDashboard() {
                 </Badge>
               </IconButton>
             )}
-            <Button component={Link} to={`/admin/estatisticas${demoSuffix}`} variant="outlined">Estatísticas</Button>
-            {!isReadOnly && !isDemoMode && <Button component={Link} to="/admin/gestao" variant="outlined">Gestão geral</Button>}
-            {!isReadOnly && !isDemoMode && <Button component={Link} to="/admin/pagina-inicial" variant="outlined">Página inicial</Button>}
+            <Button component={Link} to="/admin/estatisticas" variant="outlined">Estatísticas</Button>
+            {!isReadOnly && <Button component={Link} to="/admin/gestao" variant="outlined">Gestão geral</Button>}
+            {!isReadOnly && <Button component={Link} to="/admin/pagina-inicial" variant="outlined">Página inicial</Button>}
             <Button component={Link} to="/perfil" variant="outlined" startIcon={<ManageAccountsIcon />}>
               Perfil
             </Button>
@@ -807,7 +787,7 @@ export default function AdminDashboard() {
           </Stack>
         </Stack>
 
-        {!isReadOnly && !isDemoMode && (
+        {!isReadOnly && (
           <Dialog
             open={passwordRequestsOpen}
             onClose={() => {
@@ -924,12 +904,6 @@ export default function AdminDashboard() {
           </Dialog>
         )}
 
-        {isDemoMode && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            Modo demonstração: dados fictícios. Ações que alteram dados reais estão desativadas.
-          </Alert>
-        )}
-
         <Grid container spacing={1.5} sx={{ mb: 2 }}>
           {overviewStats.map((card) => (
             <Grid item xs={6} md={3} key={card.title}>
@@ -1003,7 +977,7 @@ export default function AdminDashboard() {
                     >
                       Exportar
                     </Button>
-                    {!isReadOnly && !isDemoMode && (
+                    {!isReadOnly && (
                       <Button
                         component={Link}
                         to="/admin/entidades/novo"
@@ -1168,7 +1142,7 @@ export default function AdminDashboard() {
                     >
                       Exportar
                     </Button>
-                    {!isReadOnly && !isDemoMode && (
+                    {!isReadOnly && (
                       <Button
                         component={Link}
                         to="/admin/atletas/novo"
@@ -1351,8 +1325,7 @@ export default function AdminDashboard() {
             ) : (
               <AdminRegistrationSettings
                 entities={entities}
-                readOnly={isReadOnly || isDemoMode}
-                demoMode={isDemoMode}
+                readOnly={isReadOnly}
               />
             )}
           </Box>

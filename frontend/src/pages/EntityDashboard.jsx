@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   Alert,
   Box,
@@ -38,7 +38,6 @@ import GridLoadingOverlay from '../components/GridLoadingOverlay';
 import api, { getApiErrorMessage } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useFeedback } from '../contexts/FeedbackContext';
-import { getEntityDashboardDemoAthletes } from '../utils/dashboardDemoData';
 
 const athleteExportColumns = [
   { key: 'fullName', label: 'Nome' },
@@ -81,8 +80,6 @@ const formatBirthDate = (value) => {
 export default function EntityDashboard() {
   const { user, logout } = useAuth();
   const { notify, confirm } = useFeedback();
-  const [searchParams] = useSearchParams();
-  const isDemoMode = searchParams.get('demo') === '1';
   const [athletes, setAthletes] = useState([]);
   const [loadingAthletes, setLoadingAthletes] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -104,10 +101,6 @@ export default function EntityDashboard() {
   const loadAthletes = async () => {
     setLoadingAthletes(true);
     try {
-      if (isDemoMode) {
-        setAthletes(getEntityDashboardDemoAthletes());
-        return;
-      }
       const athletesResponse = await api.get('/athletes');
       setAthletes(athletesResponse.data.athletes || []);
     } catch (error) {
@@ -119,7 +112,7 @@ export default function EntityDashboard() {
 
   useEffect(() => {
     loadAthletes();
-  }, [isDemoMode]);
+  }, []);
 
   const searchValue = searchTerm.trim().toLocaleLowerCase('pt-BR');
   const filteredAthletes = athletes.filter((athlete) => (
@@ -132,7 +125,7 @@ export default function EntityDashboard() {
 
   const athleteRows = filteredAthletes.map((athlete) => ({
     ...athlete,
-    entityName: isDemoMode ? 'Órgão de demonstração 01' : user?.name || '—',
+    entityName: user?.name || '—',
     matricula: athlete.matricula || '—',
     cpf: athlete.cpf || '—',
     email: athlete.email || '—',
@@ -152,7 +145,6 @@ export default function EntityDashboard() {
   const activeFilterCount = searchField !== 'all' ? 1 : 0;
 
   const approveAthlete = async (athlete) => {
-    if (isDemoMode) return;
     try {
       const response = await api.patch(`/athletes/${athlete._id}/approve`);
       await loadAthletes();
@@ -168,7 +160,6 @@ export default function EntityDashboard() {
   };
 
   const cancelAthleteApproval = async (athlete) => {
-    if (isDemoMode) return;
     const confirmed = await confirm({
       title: 'Cancelar aprovação',
       message: `Deseja cancelar a aprovação de "${athlete.fullName || 'atleta'}"? O cadastro voltará a aguardar aprovação.`,
@@ -187,7 +178,6 @@ export default function EntityDashboard() {
   };
 
   const deleteAthlete = async (athlete) => {
-    if (isDemoMode) return;
     const confirmed = await confirm({
       title: 'Excluir atleta',
       message: `Deseja excluir o atleta "${athlete.fullName || 'selecionado'}"?`,
@@ -206,7 +196,6 @@ export default function EntityDashboard() {
   };
 
   const downloadBadge = async (athlete) => {
-    if (isDemoMode) return;
     try {
       const response = await api.get(`/athletes/${athlete._id}/badge`, { responseType: 'blob' });
       downloadFile(`carteirinha-${athlete.matricula || athlete._id}.pdf`, response.data, 'application/pdf');
@@ -316,18 +305,18 @@ export default function EntityDashboard() {
   athleteColumns.push({
     field: 'actions',
     headerName: 'Ações',
-    width: isDemoMode ? 64 : 205,
+    width: 205,
     sortable: false,
     filterable: false,
     disableColumnMenu: true,
     renderCell: (params) => (
       <Stack direction="row" spacing={0.25}>
-        {!isDemoMode && params.row.approvalStatus === 'pending' && (
+        {params.row.approvalStatus === 'pending' && (
           <IconButton color="success" size="small" onClick={() => approveAthlete(params.row)} title="Aprovar cadastro">
             <CheckCircleOutlineIcon fontSize="small" />
           </IconButton>
         )}
-        {!isDemoMode && params.row.approvalStatus === 'approved' && (
+        {params.row.approvalStatus === 'approved' && (
           <IconButton color="error" size="small" onClick={() => cancelAthleteApproval(params.row)} title="Cancelar aprovação">
             <CancelOutlinedIcon fontSize="small" />
           </IconButton>
@@ -335,25 +324,21 @@ export default function EntityDashboard() {
         <IconButton color="info" size="small" onClick={() => setDetailAthlete(params.row)} title="Ver detalhes">
           <VisibilityIcon fontSize="small" />
         </IconButton>
-        {!isDemoMode && (
-          <>
-            <IconButton color="warning" size="small" component={Link} to={`/entity/atletas/novo?id=${params.row._id}`} title="Editar">
-              <EditIcon fontSize="small" />
-            </IconButton>
-            <IconButton color="inherit" size="small" onClick={() => deleteAthlete(params.row)} title="Excluir">
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-            <IconButton
-              color="secondary"
-              size="small"
-              disabled={params.row.approvalStatus !== 'approved'}
-              onClick={() => downloadBadge(params.row)}
-              title={params.row.approvalStatus === 'approved' ? 'Gerar carteirinha' : 'Carteirinha disponível após aprovação'}
-            >
-              <DownloadIcon fontSize="small" />
-            </IconButton>
-          </>
-        )}
+        <IconButton color="warning" size="small" component={Link} to={`/entity/atletas/novo?id=${params.row._id}`} title="Editar">
+          <EditIcon fontSize="small" />
+        </IconButton>
+        <IconButton color="inherit" size="small" onClick={() => deleteAthlete(params.row)} title="Excluir">
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+        <IconButton
+          color="secondary"
+          size="small"
+          disabled={params.row.approvalStatus !== 'approved'}
+          onClick={() => downloadBadge(params.row)}
+          title={params.row.approvalStatus === 'approved' ? 'Gerar carteirinha' : 'Carteirinha disponível após aprovação'}
+        >
+          <DownloadIcon fontSize="small" />
+        </IconButton>
       </Stack>
     ),
   });
@@ -378,9 +363,6 @@ export default function EntityDashboard() {
             </Box>
           </Box>
           <Stack direction="row" spacing={1}>
-            <Button component={Link} to={isDemoMode ? '/entity' : '/entity?demo=1'} variant="outlined">
-              {isDemoMode ? 'Sair da demonstração' : 'Ver demonstração'}
-            </Button>
             <Button component={Link} to="/perfil" variant="outlined" startIcon={<ManageAccountsIcon />}>
               Perfil
             </Button>
@@ -392,7 +374,7 @@ export default function EntityDashboard() {
           <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} md={8}>
               <Typography variant="caption" color="text.secondary">Órgão</Typography>
-              <Typography variant="h6" fontWeight={700}>{isDemoMode ? 'Órgão de demonstração 01' : user?.name || 'Órgão'}</Typography>
+              <Typography variant="h6" fontWeight={700}>{user?.name || 'Órgão'}</Typography>
             </Grid>
             <Grid item xs={12} md={4}>
               <Typography variant="caption" color="text.secondary">Atletas cadastrados</Typography>
@@ -401,22 +383,13 @@ export default function EntityDashboard() {
           </Grid>
         </Paper>
 
-        {isDemoMode && (
-          <Alert severity="warning" sx={{ mt: 2 }}>
-            Modo demonstração: estes dados são fictícios e nenhuma alteração será salva.{' '}
-            <Button component={Link} to="/entity" color="inherit" size="small">Voltar aos dados reais</Button>
-          </Alert>
-        )}
-
         <Alert severity="info" sx={{ mt: 2 }}>
           As inscrições para os torneios de Beach Tennis dos Jogos dos Servidores 2026 devem ser realizadas exclusivamente pelo site{' '}
           <a href="https://www.beachtennisgovce.com.br/" target="_blank" rel="noreferrer">beachtennisgovce.com.br</a>.
         </Alert>
         {pendingAthletesCount > 0 && (
           <Alert severity="warning" sx={{ mt: 2 }}>
-            {isDemoMode
-              ? `${pendingAthletesCount} cadastros fictícios aguardam aprovação no exemplo.`
-              : pendingAthletesCount === 1
+            {pendingAthletesCount === 1
               ? 'Há 1 cadastro de atleta aguardando aprovação. Aprove-o na coluna Ações.'
               : `Há ${pendingAthletesCount} cadastros de atletas aguardando aprovação. Aprove-os na coluna Ações.`}
           </Alert>

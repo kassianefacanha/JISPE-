@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   Alert,
   Box,
@@ -14,7 +14,6 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import api, { getApiErrorMessage } from '../services/api';
-import { getDashboardDemoData } from '../utils/dashboardDemoData';
 
 const MetricCard = ({ title, value, color = '#047857' }) => (
   <Card variant="outlined" sx={{ height: '100%', borderColor: '#e2e8f0' }}>
@@ -46,8 +45,6 @@ const StatBars = ({ items, color = '#10b981' }) => {
 };
 
 export default function AdminStatisticsPage() {
-  const [searchParams] = useSearchParams();
-  const demoMode = searchParams.get('demo') === '1';
   const [entities, setEntities] = useState([]);
   const [athletes, setAthletes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,14 +52,6 @@ export default function AdminStatisticsPage() {
 
   useEffect(() => {
     let active = true;
-    if (demoMode) {
-      const demoData = getDashboardDemoData();
-      setEntities(demoData.entities);
-      setAthletes(demoData.athletes);
-      setLoading(false);
-      return () => { active = false; };
-    }
-
     Promise.all([api.get('/entities'), api.get('/athletes')])
       .then(([entitiesResponse, athletesResponse]) => {
         if (!active) return;
@@ -77,7 +66,7 @@ export default function AdminStatisticsPage() {
       });
 
     return () => { active = false; };
-  }, [demoMode]);
+  }, []);
 
   const statistics = useMemo(() => {
     const representedEntities = new Set(athletes
@@ -117,15 +106,13 @@ export default function AdminStatisticsPage() {
     };
   }, [athletes]);
 
-  const demoSuffix = demoMode ? '?demo=1' : '';
-
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: '#f8fafc', pt: { xs: 3, md: 5 }, pb: { xs: 14, md: 5 }, px: 2 }}>
       <Container maxWidth="lg">
         <Stack spacing={3}>
           <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={2}>
             <Box>
-              <Button component={Link} to={`/admin${demoSuffix}`} startIcon={<ArrowBackIcon />} sx={{ mb: 1 }}>
+              <Button component={Link} to="/admin" startIcon={<ArrowBackIcon />} sx={{ mb: 1 }}>
                 Voltar ao painel
               </Button>
               <Typography variant="h4" fontWeight={800}>Estatísticas</Typography>
@@ -133,11 +120,6 @@ export default function AdminStatisticsPage() {
             </Box>
           </Stack>
 
-          {demoMode && (
-            <Alert severity="warning">
-              Modo demonstração: estes dados são fictícios e nenhuma alteração será salva.
-            </Alert>
-          )}
           {error && <Alert severity="error">{error}</Alert>}
           {loading ? (
             <Paper sx={{ p: 3 }}><Typography color="text.secondary">Carregando estatísticas...</Typography></Paper>
